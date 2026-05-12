@@ -1,0 +1,10 @@
+std_msgs/Header header
+string state
+string previous_state
+float32 altitude_agl
+bool v_marker_visible
+bool aruco_visible
+float32 error_x
+float32 error_y
+float32 time_in_state
+string fallback_reason

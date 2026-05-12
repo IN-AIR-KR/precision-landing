@@ -1,0 +1,10 @@
+std_msgs/Header header
+bool detected
+string detector_type
+float32 image_x
+float32 image_y
+float32 image_width
+float32 image_height
+float32 confidence
+geometry_msgs/PoseStamped pose
+float32 estimated_distance

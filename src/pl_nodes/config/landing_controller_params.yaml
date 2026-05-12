@@ -1,0 +1,43 @@
+landing_controller_node:
+  ros__parameters:
+    # 고도 전환 임계값 (m AGL)
+    alt_switch_to_aruco: 8.0        # 이 고도 이하에서 ArUco 전환 시도
+    alt_final_descent: 2.0          # 이 고도 이하에서 맹목 하강
+
+    # V-마커 정렬 PID (coarse)
+    v_marker_kp: 0.8
+    v_marker_ki: 0.05
+    v_marker_kd: 0.10
+    v_marker_max_vel: 3.0           # m/s
+
+    # ArUco 정렬 PID (fine)
+    aruco_kp: 1.5
+    aruco_ki: 0.0
+    aruco_kd: 0.15
+    aruco_max_vel: 1.5              # m/s
+
+    # 하강 속도 (m/s, NED 기준 양수 = 하방)
+    descend_v_marker_vel: 0.5
+    descend_aruco_vel: 0.4
+    final_descent_vel: 0.3
+
+    # 정렬 완료 판정 임계값
+    align_v_marker_xy_threshold: 1.5   # metres
+    align_v_marker_vel_threshold: 0.3  # m/s
+    align_v_marker_hold_time: 1.0      # seconds
+
+    align_aruco_xy_threshold: 0.5
+    align_aruco_vel_threshold: 0.2
+    align_aruco_hold_time: 0.5
+
+    # 상태별 타임아웃 (seconds)
+    search_timeout: 60.0
+    align_v_marker_timeout: 120.0
+    descend_v_marker_timeout: 120.0
+    align_aruco_timeout: 60.0
+    descend_aruco_timeout: 90.0
+    final_descent_timeout: 60.0
+    target_lost_timeout: 3.0
+
+    # 카메라 오프셋 (body frame, m)
+    camera_offset_z: -0.1           # 드론 기준 10cm 아래

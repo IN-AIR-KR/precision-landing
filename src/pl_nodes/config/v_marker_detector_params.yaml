@@ -1,0 +1,8 @@
+v_marker_detector_node:
+  ros__parameters:
+    real_circle_diameter: 3.0       # metres - outer diameter of circular border
+    hough_dp: 1.2
+    hough_param1: 50                # Canny high threshold
+    hough_param2: 30                # accumulator threshold (lower = more detections)
+    min_confidence: 0.25
+    publish_debug_image: true

@@ -1,0 +1,6 @@
+aruco_detector_node:
+  ros__parameters:
+    aruco_id: 0
+    dictionary: 0                   # DICT_4X4_50
+    marker_size: 0.5                # metres
+    publish_debug_image: true
