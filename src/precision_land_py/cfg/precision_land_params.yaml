@@ -1,9 +1,0 @@
-precision_land:
-  ros__parameters:
-    descent_vel: 0.6      # m/s downward during final descent
-    vel_p_gain: 1.7       # XY proportional gain
-    vel_i_gain: 0.0       # XY integral gain
-    max_velocity: 3.0     # m/s XY velocity limit
-    target_timeout: 5.0   # seconds before target is considered lost
-    delta_position: 0.2   # m position threshold for waypoint reached
-    delta_velocity: 0.2   # m/s velocity threshold for waypoint reached
