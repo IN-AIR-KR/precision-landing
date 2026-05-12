@@ -4,77 +4,46 @@
 
 1. [사전 요구사항](#1-사전-요구사항)
 2. [빌드](#2-빌드)
-3. [V-마커 텍스처 생성 (최초 1회)](#3-v-마커-텍스처-생성-최초-1회)
-4. [SITL 실행](#4-sitl-실행)
-5. [실제 하드웨어 실행](#5-실제-하드웨어-실행)
-6. [모니터링](#6-모니터링)
-7. [착륙 시작 및 중단](#7-착륙-시작-및-중단)
-8. [파라미터 튜닝](#8-파라미터-튜닝)
-9. [트러블슈팅](#9-트러블슈팅)
-
----
+3. [SITL 실행](#3-sitl-실행)
+4. [실제 하드웨어 실행](#4-실제-하드웨어-실행)
+5. [모니터링](#5-모니터링)
+6. [착륙 시작 및 중단](#6-착륙-시작-및-중단)
+7. [파라미터 튜닝](#7-파라미터-튜닝)
+8. [트러블슈팅](#8-트러블슈팅)
 
 ## 1. 사전 요구사항
 
 ### 필수 소프트웨어
 
-| 소프트웨어          | 버전        | 설치 방법                                                            |
-| ------------------- | ----------- | -------------------------------------------------------------------- |
-| ROS2                | Humble      | [공식 설치 가이드](https://docs.ros.org/en/humble/Installation.html) |
-| PX4-Autopilot       | 최신        | `git clone --recursive https://github.com/PX4/PX4-Autopilot.git`     |
-| Gazebo Harmonic     | 8.x         | PX4 SITL 의존성으로 자동 설치                                        |
-| MicroXRCE-DDS Agent | 최신        | 아래 참고                                                            |
-| px4_msgs            | main (서브모듈) | `git submodule update --init`                                    |
-| usb_cam             | 최신        | 실제 하드웨어 전용                                                   |
+| 소프트웨어          | 버전            |
+| ------------------- | --------------- |
+| ROS2                | Humble          |
+| PX4-Autopilot       | 최신            |
+| Gazebo Harmonic     | 8.x             |
+| MicroXRCE-DDS Agent | 최신            |
+| px4_msgs            | main (서브모듈) |
+| usb_cam             | 최신            |
 
-### MicroXRCE-DDS Agent 설치
-
-```bash
-pip install --user -U empy pyros-genmsg setuptools
-git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
-cd Micro-XRCE-DDS-Agent
-mkdir build && cd build
-cmake ..
-make
-sudo make install
-# 또는 snap 사용
-sudo snap install micro-xrce-dds-agent --edge
-```
-
-### ROS2 워크스페이스 구성
+### 레포 클론
 
 ```bash
-# 이 레포를 클론할 때 서브모듈(px4_msgs)도 함께 받는다
+# 서브모듈(px4_msgs)도 함께 받는다
 git clone --recursive https://github.com/<your-org>/precision-landing.git
 
 # 이미 클론한 경우 서브모듈 초기화
 git submodule update --init
-
-mkdir -p ~/precision_ws/src
-cd ~/precision_ws/src
-
-# 이 패키지 심볼릭 링크 또는 복사 (px4_msgs는 src/ 안에 이미 포함됨)
-ln -s ~/precision-landing/src/pl_msgs .
-ln -s ~/precision-landing/src/pl_nodes .
-ln -s ~/precision-landing/src/pl_bringup .
-ln -s ~/precision-landing/src/px4_msgs .
 ```
 
 ### usb_cam 설치 (실제 하드웨어 전용)
 
 ```bash
 sudo apt install ros-humble-usb-cam
-# 또는 소스 빌드:
-cd ~/precision_ws/src
-git clone https://github.com/ros-drivers/usb_cam.git -b ros2
 ```
-
----
 
 ## 2. 빌드
 
 ```bash
-cd ~/precision_ws
+cd ~/precision-landing/precision_landing_ws
 
 # 의존성 설치
 rosdep install --from-paths src --ignore-src -r -y
@@ -87,28 +56,7 @@ colcon build --packages-select pl_nodes pl_bringup
 source install/setup.bash
 ```
 
----
-
-## 3. V-마커 텍스처 생성 (최초 1회)
-
-SITL 시뮬레이션에서 Gazebo 모델에 사용할 텍스처 PNG를 생성한다.
-
-```bash
-cd ~/precision-landing
-python3 scripts/generate_marker_texture.py
-
-# 결과 확인 (미리보기)
-python3 scripts/generate_marker_texture.py --preview
-
-# 사용자 지정 경로
-python3 scripts/generate_marker_texture.py --output /custom/path/v_marker.png
-```
-
-생성 결과: `simulation/models/v_marker/v_marker.png`
-
----
-
-## 4. SITL 실행
+## 3. SITL 실행
 
 총 4개의 터미널을 사용한다.
 
@@ -128,6 +76,14 @@ PX4_GZ_WORLD=precision_landing \
 make px4_sitl gz_x500_mono_cam_down
 ```
 
+> **대안 — export가 적용되지 않을 경우**: PX4 모델/월드 디렉터리에 심볼릭 링크를 생성하면 환경 변수 없이도 인식된다.
+> ```bash
+> ln -s ~/precision-landing/simulation/models/v_marker \
+>   ~/PX4-Autopilot/Tools/simulation/gz/models/v_marker
+> ln -s ~/precision-landing/simulation/worlds/precision_landing.sdf \
+>   ~/PX4-Autopilot/Tools/simulation/gz/worlds/precision_landing.sdf
+> ```
+
 > **주의**: Gazebo가 실행되면 `gz topic -l` 로 카메라 토픽 이름을 확인한다.  
 > 예상 경로: `/world/precision_landing/model/x500_mono_cam_down_0/link/camera_link/sensor/camera/image`  
 > 센서 이름이 `imager`일 경우 `src/pl_bringup/launch/precision_landing_sitl.launch.py` 의 `GZ_SENSOR` 변수를 수정한다.
@@ -144,7 +100,7 @@ PX4와 ROS2 간 통신(uXRCE-DDS) 브리지 역할. PX4 콘솔에 `uxrce_dds_cli
 
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/precision_ws/install/setup.bash
+source ~/precision-landing/precision_landing_ws/install/setup.bash
 
 ros2 launch pl_bringup precision_landing_sitl.launch.py
 ```
@@ -153,7 +109,7 @@ ros2 launch pl_bringup precision_landing_sitl.launch.py
 
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/precision_ws/install/setup.bash
+source ~/precision-landing/precision_landing_ws/install/setup.bash
 
 # 착륙 시작
 ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
@@ -162,9 +118,7 @@ ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
 ros2 topic echo /pl/landing_state
 ```
 
----
-
-## 5. 실제 하드웨어 실행
+## 4. 실제 하드웨어 실행
 
 ### 사전 확인
 
@@ -186,7 +140,7 @@ MicroXRCEAgent udp4 -p 8888
 
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/precision_ws/install/setup.bash
+source ~/precision-landing/precision_landing_ws/install/setup.bash
 
 # 기본 실행 (카메라 /dev/video0)
 ros2 launch pl_bringup precision_landing_real.launch.py
@@ -202,9 +156,7 @@ ros2 launch pl_bringup precision_landing_real.launch.py video_device:=/dev/video
 ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
 ```
 
----
-
-## 6. 모니터링
+## 5. 모니터링
 
 ### FSM 상태 확인
 
@@ -247,9 +199,7 @@ ros2 topic echo /pl/v_marker_detection
 ros2 topic echo /pl/aruco_detection
 ```
 
----
-
-## 7. 착륙 시작 및 중단
+## 6. 착륙 시작 및 중단
 
 ### 착륙 시작
 
@@ -270,9 +220,7 @@ ros2 service call /landing_controller_node/abort std_srvs/srv/Trigger
 
 ABORT 상태 전환 후 드론은 LOITER 모드로 전환.
 
----
-
-## 8. 파라미터 튜닝
+## 7. 파라미터 튜닝
 
 파라미터 파일 위치: `src/pl_nodes/config/`
 
@@ -308,12 +256,11 @@ alt_final_descent: 2.0 # 맹목 하강 전환 고도
 파라미터 변경 후 **리빌드 및 재실행** 필요:
 
 ```bash
+cd ~/precision-landing/precision_landing_ws
 colcon build --packages-select pl_nodes && source install/setup.bash
 ```
 
----
-
-## 9. 트러블슈팅
+## 8. 트러블슈팅
 
 ### 문제: V-마커가 인식되지 않음
 

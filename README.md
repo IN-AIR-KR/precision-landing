@@ -12,7 +12,7 @@
 
 ## 마커 규격
 
-![V-marker](v_marker.png)
+![V-marker](simulation/models/v_marker/v_marker.png)
 
 - 외곽 크기: **3m × 3m** (원형 테두리 포함)
 - 내장 ArUco: **DICT_4X4_50, ID 0, 50cm × 50cm**
