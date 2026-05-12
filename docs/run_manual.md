@@ -43,7 +43,7 @@ sudo apt install ros-humble-usb-cam
 ## 2. 빌드
 
 ```bash
-cd ~/precision-landing/precision_landing_ws
+cd ~/precision-landing/pl_ws
 
 # 의존성 설치
 rosdep install --from-paths src --ignore-src -r -y
@@ -100,7 +100,7 @@ PX4와 ROS2 간 통신(uXRCE-DDS) 브리지 역할. PX4 콘솔에 `uxrce_dds_cli
 
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/precision-landing/precision_landing_ws/install/setup.bash
+source ~/precision-landing/pl_ws/install/setup.bash
 
 ros2 launch pl_bringup precision_landing_sitl.launch.py
 ```
@@ -109,7 +109,7 @@ ros2 launch pl_bringup precision_landing_sitl.launch.py
 
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/precision-landing/precision_landing_ws/install/setup.bash
+source ~/precision-landing/pl_ws/install/setup.bash
 
 # 착륙 시작
 ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
@@ -140,7 +140,7 @@ MicroXRCEAgent udp4 -p 8888
 
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/precision-landing/precision_landing_ws/install/setup.bash
+source ~/precision-landing/pl_ws/install/setup.bash
 
 # 기본 실행 (카메라 /dev/video0)
 ros2 launch pl_bringup precision_landing_real.launch.py
@@ -256,7 +256,7 @@ alt_final_descent: 2.0 # 맹목 하강 전환 고도
 파라미터 변경 후 **리빌드 및 재실행** 필요:
 
 ```bash
-cd ~/precision-landing/precision_landing_ws
+cd ~/precision-landing/pl_ws
 colcon build --packages-select pl_nodes && source install/setup.bash
 ```
 

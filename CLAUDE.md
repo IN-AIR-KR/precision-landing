@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # 클론 (서브모듈 포함)
 git clone --recursive https://github.com/<your-org>/precision-landing.git
 
-# 빌드 — 워크스페이스는 레포 안의 precision_landing_ws/
-cd ~/precision-landing/precision_landing_ws
+# 빌드 — 워크스페이스는 레포 안의 pl_ws/
+cd ~/precision-landing/pl_ws
 colcon build --packages-select pl_msgs
 colcon build --packages-select pl_nodes pl_bringup
 source install/setup.bash
@@ -72,7 +72,7 @@ Gazebo 카메라 토픽: `/world/precision_landing/model/x500_mono_cam_down_0/li
 
 ### 파라미터 파일
 
-`precision_landing_ws/src/pl_nodes/config/` 아래 yaml 3개. 변경 후 `colcon build --packages-select pl_nodes` 재실행 필요.
+`pl_ws/src/pl_nodes/config/` 아래 yaml 3개. 변경 후 `colcon build --packages-select pl_nodes` 재실행 필요.
 
 ## 문서
 
