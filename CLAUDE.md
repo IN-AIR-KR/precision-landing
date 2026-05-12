@@ -5,16 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 빌드 및 실행
 
 ```bash
-# pl_msgs를 먼저 빌드한 뒤 나머지를 빌드한다 (메시지 타입 의존성)
+# 클론 (서브모듈 포함)
+git clone --recursive https://github.com/<your-org>/precision-landing.git
+
+# 빌드 — 워크스페이스는 레포 안의 precision_landing_ws/
+cd ~/precision-landing/precision_landing_ws
 colcon build --packages-select pl_msgs
 colcon build --packages-select pl_nodes pl_bringup
 source install/setup.bash
 
-# 텍스처 생성 (최초 1회, simulation/models/v_marker/v_marker.png 생성)
-python3 scripts/generate_marker_texture.py
-
-# SITL 실행 (터미널 3개 필요)
-export GZ_SIM_RESOURCE_PATH=/path/to/precision-landing/simulation/models:$GZ_SIM_RESOURCE_PATH
+# SITL 실행 (터미널 4개 필요)
+# export 대신 심볼릭 링크로 등록하는 게 더 안정적
+ln -s ~/precision-landing/simulation/models/v_marker ~/PX4-Autopilot/Tools/simulation/gz/models/v_marker
+ln -s ~/precision-landing/simulation/worlds/precision_landing.sdf ~/PX4-Autopilot/Tools/simulation/gz/worlds/precision_landing.sdf
 PX4_GZ_MODEL_POSE="0,0,35,0,0,0" PX4_GZ_WORLD=precision_landing make px4_sitl gz_x500_mono_cam_down
 MicroXRCEAgent udp4 -p 8888
 ros2 launch pl_bringup precision_landing_sitl.launch.py
@@ -69,7 +72,7 @@ Gazebo 카메라 토픽: `/world/precision_landing/model/x500_mono_cam_down_0/li
 
 ### 파라미터 파일
 
-`src/pl_nodes/config/` 아래 yaml 3개. 변경 후 `colcon build --packages-select pl_nodes` 재실행 필요.
+`precision_landing_ws/src/pl_nodes/config/` 아래 yaml 3개. 변경 후 `colcon build --packages-select pl_nodes` 재실행 필요.
 
 ## 문서
 
