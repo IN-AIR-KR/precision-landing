@@ -24,7 +24,7 @@
 | PX4-Autopilot       | 최신        | `git clone --recursive https://github.com/PX4/PX4-Autopilot.git`     |
 | Gazebo Harmonic     | 8.x         | PX4 SITL 의존성으로 자동 설치                                        |
 | MicroXRCE-DDS Agent | 최신        | 아래 참고                                                            |
-| px4_msgs            | main 브랜치 | 아래 참고                                                            |
+| px4_msgs            | main (서브모듈) | `git submodule update --init`                                    |
 | usb_cam             | 최신        | 실제 하드웨어 전용                                                   |
 
 ### MicroXRCE-DDS Agent 설치
@@ -44,16 +44,20 @@ sudo snap install micro-xrce-dds-agent --edge
 ### ROS2 워크스페이스 구성
 
 ```bash
+# 이 레포를 클론할 때 서브모듈(px4_msgs)도 함께 받는다
+git clone --recursive https://github.com/<your-org>/precision-landing.git
+
+# 이미 클론한 경우 서브모듈 초기화
+git submodule update --init
+
 mkdir -p ~/precision_ws/src
 cd ~/precision_ws/src
 
-# px4_msgs 클론 (main 브랜치 — 사용 중인 PX4-Autopilot 버전과 일치해야 함)
-git clone https://github.com/PX4/px4_msgs.git
-
-# 이 패키지 심볼릭 링크 또는 복사
-ln -s /Users/sungho/code/narae/precision-landing/src/pl_msgs .
-ln -s /Users/sungho/code/narae/precision-landing/src/pl_nodes .
-ln -s /Users/sungho/code/narae/precision-landing/src/pl_bringup .
+# 이 패키지 심볼릭 링크 또는 복사 (px4_msgs는 src/ 안에 이미 포함됨)
+ln -s ~/precision-landing/src/pl_msgs .
+ln -s ~/precision-landing/src/pl_nodes .
+ln -s ~/precision-landing/src/pl_bringup .
+ln -s ~/precision-landing/src/px4_msgs .
 ```
 
 ### usb_cam 설치 (실제 하드웨어 전용)
@@ -90,7 +94,7 @@ source install/setup.bash
 SITL 시뮬레이션에서 Gazebo 모델에 사용할 텍스처 PNG를 생성한다.
 
 ```bash
-cd /Users/sungho/code/narae/precision-landing
+cd ~/precision-landing
 python3 scripts/generate_marker_texture.py
 
 # 결과 확인 (미리보기)
@@ -111,11 +115,11 @@ python3 scripts/generate_marker_texture.py --output /custom/path/v_marker.png
 ### 터미널 1: PX4 SITL + Gazebo 실행
 
 ```bash
-cd /Users/sungho/code/narae/PX4-Autopilot
+cd ~/PX4-Autopilot
 
 # V-마커 모델/월드 경로 등록
-export GZ_SIM_RESOURCE_PATH=/Users/sungho/code/narae/precision-landing/simulation/models:\
-/Users/sungho/code/narae/precision-landing/simulation/worlds:\
+export GZ_SIM_RESOURCE_PATH=~/precision-landing/simulation/models:\
+~/precision-landing/simulation/worlds:\
 ${GZ_SIM_RESOURCE_PATH}
 
 # 드론 35m 상공 스폰, precision_landing 월드 사용
