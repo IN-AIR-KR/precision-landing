@@ -18,14 +18,14 @@
 
 ### 필수 소프트웨어
 
-| 소프트웨어 | 버전 | 설치 방법 |
-|-----------|------|----------|
-| ROS2 | Humble | [공식 설치 가이드](https://docs.ros.org/en/humble/Installation.html) |
-| PX4-Autopilot | v1.14 이상 | `git clone --recursive https://github.com/PX4/PX4-Autopilot.git` |
-| Gazebo Harmonic | 8.x | PX4 SITL 의존성으로 자동 설치 |
-| MicroXRCE-DDS Agent | 최신 | 아래 참고 |
-| px4_msgs | Humble 브랜치 | 아래 참고 |
-| usb_cam | 최신 | 실제 하드웨어 전용 |
+| 소프트웨어          | 버전        | 설치 방법                                                            |
+| ------------------- | ----------- | -------------------------------------------------------------------- |
+| ROS2                | Humble      | [공식 설치 가이드](https://docs.ros.org/en/humble/Installation.html) |
+| PX4-Autopilot       | 최신        | `git clone --recursive https://github.com/PX4/PX4-Autopilot.git`     |
+| Gazebo Harmonic     | 8.x         | PX4 SITL 의존성으로 자동 설치                                        |
+| MicroXRCE-DDS Agent | 최신        | 아래 참고                                                            |
+| px4_msgs            | main 브랜치 | 아래 참고                                                            |
+| usb_cam             | 최신        | 실제 하드웨어 전용                                                   |
 
 ### MicroXRCE-DDS Agent 설치
 
@@ -47,8 +47,8 @@ sudo snap install micro-xrce-dds-agent --edge
 mkdir -p ~/precision_ws/src
 cd ~/precision_ws/src
 
-# px4_msgs 클론 (ROS2 Humble 브랜치)
-git clone -b release/1.14 https://github.com/PX4/px4_msgs.git
+# px4_msgs 클론 (main 브랜치 — 사용 중인 PX4-Autopilot 버전과 일치해야 함)
+git clone https://github.com/PX4/px4_msgs.git
 
 # 이 패키지 심볼릭 링크 또는 복사
 ln -s /Users/sungho/code/narae/precision-landing/src/pl_msgs .
@@ -209,6 +209,7 @@ ros2 topic echo /pl/landing_state
 ```
 
 출력 예시:
+
 ```
 state: DESCEND_V_MARKER
 altitude_agl: 15.3
@@ -253,6 +254,7 @@ ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
 ```
 
 응답:
+
 - `success: true` → 정상 시작
 - `success: false` → 이미 다른 상태 진행 중
 
@@ -273,18 +275,20 @@ ABORT 상태 전환 후 드론은 LOITER 모드로 전환.
 ### 검출 민감도 조정
 
 `v_marker_detector_params.yaml`:
+
 ```yaml
-hough_param2: 30   # 낮출수록 더 많이 검출 (오탐 증가 주의)
-min_confidence: 0.25  # 최소 신뢰도 임계값
+hough_param2: 30 # 낮출수록 더 많이 검출 (오탐 증가 주의)
+min_confidence: 0.25 # 최소 신뢰도 임계값
 ```
 
 ### PID 게인 조정
 
 `landing_controller_params.yaml`:
+
 ```yaml
 # XY 정렬이 진동할 경우 kp를 낮추거나 kd를 높임
-v_marker_kp: 0.8   # 비례
-v_marker_kd: 0.10  # 미분 (진동 억제)
+v_marker_kp: 0.8 # 비례
+v_marker_kd: 0.10 # 미분 (진동 억제)
 
 # 정렬이 느릴 경우 kp를 높임
 aruco_kp: 1.5
@@ -293,11 +297,12 @@ aruco_kp: 1.5
 ### 고도 전환점 조정
 
 ```yaml
-alt_switch_to_aruco: 8.0    # ArUco 전환 고도 (높이면 ArUco 더 일찍 시도)
-alt_final_descent: 2.0      # 맹목 하강 전환 고도
+alt_switch_to_aruco: 8.0 # ArUco 전환 고도 (높이면 ArUco 더 일찍 시도)
+alt_final_descent: 2.0 # 맹목 하강 전환 고도
 ```
 
 파라미터 변경 후 **리빌드 및 재실행** 필요:
+
 ```bash
 colcon build --packages-select pl_nodes && source install/setup.bash
 ```
