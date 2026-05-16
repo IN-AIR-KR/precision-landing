@@ -28,7 +28,7 @@
 
 ```bash
 # 서브모듈(px4_msgs)도 함께 받는다
-git clone --recursive https://github.com/<your-org>/precision-landing.git
+git clone --recursive https://github.com/IN-AIR-KR/precision-landing.git
 
 # 이미 클론한 경우 서브모듈 초기화
 git submodule update --init
@@ -77,6 +77,7 @@ make px4_sitl gz_x500_mono_cam_down
 ```
 
 > **대안 — export가 적용되지 않을 경우**: PX4 모델/월드 디렉터리에 심볼릭 링크를 생성하면 환경 변수 없이도 인식된다.
+>
 > ```bash
 > ln -s ~/precision-landing/simulation/models/v_marker \
 >   ~/PX4-Autopilot/Tools/simulation/gz/models/v_marker
