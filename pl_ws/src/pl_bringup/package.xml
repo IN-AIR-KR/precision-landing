@@ -4,7 +4,7 @@
   <name>pl_bringup</name>
   <version>0.1.0</version>
   <description>Launch files for precision landing</description>
-  <maintainer email="dev@local">dev</maintainer>
+  <maintainer email="dev@local.com">dev</maintainer>
   <license>MIT</license>
 
   <exec_depend>pl_nodes</exec_depend>

@@ -4,7 +4,7 @@
   <name>pl_nodes</name>
   <version>0.1.0</version>
   <description>Precision landing detector and controller nodes</description>
-  <maintainer email="dev@local">dev</maintainer>
+  <maintainer email="dev@local.com">dev</maintainer>
   <license>MIT</license>
 
   <depend>rclpy</depend>

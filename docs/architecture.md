@@ -598,8 +598,7 @@ $$f_x = \frac{W}{2\,\tan(\theta_H / 2)} = \frac{1280}{2\,\tan(0.87)} \approx 740
 ### 9.4 드론 스폰 설정
 
 ```bash
-# 지상 근처(0.5m)에서 스폰 — 이륙 후 35m 고도에서 착륙 시퀀스 시작
-PX4_GZ_MODEL_POSE="0,0,0.5,0,0,0" \
+# 이륙 후 35m 고도에서 착륙 시퀀스 시작
 PX4_GZ_WORLD=precision_landing \
 make px4_sitl gz_x500_mono_cam_down
 ```

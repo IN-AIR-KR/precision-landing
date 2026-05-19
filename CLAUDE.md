@@ -10,7 +10,7 @@ git clone --recursive https://github.com/<your-org>/precision-landing.git
 
 # 빌드 — 워크스페이스는 레포 안의 pl_ws/
 cd ~/precision-landing/pl_ws
-colcon build --packages-select pl_msgs
+colcon build --packages-select px4_msgs pl_msgs
 colcon build --packages-select pl_nodes pl_bringup
 source install/setup.bash
 
