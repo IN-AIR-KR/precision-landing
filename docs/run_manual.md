@@ -70,10 +70,16 @@ export GZ_SIM_RESOURCE_PATH=~/precision-landing/simulation/models:\
 ~/precision-landing/simulation/worlds:\
 ${GZ_SIM_RESOURCE_PATH}
 
-# 드론 35m 상공 스폰, precision_landing 월드 사용
-PX4_GZ_MODEL_POSE="0,0,35,0,0,0" \
+# 드론 지상 근처 스폰, precision_landing 월드 사용
+PX4_GZ_MODEL_POSE="0,0,0.5,0,0,0" \
 PX4_GZ_WORLD=precision_landing \
 make px4_sitl gz_x500_mono_cam_down
+```
+
+PX4 콘솔이 열리면 아래 명령으로 35m까지 이륙한다.
+
+```
+pxh> commander takeoff 35
 ```
 
 > **대안 — export가 적용되지 않을 경우**: PX4 모델/월드 디렉터리에 심볼릭 링크를 생성하면 환경 변수 없이도 인식된다.
@@ -106,13 +112,16 @@ source ~/precision-landing/pl_ws/install/setup.bash
 ros2 launch pl_bringup precision_landing_sitl.launch.py
 ```
 
-### 터미널 4: 착륙 시퀀스 시작
+### 터미널 4: 이륙 및 착륙 시퀀스 시작
 
 ```bash
 source /opt/ros/humble/setup.bash
 source ~/precision-landing/pl_ws/install/setup.bash
 
-# 착륙 시작
+# 터미널 1 PX4 콘솔에서 이륙 후 35m 도달 확인
+# pxh> commander takeoff 35
+
+# 착륙 시퀀스 시작
 ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
 
 # 상태 모니터링

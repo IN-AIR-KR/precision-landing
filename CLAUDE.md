@@ -18,7 +18,7 @@ source install/setup.bash
 # export 대신 심볼릭 링크로 등록하는 게 더 안정적
 ln -s ~/precision-landing/simulation/models/v_marker ~/PX4-Autopilot/Tools/simulation/gz/models/v_marker
 ln -s ~/precision-landing/simulation/worlds/precision_landing.sdf ~/PX4-Autopilot/Tools/simulation/gz/worlds/precision_landing.sdf
-PX4_GZ_MODEL_POSE="0,0,35,0,0,0" PX4_GZ_WORLD=precision_landing make px4_sitl gz_x500_mono_cam_down
+PX4_GZ_MODEL_POSE="0,0,0.5,0,0,0" PX4_GZ_WORLD=precision_landing make px4_sitl gz_x500_mono_cam_down
 MicroXRCEAgent udp4 -p 8888
 ros2 launch pl_bringup precision_landing_sitl.launch.py
 
