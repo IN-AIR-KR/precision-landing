@@ -3,13 +3,14 @@
 ## 목차
 
 1. [사전 요구사항](#1-사전-요구사항)
-2. [빌드](#2-빌드)
-3. [SITL 실행](#3-sitl-실행)
-4. [실제 하드웨어 실행](#4-실제-하드웨어-실행)
-5. [모니터링](#5-모니터링)
-6. [착륙 시작 및 중단](#6-착륙-시작-및-중단)
-7. [파라미터 튜닝](#7-파라미터-튜닝)
-8. [트러블슈팅](#8-트러블슈팅)
+2. [의존성 설치](#2-의존성-설치)
+3. [빌드](#3-빌드)
+4. [SITL 실행](#4-sitl-실행)
+5. [실제 하드웨어 실행](#5-실제-하드웨어-실행)
+6. [모니터링](#6-모니터링)
+7. [착륙 시작 및 중단](#7-착륙-시작-및-중단)
+8. [파라미터 튜닝](#8-파라미터-튜닝)
+9. [트러블슈팅](#9-트러블슈팅)
 
 ## 1. 사전 요구사항
 
@@ -40,7 +41,36 @@ git submodule update --init
 sudo apt install ros-humble-usb-cam
 ```
 
-## 2. 빌드
+## 2. 의존성 설치
+
+### 2.1 ros_gz_bridge (소스 빌드 필수)
+
+> ⚠️ apt의 `ros-humble-ros-gz-bridge`는 Gazebo Fortress (`ign-msgs 8`, `ign-transport 11`) 기준으로 빌드되어 있음. 반면 PX4 SITL은 Gazebo Harmonic (`gz-msgs 10`, `gz-transport 13`)을 사용하므로 버전이 맞지 않아 `Unknown message type [9]` 에러가 발생하고 ROS2 토픽이 브릿지되지 않음. 반드시 Harmonic 버전으로 소스 빌드해야 함.
+
+```bash
+# Harmonic dev 패키지 설치
+sudo apt install libgz-msgs10-dev libgz-transport13-dev -y
+
+# 소스 클론 및 빌드
+mkdir -p ~/ros_gz_harmonic_ws/src
+cd ~/ros_gz_harmonic_ws/src
+git clone https://github.com/gazebosim/ros_gz.git -b humble
+
+cd ~/ros_gz_harmonic_ws
+source /opt/ros/humble/setup.bash
+GZ_VERSION=harmonic colcon build --packages-select ros_gz_bridge ros_gz_interfaces
+
+source ~/ros_gz_harmonic_ws/install/setup.bash
+```
+
+설치 확인:
+
+```bash
+ldd ~/ros_gz_harmonic_ws/install/ros_gz_bridge/lib/libros_gz_bridge.so | grep gz-msgs
+# libgz-msgs10.so.10 이 보여야 정상
+```
+
+## 3. 빌드
 
 ```bash
 cd ~/precision-landing/pl_ws
@@ -48,15 +78,15 @@ cd ~/precision-landing/pl_ws
 # 의존성 설치
 rosdep install --from-paths src --ignore-src -r -y
 
-# 빌드 (순서 중요: pl_msgs 먼저)
-colcon build --packages-select pl_msgs
+# 빌드 (순서 중요: 메시지 패키지를 먼저 빌드)
+colcon build --packages-select px4_msgs pl_msgs
 colcon build --packages-select pl_nodes pl_bringup
 
 # 환경 소스
 source install/setup.bash
 ```
 
-## 3. SITL 실행
+## 4. SITL 실행
 
 총 4개의 터미널을 사용한다.
 
@@ -70,8 +100,7 @@ export GZ_SIM_RESOURCE_PATH=~/precision-landing/simulation/models:\
 ~/precision-landing/simulation/worlds:\
 ${GZ_SIM_RESOURCE_PATH}
 
-# 드론 지상 근처 스폰, precision_landing 월드 사용
-PX4_GZ_MODEL_POSE="0,0,0.5,0,0,0" \
+# precision_landing 월드 사용, 드론은 하방캠 달린 모델 사용
 PX4_GZ_WORLD=precision_landing \
 make px4_sitl gz_x500_mono_cam_down
 ```
@@ -79,7 +108,9 @@ make px4_sitl gz_x500_mono_cam_down
 PX4 콘솔이 열리면 아래 명령으로 35m까지 이륙한다.
 
 ```
-pxh> commander takeoff 35
+pxh> param set NAV_DLL_ACT 0        # GCS 없이 이륙하고 싶다면
+pxh> param set MIS_TAKEOFF_ALT 35
+pxh> commander takeoff
 ```
 
 > **대안 — export가 적용되지 않을 경우**: PX4 모델/월드 디렉터리에 심볼릭 링크를 생성하면 환경 변수 없이도 인식된다.
@@ -107,6 +138,7 @@ PX4와 ROS2 간 통신(uXRCE-DDS) 브리지 역할. PX4 콘솔에 `uxrce_dds_cli
 
 ```bash
 source /opt/ros/humble/setup.bash
+source ~/ros_gz_harmonic_ws/install/setup.bash   # Harmonic 빌드된 ros_gz_bridge 사용
 source ~/precision-landing/pl_ws/install/setup.bash
 
 ros2 launch pl_bringup precision_landing_sitl.launch.py
@@ -116,10 +148,10 @@ ros2 launch pl_bringup precision_landing_sitl.launch.py
 
 ```bash
 source /opt/ros/humble/setup.bash
+source ~/ros_gz_harmonic_ws/install/setup.bash
 source ~/precision-landing/pl_ws/install/setup.bash
 
 # 터미널 1 PX4 콘솔에서 이륙 후 35m 도달 확인
-# pxh> commander takeoff 35
 
 # 착륙 시퀀스 시작
 ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
@@ -128,7 +160,7 @@ ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
 ros2 topic echo /pl/landing_state
 ```
 
-## 4. 실제 하드웨어 실행
+## 5. 실제 하드웨어 실행
 
 ### 사전 확인
 
@@ -166,7 +198,7 @@ ros2 launch pl_bringup precision_landing_real.launch.py video_device:=/dev/video
 ros2 service call /landing_controller_node/start_landing std_srvs/srv/Trigger
 ```
 
-## 5. 모니터링
+## 6. 모니터링
 
 ### FSM 상태 확인
 
@@ -209,7 +241,7 @@ ros2 topic echo /pl/v_marker_detection
 ros2 topic echo /pl/aruco_detection
 ```
 
-## 6. 착륙 시작 및 중단
+## 7. 착륙 시작 및 중단
 
 ### 착륙 시작
 
@@ -230,7 +262,7 @@ ros2 service call /landing_controller_node/abort std_srvs/srv/Trigger
 
 ABORT 상태 전환 후 드론은 LOITER 모드로 전환.
 
-## 7. 파라미터 튜닝
+## 8. 파라미터 튜닝
 
 파라미터 파일 위치: `src/pl_nodes/config/`
 
@@ -270,7 +302,7 @@ cd ~/precision-landing/pl_ws
 colcon build --packages-select pl_nodes && source install/setup.bash
 ```
 
-## 8. 트러블슈팅
+## 9. 트러블슈팅
 
 ### 문제: V-마커가 인식되지 않음
 
