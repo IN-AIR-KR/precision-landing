@@ -34,6 +34,8 @@ private:
 		// Initialize position with NaN values directly in the struct
 		Eigen::Vector3d position = Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
 		Eigen::Quaterniond orientation;
+		// Estimated world-frame velocity of the tag (zero until a prior detection exists), used to track moving targets
+		Eigen::Vector3d velocity = Eigen::Vector3d::Zero();
 		rclcpp::Time timestamp;
 
 		bool valid() { return timestamp.nanoseconds() > 0; };

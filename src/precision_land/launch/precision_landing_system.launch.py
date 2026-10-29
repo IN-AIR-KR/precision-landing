@@ -13,15 +13,26 @@ def generate_launch_description():
         description='Enable Gazebo marker visualization (simulation only)'
     )
 
+    # Gazebo includes the world name in sensor topic paths (/world/<world>/model/...), so it
+    # must match whatever world is actually running. Default "aruco" is the static-marker world;
+    # pass world:=aruco_moving for the moving-target world.
+    world_arg = DeclareLaunchArgument(
+        'world',
+        default_value='aruco',
+        description='Gazebo world name (must match PX4_GZ_WORLD used to launch the sim)'
+    )
+    world = LaunchConfiguration('world')
+
     return LaunchDescription([
         enable_viz_arg,
+        world_arg,
         # Bridge camera image from Gazebo to ROS2
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
             name='image_bridge',
             arguments=[
-                '/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image@sensor_msgs/msg/Image@gz.msgs.Image'
+                ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image@sensor_msgs/msg/Image@gz.msgs.Image']
             ],
             output='screen',
         ),
@@ -31,7 +42,7 @@ def generate_launch_description():
             executable='parameter_bridge',
             name='camera_info_bridge',
             arguments=[
-                '/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo'
+                ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo']
             ],
             output='screen',
         ),
@@ -56,7 +67,8 @@ def generate_launch_description():
             name='aruco_tracker',
             output='screen',
             parameters=[
-                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml'])
+                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
+                {'world_name': world},
             ]
         ),
         # Precision landing node

@@ -17,11 +17,15 @@ ArucoTrackerNode::ArucoTrackerNode()
 
 	auto qos = rclcpp::QoS(1).best_effort();
 
+	// Gazebo includes the world name in sensor topic paths, so it must match whatever
+	// world is actually running (e.g. "aruco" vs "aruco_moving"); see world_name param.
+	const std::string camera_prefix = "/world/" + _param_world_name + "/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/";
+
 	_image_sub = create_subscription<sensor_msgs::msg::Image>(
-			     "/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
+			     camera_prefix + "image", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
 
 	_camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(
-				   "/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
+				   camera_prefix + "camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
 
 	// Publishers
 	_image_pub = create_publisher<sensor_msgs::msg::Image>("/image_proc", qos);
@@ -33,10 +37,12 @@ void ArucoTrackerNode::loadParameters()
 	declare_parameter<int>("aruco_id", 0);
 	declare_parameter<int>("dictionary", 2); // DICT_4X4_250
 	declare_parameter<double>("marker_size", 0.5);
+	declare_parameter<std::string>("world_name", "aruco");
 
 	get_parameter("aruco_id", _param_aruco_id);
 	get_parameter("dictionary", _param_dictionary);
 	get_parameter("marker_size", _param_marker_size);
+	get_parameter("world_name", _param_world_name);
 }
 
 void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)

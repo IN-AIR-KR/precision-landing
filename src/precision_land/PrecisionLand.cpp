@@ -71,7 +71,24 @@ void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::Sh
 		};
 
 		// Save tag position/orientation in NED world frame
-		_tag = getTagWorld(tag);
+		ArucoTag tag_world = getTagWorld(tag);
+
+		// Estimate the tag's world-frame velocity via finite difference, low-pass filtered to
+		// reduce detection jitter. Used to track a moving target (e.g. a moving landing platform).
+		if (_tag.valid()) {
+			double dt = tag_world.timestamp.seconds() - _tag.timestamp.seconds();
+
+			if (dt > 1e-3) {
+				Eigen::Vector3d raw_velocity = (tag_world.position - _tag.position) / dt;
+				const double alpha = 0.3;
+				tag_world.velocity = alpha * raw_velocity + (1.0 - alpha) * _tag.velocity;
+
+			} else {
+				tag_world.velocity = _tag.velocity;
+			}
+		}
+
+		_tag = tag_world;
 
 		// Publish world-frame tag pose for visualization
 		geometry_msgs::msg::PoseStamped world_pose_msg;
@@ -243,9 +260,10 @@ Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
 	float Yp = delta_pos_y * p_gain;
 	float Yi = _vel_y_integral * i_gain;
 
-	// Sum P and I gains
-	float vx = -1.f * (Xp + Xi);
-	float vy = -1.f * (Yp + Yi);
+	// Sum P and I gains, plus a feedforward term for the target's own velocity so the
+	// drone doesn't lag behind a moving target (pure PI tracking has steady-state error ~ v_target / p_gain)
+	float vx = -1.f * (Xp + Xi) + static_cast<float>(_tag.velocity.x());
+	float vy = -1.f * (Yp + Yi) + static_cast<float>(_tag.velocity.y());
 
 	// 0.1m/s min vel and 3m/s max vel
 	vx = std::clamp(vx, -1.f * _param_max_velocity, _param_max_velocity);
@@ -334,8 +352,12 @@ bool PrecisionLand::positionReached(const Eigen::Vector3f& target) const
 	auto velocity = _vehicle_local_position->velocityNed();
 
 	const auto delta_pos = target - position;
-	// NOTE: this does NOT handle a moving target!
-	return (delta_pos.norm() < _param_delta_position) && (velocity.norm() < _param_delta_velocity);
+	// Compare against velocity relative to the target instead of absolute vehicle velocity:
+	// for a moving target (e.g. Approach tracking the tag), the vehicle must keep moving at the
+	// target's speed, so absolute velocity would never settle near zero. _tag.velocity is zero
+	// while no tag has been detected yet, so this is unchanged for the static Search waypoints.
+	const auto relative_velocity = velocity - _tag.velocity.cast<float>();
+	return (delta_pos.norm() < _param_delta_position) && (relative_velocity.norm() < _param_delta_velocity);
 }
 
 std::string PrecisionLand::stateName(State state)
