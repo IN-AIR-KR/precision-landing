@@ -43,6 +43,8 @@ void PrecisionLand::loadParameters()
 	_node.declare_parameter<float>("target_timeout", 3.0);
 	_node.declare_parameter<float>("delta_position", 0.25);
 	_node.declare_parameter<float>("delta_velocity", 0.25);
+	_node.declare_parameter<float>("target_accel_noise", 1.0);
+	_node.declare_parameter<float>("target_pos_noise", 0.1);
 
 	_node.get_parameter("descent_vel", _param_descent_vel);
 	_node.get_parameter("vel_p_gain", _param_vel_p_gain);
@@ -51,6 +53,8 @@ void PrecisionLand::loadParameters()
 	_node.get_parameter("target_timeout", _param_target_timeout);
 	_node.get_parameter("delta_position", _param_delta_position);
 	_node.get_parameter("delta_velocity", _param_delta_velocity);
+	_node.get_parameter("target_accel_noise", _param_target_accel_noise);
+	_node.get_parameter("target_pos_noise", _param_target_pos_noise);
 
 	RCLCPP_INFO(_node.get_logger(), "descent_vel: %f", _param_descent_vel);
 	RCLCPP_INFO(_node.get_logger(), "vel_i_gain: %f", _param_vel_i_gain);
@@ -71,32 +75,22 @@ void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::Sh
 		};
 
 		// Save tag position/orientation in NED world frame
-		ArucoTag tag_world = getTagWorld(tag);
+		_tag = getTagWorld(tag);
 
-		// Estimate the tag's world-frame velocity via finite difference, low-pass filtered to
-		// reduce detection jitter. Used to track a moving target (e.g. a moving landing platform).
-		if (_tag.valid()) {
-			double dt = tag_world.timestamp.seconds() - _tag.timestamp.seconds();
+		// Correct the target Kalman filter with this new position measurement. The filter keeps
+		// predicting every control tick regardless (see predictTarget(), called from
+		// updateSetpoint()), so the estimate keeps advancing smoothly through brief gaps where
+		// the tag isn't visible, instead of freezing until the next detection arrives.
+		correctTarget(_tag.position);
 
-			if (dt > 1e-3) {
-				Eigen::Vector3d raw_velocity = (tag_world.position - _tag.position) / dt;
-				const double alpha = 0.3;
-				tag_world.velocity = alpha * raw_velocity + (1.0 - alpha) * _tag.velocity;
-
-			} else {
-				tag_world.velocity = _tag.velocity;
-			}
-		}
-
-		_tag = tag_world;
-
-		// Publish world-frame tag pose for visualization
+		// Publish world-frame tag pose for visualization: filtered position, raw orientation
+		// (orientation isn't part of the filter state).
 		geometry_msgs::msg::PoseStamped world_pose_msg;
 		world_pose_msg.header.stamp = _node.now();
 		world_pose_msg.header.frame_id = "map";
-		world_pose_msg.pose.position.x = _tag.position.x();
-		world_pose_msg.pose.position.y = _tag.position.y();
-		world_pose_msg.pose.position.z = _tag.position.z();
+		world_pose_msg.pose.position.x = _target_position.x();
+		world_pose_msg.pose.position.y = _target_position.y();
+		world_pose_msg.pose.position.z = _target_position.z();
 		world_pose_msg.pose.orientation.w = _tag.orientation.w();
 		world_pose_msg.pose.orientation.x = _tag.orientation.x();
 		world_pose_msg.pose.orientation.y = _tag.orientation.y();
@@ -134,6 +128,71 @@ PrecisionLand::ArucoTag PrecisionLand::getTagWorld(const ArucoTag& tag)
 	return world_tag;
 }
 
+void PrecisionLand::predictTarget(float dt_s)
+{
+	if (!_target_initialized || dt_s <= 0.f) {
+		return;
+	}
+
+	const double dt = static_cast<double>(dt_s);
+
+	// Constant-velocity motion model: x = F x, with F = [[I, dt*I], [0, I]]
+	Eigen::Matrix<double, 6, 6> F = Eigen::Matrix<double, 6, 6>::Identity();
+	F.block<3, 3>(0, 3) = Eigen::Matrix3d::Identity() * dt;
+
+	Eigen::Matrix<double, 6, 1> x;
+	x << _target_position, _target_velocity;
+	x = F * x;
+	_target_position = x.head<3>();
+	_target_velocity = x.tail<3>();
+
+	// Process noise (discrete white-noise-acceleration model): grows P every tick to reflect
+	// that the constant-velocity assumption is only approximate (target may turn/accelerate).
+	// target_accel_noise is the assumed std-dev of that unmodeled acceleration [m/s^2].
+	const double sigma_a_sq = _param_target_accel_noise * _param_target_accel_noise;
+	Eigen::Matrix<double, 6, 6> Q = Eigen::Matrix<double, 6, 6>::Zero();
+	Q.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity() * (0.25 * dt * dt * dt * dt);
+	Q.block<3, 3>(0, 3) = Eigen::Matrix3d::Identity() * (0.5 * dt * dt * dt);
+	Q.block<3, 3>(3, 0) = Eigen::Matrix3d::Identity() * (0.5 * dt * dt * dt);
+	Q.block<3, 3>(3, 3) = Eigen::Matrix3d::Identity() * (dt * dt);
+	Q *= sigma_a_sq;
+
+	_target_P = F * _target_P * F.transpose() + Q;
+}
+
+void PrecisionLand::correctTarget(const Eigen::Vector3d& measured_position_world)
+{
+	if (!_target_initialized) {
+		// First detection: initialize state directly from the measurement. Velocity is unknown
+		// yet (zero), so give it a much larger initial uncertainty than the position.
+		_target_position = measured_position_world;
+		_target_velocity = Eigen::Vector3d::Zero();
+		_target_P = Eigen::Matrix<double, 6, 6>::Identity();
+		_target_P.block<3, 3>(0, 0) *= _param_target_pos_noise * _param_target_pos_noise;
+		_target_P.block<3, 3>(3, 3) *= 4.0;
+		_target_initialized = true;
+		return;
+	}
+
+	// Measurement model: z = H x + v, H = [I 0] (we only measure position, not velocity)
+	Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero();
+	H.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
+
+	Eigen::Matrix3d R = Eigen::Matrix3d::Identity() * (_param_target_pos_noise * _param_target_pos_noise);
+
+	Eigen::Vector3d y = measured_position_world - _target_position;             // innovation
+	Eigen::Matrix3d S = H * _target_P * H.transpose() + R;                      // innovation covariance
+	Eigen::Matrix<double, 6, 3> K = _target_P * H.transpose() * S.inverse();    // Kalman gain
+
+	Eigen::Matrix<double, 6, 1> x;
+	x << _target_position, _target_velocity;
+	x += K * y;
+	_target_position = x.head<3>();
+	_target_velocity = x.tail<3>();
+
+	_target_P = (Eigen::Matrix<double, 6, 6>::Identity() - K * H) * _target_P;
+}
+
 void PrecisionLand::onActivate()
 {
 	generateSearchWaypoints();
@@ -148,6 +207,11 @@ void PrecisionLand::onDeactivate()
 
 void PrecisionLand::updateSetpoint(float dt_s)
 {
+	// Advance the target estimate by one control tick regardless of whether a new detection
+	// arrived this tick. This is what lets the estimate keep moving smoothly (rather than
+	// freezing) during brief gaps where the tag isn't visible.
+	predictTarget(dt_s);
+
 	bool target_lost = checkTargetTimeout();
 
 	if (target_lost && !_target_lost_prev) {
@@ -168,7 +232,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 
 	case State::Search: {
 
-		if (!std::isnan(_tag.position.x())) {
+		if (_target_initialized) {
 			_approach_altitude = _vehicle_local_position->positionNed().z();
 			switchToState(State::Approach);
 			break;
@@ -200,7 +264,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		}
 
 		// Approach using position setpoints
-		auto target_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
+		auto target_position = Eigen::Vector3f(_target_position.x(), _target_position.y(), _approach_altitude);
 
 		_trajectory_setpoint->updatePosition(target_position);
 
@@ -245,8 +309,8 @@ Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
 	float i_gain = _param_vel_i_gain;
 
 	// P component
-	float delta_pos_x = _vehicle_local_position->positionNed().x() - _tag.position.x();
-	float delta_pos_y = _vehicle_local_position->positionNed().y() - _tag.position.y();
+	float delta_pos_x = _vehicle_local_position->positionNed().x() - _target_position.x();
+	float delta_pos_y = _vehicle_local_position->positionNed().y() - _target_position.y();
 
 	// I component
 	_vel_x_integral += delta_pos_x;
@@ -262,8 +326,8 @@ Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
 
 	// Sum P and I gains, plus a feedforward term for the target's own velocity so the
 	// drone doesn't lag behind a moving target (pure PI tracking has steady-state error ~ v_target / p_gain)
-	float vx = -1.f * (Xp + Xi) + static_cast<float>(_tag.velocity.x());
-	float vy = -1.f * (Yp + Yi) + static_cast<float>(_tag.velocity.y());
+	float vx = -1.f * (Xp + Xi) + static_cast<float>(_target_velocity.x());
+	float vy = -1.f * (Yp + Yi) + static_cast<float>(_target_velocity.y());
 
 	// 0.1m/s min vel and 3m/s max vel
 	vx = std::clamp(vx, -1.f * _param_max_velocity, _param_max_velocity);
@@ -354,9 +418,9 @@ bool PrecisionLand::positionReached(const Eigen::Vector3f& target) const
 	const auto delta_pos = target - position;
 	// Compare against velocity relative to the target instead of absolute vehicle velocity:
 	// for a moving target (e.g. Approach tracking the tag), the vehicle must keep moving at the
-	// target's speed, so absolute velocity would never settle near zero. _tag.velocity is zero
+	// target's speed, so absolute velocity would never settle near zero. _target_velocity is zero
 	// while no tag has been detected yet, so this is unchanged for the static Search waypoints.
-	const auto relative_velocity = velocity - _tag.velocity.cast<float>();
+	const auto relative_velocity = velocity - _target_velocity.cast<float>();
 	return (delta_pos.norm() < _param_delta_position) && (relative_velocity.norm() < _param_delta_velocity);
 }
 

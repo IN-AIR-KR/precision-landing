@@ -34,8 +34,6 @@ private:
 		// Initialize position with NaN values directly in the struct
 		Eigen::Vector3d position = Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
 		Eigen::Quaterniond orientation;
-		// Estimated world-frame velocity of the tag (zero until a prior detection exists), used to track moving targets
-		Eigen::Vector3d velocity = Eigen::Vector3d::Zero();
 		rclcpp::Time timestamp;
 
 		bool valid() { return timestamp.nanoseconds() > 0; };
@@ -44,6 +42,13 @@ private:
 	void loadParameters();
 
 	ArucoTag getTagWorld(const ArucoTag& tag);
+
+	// Target Kalman filter: constant-velocity model of the (possibly moving) landing target in the
+	// world/NED frame. predictTarget() runs every control tick regardless of detections, so the
+	// estimate keeps advancing smoothly through brief gaps where the tag isn't visible.
+	// correctTarget() runs whenever a new /target_pose detection arrives.
+	void predictTarget(float dt_s);
+	void correctTarget(const Eigen::Vector3d& measured_position_world);
 
 	Eigen::Vector2f calculateVelocitySetpointXY();
 	bool checkTargetTimeout();
@@ -78,6 +83,13 @@ private:
 	ArucoTag _tag;
 	float _approach_altitude = {};
 
+	// Target Kalman filter state (world/NED frame): position + velocity, and their covariance.
+	// State vector order is [px, py, pz, vx, vy, vz].
+	Eigen::Vector3d _target_position = Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
+	Eigen::Vector3d _target_velocity = Eigen::Vector3d::Zero();
+	Eigen::Matrix<double, 6, 6> _target_P = Eigen::Matrix<double, 6, 6>::Zero();
+	bool _target_initialized = false;
+
 	// Land detection
 	bool _land_detected = false;
 	bool _target_lost_prev = true;
@@ -97,6 +109,8 @@ private:
 	float _param_target_timeout = {};
 	float _param_delta_position = {};
 	float _param_delta_velocity = {};
+	float _param_target_accel_noise = {};
+	float _param_target_pos_noise = {};
 
 	float _vel_x_integral {};
 	float _vel_y_integral {};
