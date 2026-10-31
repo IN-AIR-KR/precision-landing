@@ -263,10 +263,17 @@ void PrecisionLand::updateSetpoint(float dt_s)
 			return;
 		}
 
-		// Approach using position setpoints
-		auto target_position = Eigen::Vector3f(_target_position.x(), _target_position.y(), _approach_altitude);
+		// Approach using the same feedforward-compensated horizontal velocity controller as
+		// Descend, holding altitude fixed at _approach_altitude. A plain position setpoint here
+		// structurally lags a moving target (PX4's internal position controller has no
+		// feedforward for a moving setpoint), so delta_pos would never shrink below the
+		// Approach->Descend threshold once the target moves fast enough.
+		Eigen::Vector2f vel = calculateVelocitySetpointXY();
+		px4_ros2::TrajectorySetpoint setpoint;
+		setpoint.withHorizontalVelocity(vel).withPositionZ(_approach_altitude);
+		_trajectory_setpoint->update(setpoint);
 
-		_trajectory_setpoint->updatePosition(target_position);
+		auto target_position = Eigen::Vector3f(_target_position.x(), _target_position.y(), _approach_altitude);
 
 		if (positionReached(target_position)) {
 			switchToState(State::Descend);
