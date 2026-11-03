@@ -49,6 +49,8 @@ private:
 	// correctTarget() runs whenever a new /target_pose detection arrives.
 	void predictTarget(float dt_s);
 	void correctTarget(const Eigen::Vector3d& measured_position_world);
+	void updateMeasurementNoise(const Eigen::Vector3d& measured_position_world,
+				    const Eigen::Matrix<double, 3, 6>& H);
 
 	Eigen::Vector2f calculateVelocitySetpointXY();
 	bool checkTargetTimeout();
@@ -90,6 +92,11 @@ private:
 	Eigen::Matrix<double, 6, 6> _target_P = Eigen::Matrix<double, 6, 6>::Zero();
 	bool _target_initialized = false;
 
+	// Adaptive measurement-noise estimate: starts at target_pos_noise and then tracks how noisy
+	// the tag detections actually are (see updateMeasurementNoise()). Kept diagonal.
+	Eigen::Matrix3d _target_R = Eigen::Matrix3d::Zero();
+	int _target_correction_count = 0;
+
 	// Land detection
 	bool _land_detected = false;
 	bool _target_lost_prev = true;
@@ -106,11 +113,13 @@ private:
 	float _param_vel_p_gain = {};
 	float _param_vel_i_gain = {};
 	float _param_max_velocity = {};
+	float _param_integral_limit = {};
 	float _param_target_timeout = {};
 	float _param_delta_position = {};
 	float _param_delta_velocity = {};
 	float _param_target_accel_noise = {};
 	float _param_target_pos_noise = {};
+	float _param_target_noise_forget = {};
 
 	float _vel_x_integral {};
 	float _vel_y_integral {};

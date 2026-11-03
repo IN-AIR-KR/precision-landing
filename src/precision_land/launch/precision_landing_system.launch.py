@@ -68,7 +68,9 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
-                {'world_name': world},
+                # Point the tracker at the Gazebo sensor topics instead of its hardware defaults
+                {'image_topic': ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image'],
+                 'camera_info_topic': ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info']},
             ]
         ),
         # Precision landing node

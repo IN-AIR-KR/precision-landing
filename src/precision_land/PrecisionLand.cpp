@@ -40,21 +40,25 @@ void PrecisionLand::loadParameters()
 	_node.declare_parameter<float>("vel_p_gain", 1.5);
 	_node.declare_parameter<float>("vel_i_gain", 0.0);
 	_node.declare_parameter<float>("max_velocity", 3.0);
+	_node.declare_parameter<float>("integral_limit", 3.0);
 	_node.declare_parameter<float>("target_timeout", 3.0);
 	_node.declare_parameter<float>("delta_position", 0.25);
 	_node.declare_parameter<float>("delta_velocity", 0.25);
 	_node.declare_parameter<float>("target_accel_noise", 1.0);
 	_node.declare_parameter<float>("target_pos_noise", 0.1);
+	_node.declare_parameter<float>("target_noise_forget", 0.98);
 
 	_node.get_parameter("descent_vel", _param_descent_vel);
 	_node.get_parameter("vel_p_gain", _param_vel_p_gain);
 	_node.get_parameter("vel_i_gain", _param_vel_i_gain);
 	_node.get_parameter("max_velocity", _param_max_velocity);
+	_node.get_parameter("integral_limit", _param_integral_limit);
 	_node.get_parameter("target_timeout", _param_target_timeout);
 	_node.get_parameter("delta_position", _param_delta_position);
 	_node.get_parameter("delta_velocity", _param_delta_velocity);
 	_node.get_parameter("target_accel_noise", _param_target_accel_noise);
 	_node.get_parameter("target_pos_noise", _param_target_pos_noise);
+	_node.get_parameter("target_noise_forget", _param_target_noise_forget);
 
 	RCLCPP_INFO(_node.get_logger(), "descent_vel: %f", _param_descent_vel);
 	RCLCPP_INFO(_node.get_logger(), "vel_i_gain: %f", _param_vel_i_gain);
@@ -162,14 +166,18 @@ void PrecisionLand::predictTarget(float dt_s)
 
 void PrecisionLand::correctTarget(const Eigen::Vector3d& measured_position_world)
 {
+	const double nominal_var = _param_target_pos_noise * _param_target_pos_noise;
+
 	if (!_target_initialized) {
 		// First detection: initialize state directly from the measurement. Velocity is unknown
 		// yet (zero), so give it a much larger initial uncertainty than the position.
 		_target_position = measured_position_world;
 		_target_velocity = Eigen::Vector3d::Zero();
 		_target_P = Eigen::Matrix<double, 6, 6>::Identity();
-		_target_P.block<3, 3>(0, 0) *= _param_target_pos_noise * _param_target_pos_noise;
+		_target_P.block<3, 3>(0, 0) *= nominal_var;
 		_target_P.block<3, 3>(3, 3) *= 4.0;
+		_target_R = Eigen::Matrix3d::Identity() * nominal_var;
+		_target_correction_count = 0;
 		_target_initialized = true;
 		return;
 	}
@@ -178,10 +186,8 @@ void PrecisionLand::correctTarget(const Eigen::Vector3d& measured_position_world
 	Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero();
 	H.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
 
-	Eigen::Matrix3d R = Eigen::Matrix3d::Identity() * (_param_target_pos_noise * _param_target_pos_noise);
-
 	Eigen::Vector3d y = measured_position_world - _target_position;             // innovation
-	Eigen::Matrix3d S = H * _target_P * H.transpose() + R;                      // innovation covariance
+	Eigen::Matrix3d S = H * _target_P * H.transpose() + _target_R;              // innovation covariance
 	Eigen::Matrix<double, 6, 3> K = _target_P * H.transpose() * S.inverse();    // Kalman gain
 
 	Eigen::Matrix<double, 6, 1> x;
@@ -191,6 +197,50 @@ void PrecisionLand::correctTarget(const Eigen::Vector3d& measured_position_world
 	_target_velocity = x.tail<3>();
 
 	_target_P = (Eigen::Matrix<double, 6, 6>::Identity() - K * H) * _target_P;
+
+	updateMeasurementNoise(measured_position_world, H);
+}
+
+void PrecisionLand::updateMeasurementNoise(const Eigen::Vector3d& measured_position_world,
+		const Eigen::Matrix<double, 3, 6>& H)
+{
+	// Sage-Husa adaptive measurement-noise estimation: learn how noisy the tag detections
+	// actually are instead of trusting a fixed target_pos_noise forever. ArUco/PnP accuracy
+	// varies a lot with how much of the frame the marker fills (i.e. with altitude) and with
+	// motion blur, so one fixed R is either too optimistic up high or too pessimistic near
+	// touchdown.
+	//
+	// Uses the posterior-residual form (R_sample = e*e' + H P H'), which stays positive
+	// definite; the innovation form (y*y' - H P H') can go negative definite.
+	if (_param_target_noise_forget >= 1.f) {
+		return;  // adaptation disabled, R stays at the nominal target_pos_noise
+	}
+
+	_target_correction_count++;
+
+	// Forgetting factor b -> weight d decays from 1 toward (1-b), i.e. an exponentially
+	// weighted average with an effective window of roughly 1/(1-b) detections.
+	const double b = _param_target_noise_forget;
+	const double d = (1.0 - b) / (1.0 - std::pow(b, _target_correction_count + 1));
+
+	const Eigen::Vector3d residual = measured_position_world - _target_position;  // posterior residual
+	const Eigen::Matrix3d R_sample = residual * residual.transpose() + H * _target_P * H.transpose();
+
+	// Diagonal-only: keeps R positive definite after clamping, and the per-axis variances are
+	// what matter here anyway (PnP depth error is much larger than lateral error).
+	// The bounds are safety rails, not tuning knobs: they stop one burst of bad detections from
+	// making the filter either blindly trust garbage or permanently ignore good measurements.
+	const double nominal_var = _param_target_pos_noise * _param_target_pos_noise;
+
+	for (int i = 0; i < 3; i++) {
+		const double updated = (1.0 - d) * _target_R(i, i) + d * R_sample(i, i);
+		_target_R(i, i) = std::clamp(updated, 0.25 * nominal_var, 16.0 * nominal_var);
+	}
+
+	RCLCPP_INFO_THROTTLE(_node.get_logger(), *_node.get_clock(), 2000,
+			     "adaptive R std-dev [m]: x=%.3f y=%.3f z=%.3f (nominal %.3f)",
+			     std::sqrt(_target_R(0, 0)), std::sqrt(_target_R(1, 1)), std::sqrt(_target_R(2, 2)),
+			     static_cast<double>(_param_target_pos_noise));
 }
 
 void PrecisionLand::onActivate()
@@ -322,7 +372,10 @@ Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
 	// I component
 	_vel_x_integral += delta_pos_x;
 	_vel_y_integral += delta_pos_y;
-	float max_integral = _param_max_velocity;
+	// Anti-windup: bounds the raw accumulator, independent of max_velocity (that's an output
+	// speed cap, not a statement about how much steady-state disturbance the integral should
+	// be allowed to absorb).
+	float max_integral = _param_integral_limit;
 	_vel_x_integral = std::clamp(_vel_x_integral, -1.f * max_integral, max_integral);
 	_vel_y_integral = std::clamp(_vel_y_integral, -1.f * max_integral, max_integral);
 
@@ -336,7 +389,7 @@ Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
 	float vx = -1.f * (Xp + Xi) + static_cast<float>(_target_velocity.x());
 	float vy = -1.f * (Yp + Yi) + static_cast<float>(_target_velocity.y());
 
-	// 0.1m/s min vel and 3m/s max vel
+	// Final output speed cap
 	vx = std::clamp(vx, -1.f * _param_max_velocity, _param_max_velocity);
 	vy = std::clamp(vy, -1.f * _param_max_velocity, _param_max_velocity);
 
@@ -361,8 +414,12 @@ void PrecisionLand::generateSearchWaypoints()
 	// Generate spiral search waypoints
 	// The search waypoints are generated in the NED frame
 	// Parameters for the search pattern
-	double start_x = 0.0;
-	double start_y = 0.0;
+	// Center the spiral on the vehicle's actual position at activation time, not the local-frame
+	// origin -- otherwise the first setpoint sent right after switching into this mode jumps to
+	// (0,0) regardless of where the vehicle currently is, which can be a large, sudden position
+	// error if it's not already near the origin.
+	double start_x = _vehicle_local_position->positionNed().x();
+	double start_y = _vehicle_local_position->positionNed().y();
 	double current_z = _vehicle_local_position->positionNed().z();
 	auto min_z = -1.0;
 

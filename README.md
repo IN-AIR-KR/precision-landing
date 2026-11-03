@@ -82,11 +82,10 @@ Once the nodes are running the Precision Land mode is going to show up in QGC
 
 ### Run with a moving target
 
-Instead of the static ArUco marker, you can land on a marker mounted on a flat pad that rests on the
-ground (normal gravity + contact, not held up by a force controller) and only moves once you tell it
-to, via Gazebo's stock `VelocityControl` plugin. See
-[simulation/gz/models/aruco_moving_target](simulation/gz/models/aruco_moving_target) for the model and
-[docs/moving_target.md](docs/moving_target.md) for details.
+Instead of the static ArUco marker, you can land on a marker mounted on a 4-wheeled vehicle that
+drives on real wheel-ground friction (Gazebo's stock `DiffDrive` plugin) and only moves once you
+tell it to. See [simulation/gz/models/aruco_moving_target](simulation/gz/models/aruco_moving_target)
+for the model and [docs/moving_target.md](docs/moving_target.md) for details.
 
 Launch PX4 SITL with the moving target world (run from the `PX4-Autopilot` directory):
 ```
@@ -95,14 +94,18 @@ PX4_GZ_WORLD=aruco_moving \
 make px4_sitl gz_x500_mono_cam_down
 ```
 
-The pad stays still until you publish a velocity on its command topic (any time while the sim is
+The vehicle stays still until you publish a velocity on its command topic (any time while the sim is
 running, in a separate terminal):
 ```
 gz topic -t "/model/aruco_moving_target/cmd_vel" -m gz.msgs.Twist -p "linear: {x: 1.0}"
 ```
-Change `linear: {x: ..., y: ...}` for speed/direction (m/s, world frame), or publish
-`linear: {x: 0, y: 0}` to stop it again. Everything else (MicroXRCEAgent,
-`ros2 launch precision_land ...`) is launched the same way as above.
+This is a differential-drive vehicle, so only `linear.x` (forward/back) and `angular.z` (turn) are
+used, like a real car. Publish `linear: {x: 0}` to stop it again. The ROS2 nodes need
+`world:=aruco_moving` appended (camera topic paths include the world name):
+```
+ros2 launch precision_land precision_landing_system.launch.py world:=aruco_moving
+```
+Everything else (MicroXRCEAgent, QGroundControl) is launched the same way as above.
 
 ## ARK Electronics
 Checkout our [online store](https://arkelectron.com/)

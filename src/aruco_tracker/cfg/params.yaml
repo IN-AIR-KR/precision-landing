@@ -3,4 +3,7 @@ aruco_tracker:
     aruco_id: 0
     dictionary: 2
     marker_size: 1.0
-    world_name: "aruco"
+    # Real hardware (usb_cam). The simulation launch file overrides these with the Gazebo
+    # sensor topics, which embed the world name in their path.
+    image_topic: "/image_raw"
+    camera_info_topic: "/camera_info"

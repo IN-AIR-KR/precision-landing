@@ -17,15 +17,16 @@ ArucoTrackerNode::ArucoTrackerNode()
 
 	auto qos = rclcpp::QoS(1).best_effort();
 
-	// Gazebo includes the world name in sensor topic paths, so it must match whatever
-	// world is actually running (e.g. "aruco" vs "aruco_moving"); see world_name param.
-	const std::string camera_prefix = "/world/" + _param_world_name + "/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/";
+	// Defaults match a usb_cam driver on real hardware. In simulation the launch file points
+	// these at the Gazebo sensor topics instead, which embed the world name in their path.
+	RCLCPP_INFO(get_logger(), "Subscribing to image: %s", _param_image_topic.c_str());
+	RCLCPP_INFO(get_logger(), "Subscribing to camera_info: %s", _param_camera_info_topic.c_str());
 
 	_image_sub = create_subscription<sensor_msgs::msg::Image>(
-			     camera_prefix + "image", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
+			     _param_image_topic, qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
 
 	_camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(
-				   camera_prefix + "camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
+				   _param_camera_info_topic, qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
 
 	// Publishers
 	_image_pub = create_publisher<sensor_msgs::msg::Image>("/image_proc", qos);
@@ -37,12 +38,14 @@ void ArucoTrackerNode::loadParameters()
 	declare_parameter<int>("aruco_id", 0);
 	declare_parameter<int>("dictionary", 2); // DICT_4X4_250
 	declare_parameter<double>("marker_size", 0.5);
-	declare_parameter<std::string>("world_name", "aruco");
+	declare_parameter<std::string>("image_topic", "/image_raw");
+	declare_parameter<std::string>("camera_info_topic", "/camera_info");
 
 	get_parameter("aruco_id", _param_aruco_id);
 	get_parameter("dictionary", _param_dictionary);
 	get_parameter("marker_size", _param_marker_size);
-	get_parameter("world_name", _param_world_name);
+	get_parameter("image_topic", _param_image_topic);
+	get_parameter("camera_info_topic", _param_camera_info_topic);
 }
 
 void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
