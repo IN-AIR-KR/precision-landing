@@ -1,8 +1,10 @@
+Python 인식기 설치·검증: [2번 진행 결과](python_detection_stage2.md). 현재 `setup.sh`는 OpenCV 소스를 빌드하지 않고 고정된 wheel을 설치합니다.
+
 # 로컬 실행 (Ubuntu 22.04 / ROS 2 Humble / Gazebo Harmonic)
 
 기존 `~/PX4-Autopilot` 수정사항은 보존했습니다. 예제 전용 `~/PX4-precision-landing`
 worktree는 README 지정 커밋 `86f2fdfd7de7f5e5d29ab61f60d81e892a557376`입니다.
-OpenCV 4.10.0과 추가 gps_msgs는 `.deps` 아래에 설치했습니다.
+Python OpenCV 4.10.0 wheel은 `.deps/python`, 추가 gps_msgs는 `.deps/apt`에 설치합니다. OpenCV 소스 빌드는 사용하지 않습니다.
 
 ## 실행
 

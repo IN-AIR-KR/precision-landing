@@ -29,9 +29,9 @@ versions = {'scenario': a.scenario, 'world': world, 'speed_m_s': 0 if a.scenario
             'repositories': {name: revision(path) for name, path in {
                 'project': ROOT, 'PX4': px4, 'px4_msgs': ROOT/'src/px4_msgs',
                 'px4_ros2_cpp': ROOT/'src/px4-ros2-interface-lib', 'ros_gz': ROOT/'src/ros_gz',
-                'vision_opencv': ROOT/'src/vision_opencv', 'PX4_gz': px4/'Tools/simulation/gz'}.items()},
+                'PX4_gz': px4/'Tools/simulation/gz'}.items()},
             'gazebo': output(['gz', 'sim', '--versions']), 'ros_distro': env.get('ROS_DISTRO'),
-            'opencv_library_links': output(['ldd', str(ROOT/'install/pl_detection/lib/pl_detection/aruco_tracker')]),
+            'detector_runtime': output(['python3', '-c', 'import cv2,numpy; print(cv2.__version__,numpy.__version__,cv2.__file__)']),
             'time_basis': 'bag receive time uses ROS system time; original sensor/PX4 stamps retained without conversion'}
 # Include uncommitted and untracked project files, excluding generated artifacts.
 files = output(['git', 'ls-files', '--cached', '--others', '--exclude-standard']).splitlines()

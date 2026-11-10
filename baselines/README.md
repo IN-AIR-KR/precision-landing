@@ -27,3 +27,5 @@
 `topics.json`을 읽어 기존 Gazebo 토픽 bag과 새 bag을 모두 지원합니다. 새 재생 보고서는
 `.run/replays/`에 저장하여 기준 기록을 덮어쓰지 않습니다. 1번 검증 요약은
 `stage1-results.json`과 [1번 안내](../docs/camera_inputs_stage1.md)에 있습니다.
+
+Python 인식기 전환 검증은 `stage2-results.json`과 [2번 기록](../docs/python_detection_stage2.md)에 정리합니다. C++ 기준 실행 파일·라이브러리는 `.run/stage2-reference/`에 보관하며, 새 실행 환경에서는 사용하지 않습니다.

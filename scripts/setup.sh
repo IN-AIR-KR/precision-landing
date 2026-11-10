@@ -22,20 +22,5 @@ touch .deps/COLCON_IGNORE
 if [[ "$profile" == sim && ! -d .deps/apt/root/opt/ros/humble/share/gps_msgs ]]; then
   (cd .deps/apt; apt-get download ros-humble-gps-msgs; dpkg-deb -x ros-humble-gps-msgs*.deb root)
 fi
-if [[ ! -f .deps/opencv/lib/cmake/opencv4/OpenCVConfig.cmake ]]; then
-  for project in opencv opencv_contrib; do
-    if [[ ! -d ".deps/$project-4.10.0" ]]; then
-      curl -fL "https://github.com/opencv/$project/archive/refs/tags/4.10.0.tar.gz" -o ".deps/$project.tar.gz"
-      tar -xzf ".deps/$project.tar.gz" -C .deps
-    fi
-  done
-  cmake -S .deps/opencv-4.10.0 -B .deps/opencv-build \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$root/.deps/opencv" \
-    -DOPENCV_EXTRA_MODULES_PATH="$root/.deps/opencv_contrib-4.10.0/modules" \
-    -DBUILD_LIST=core,imgproc,imgcodecs,calib3d,aruco,videoio,highgui \
-    -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_EXAMPLES=OFF \
-    -DBUILD_opencv_python3=OFF -DWITH_CUDA=OFF
-  cmake --build .deps/opencv-build -j4
-  cmake --install .deps/opencv-build
-fi
+python3 -m pip install --only-binary=:all: --upgrade --target "$root/.deps/python" -r requirements-detection.txt
 exec ./scripts/build.sh "$profile"

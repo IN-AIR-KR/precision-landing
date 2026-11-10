@@ -1,5 +1,7 @@
 # 1번: 공통 카메라 입력 분리 (CSI 보류)
 
+현재 인식기는 Python으로 전환되었습니다. 아래 내용은 해당 단계 당시의 기록이며, 최신 상태는 [2번 전환 기록](python_detection_stage2.md)을 참고하세요.
+
 ## 적용한 범위
 
 - C++ 인식기는 `/camera/image_raw`와 `/camera/camera_info`만 구독합니다.

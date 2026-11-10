@@ -23,6 +23,8 @@ p.add_argument('baseline', type=Path)
 p.add_argument('--image-topic', default='/camera/image_raw')
 p.add_argument('--camera-info-topic', default='/camera/camera_info')
 p.add_argument('--output', type=Path)
+p.add_argument('--detector-executable', type=Path, help='Optional archived C++ executable for full-input comparison')
+p.add_argument('--compare-report', type=Path, help='Compare all detections against an earlier paced replay')
 a = p.parse_args()
 folder = a.baseline.resolve()
 manifest = json.loads((folder/'manifest.json').read_text())
@@ -61,7 +63,8 @@ def spin_until(predicate,timeout):
 frames=0
 input_stamps=set()
 with (report/'replay-detector.log').open('w') as log:
-    detector=subprocess.Popen(['ros2','run','pl_detection','aruco_tracker','--ros-args','-r','__node:=aruco_tracker','-r',f'/camera/image_raw:={a.image_topic}','-r',f'/camera/camera_info:={a.camera_info_topic}','--params-file',str(folder/'aruco_tracker.yaml')],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+    command = [str(a.detector_executable.resolve())] if a.detector_executable else ['ros2','run','pl_detection','aruco_tracker']
+    detector=subprocess.Popen(command+['--ros-args','-r','__node:=aruco_tracker','-r',f'/camera/image_raw:={a.image_topic}','-r',f'/camera/camera_info:={a.camera_info_topic}','--params-file',str(folder/'aruco_tracker.yaml')],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
 try:
     assert spin_until(lambda:image_pub.get_subscription_count()>0 and info_pub.get_subscription_count()>0,10),'Detector input discovery failed'
     # Camera calibration must be delivered before the first image, regardless of
@@ -107,9 +110,21 @@ result=dict(reference_count=len(reference),replayed_count=len(received),matched=
             comparable_coverage=len(matched)/len(comparable) if comparable else 0.,
             max_component_error=max_error,domain=84,pose_frames=sorted(pose_frames),
             input_topics=[a.image_topic,a.camera_info_topic],
-            detector_sha256=hashlib.sha256((Path(__file__).resolve().parents[1]/'install/pl_detection/lib/pl_detection/aruco_tracker').read_bytes()).hexdigest(),
+            detector_sha256=hashlib.sha256((a.detector_executable or Path(__file__).resolve().parents[1]/'install/pl_detection/lib/pl_detection/aruco_tracker').read_bytes()).hexdigest(),
             note='Original images replayed one at a time with original headers; no PX4 commands were published.')
+if not a.detector_executable:
+    import cv2, numpy, pl_detection
+    result['python_runtime'] = {'opencv': cv2.__version__, 'numpy': numpy.__version__, 'cv2_path': cv2.__file__}
+    result['detector_source_sha256'] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(pl_detection.__file__).parent.glob('*.py')}
+(report/'poses.json').write_text(json.dumps({f'{k[0]}:{k[1]}': v for k,v in received.items()}, indent=2)+'\n')
 result['passed']=bool(comparable) and matched==comparable and max_error<1e-6
+if a.compare_report:
+    other=json.loads((a.compare_report/'poses.json').read_text())
+    current={f'{k[0]}:{k[1]}':v for k,v in received.items()}
+    common=other.keys() & current.keys()
+    error=max((max(abs(x-y) for x,y in zip(other[k],current[k])) for k in common),default=float('inf'))
+    result['full_input_comparison']={'reference':str(a.compare_report),'reference_detections':len(other),'current_detections':len(current),'same_detection_stamps':other.keys()==current.keys(),'max_component_error':error}
+    result['passed'] = result['passed'] and other.keys()==current.keys() and error<1e-6
 (report/'replay-verification.json').write_text(json.dumps(result,indent=2)+'\n')
 print(json.dumps(result,indent=2))
 print(f'Report: {report}')

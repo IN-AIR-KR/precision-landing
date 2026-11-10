@@ -10,9 +10,8 @@ case "$profile" in
   *) echo 'Usage: ./scripts/build.sh [sim|hardware]' >&2; exit 1 ;;
 esac
 colcon build --base-paths src --packages-up-to "${packages[@]}" \
-  --parallel-workers 2 --allow-overriding cv_bridge ros_gz_bridge \
-  --cmake-args -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release \
-  -DOpenCV_DIR="$OpenCV_DIR"
+  --parallel-workers 2 --allow-overriding ros_gz_bridge \
+  --cmake-args -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
 if [[ "$profile" == sim ]]; then
   make -C "$PX4_DIR" px4_sitl -j4
 fi

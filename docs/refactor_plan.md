@@ -51,7 +51,9 @@ PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS 
 
 ## 2. Python 인식기로 전환하고 설치 의존성 정리
 
-- ArUco 딕셔너리·ID, 마커 크기, PnP 포즈 계산, `/target_pose`의 타입·좌표계·타임스탬프·QoS를 유지한 채 기존 `aruco_tracker`를 Python 패키지 `pl_detection`으로 옮긴다. `cv2`는 Jetson에서 동작을 확인한 headless 바이너리 패키지로 설치한다.
+상태: **Python 전환·의존성 정리·PC 새 빌드·bag 비교·정지/이동 SITL 검증 완료**. Jetson headless 런타임 실기체 동작, 처리율·촬영부터 포즈 발행까지의 지연 측정은 보류. [구현과 검증 결과](python_detection_stage2.md).
+
+- ArUco 딕셔너리·ID, 마커 크기, PnP 포즈 계산, `/target_pose`의 타입·좌표계·타임스탬프·QoS를 유지한 채 `pl_detection`의 기존 C++ `aruco_tracker`를 Python 구현으로 전환한다. `cv2`는 Jetson에서 동작을 확인한 headless 바이너리 패키지로 설치한다.
 - Python 인식기에서 이미지 변환을 직접 처리할 경우 지원 인코딩과 행 간격(`Image.step`)을 명시한다. 이 경로를 검증한 뒤 `cv_bridge`와 `vision_opencv` 소스 서브모듈을 제거한다. OpenCV 소스 설치 스크립트와 `/usr/local` 링크도 정리한다. Python 인식은 `cv2` 런타임을 사용한다.
 - 인식기의 `px4_msgs`·Eigen, 제어기의 `tf2`·`tf2_ros`처럼 코드가 사용하지 않는 직접 의존성을 제거한다. 제어기의 Eigen은 좌표 변환과 칼만 필터에 사용한다.
 - **완료 기준** — 같은 ROS bag에서 기존 인식기와 마커 검출 결과, 위치·자세를 비교한다. Jetson에서 처리율과 촬영부터 포즈 발행까지의 지연 분포를 측정하고, OpenCV 소스 빌드 없이 새 환경에서 실행한다.

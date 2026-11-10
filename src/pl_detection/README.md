@@ -1,32 +1,32 @@
-# ArUco camera input
+# pl_detection
 
-The detector is independent of Gazebo. It subscribes to:
+Python ArUco detector. Install binary-only requirements with `scripts/setup.sh`;
+source `scripts/env.sh` to select the workspace-local wheel runtime.
 
-- `/camera/image_raw` (`sensor_msgs/msg/Image`, best effort, depth 1)
-- `/camera/camera_info` (`sensor_msgs/msg/CameraInfo`, same QoS)
+Inputs: `/camera/image_raw` (`sensor_msgs/Image`) and `/camera/camera_info`
+(`sensor_msgs/CameraInfo`), best-effort, volatile, depth 1. Launch may remap them.
+Outputs: `/target_pose` (`geometry_msgs/PoseStamped`) and `/image_proc` (BGR8),
+with the same QoS and original image timestamp. Optical axes are x right, y down,
+z forward; `optical_frame` defaults to `camera_frame`, or input frame if empty.
 
-`/target_pose` is a `geometry_msgs/msg/PoseStamped` in optical coordinates
-(x right, y down, z forward). Its timestamp is copied unchanged from the source image.
-`optical_frame` sets the output frame name (default `camera_frame` for baseline compatibility).
-An empty `optical_frame` uses the image's frame name. This names a frame; it does not rotate coordinates.
-`/image_proc` retains the image header and contains the annotated BGR image.
+Supported encodings: `rgb8`, `bgr8`, `rgba8`, `bgra8`, `mono8`. Row padding is
+respected using `Image.step`; data length must equal height * step. All supported
+channels are 8-bit, so byte order is irrelevant. Unsupported encodings and invalid
+buffers are rejected without publishing a pose. Output owns its BGR buffer.
 
-The first calibration with a nonzero focal length is latched; restart the detector if calibration changes.
-Supply CameraInfo for the actual image resolution. Physical CSI calibration and capture timestamps are
-pending hardware commissioning.
+Parameters: `aruco_id`, `dictionary`, `marker_size` (meters), `optical_frame`.
+The first CameraInfo with nonzero fx is latched, matching the C++ baseline.
+Restart after changing calibration or image resolution. Empty distortion arrays
+retain the baseline's no-pose behavior; publish explicit zero distortion values
+for a calibrated distortion-free camera.
 
-For the full simulator, run `./scripts/run.sh` from the workspace root. `pl_bringup` maps the Gazebo
-sensor topics to these common camera topics and supplies the physical marker size (1.0m moving pad,
-0.5m static PX4 marker).
-
-For another camera publisher, keep the same binary and remap inputs:
+Detection uses default ArucoDetector parameters, float32 marker corners,
+undistortPoints followed by iterative solvePnP, and the original OpenCV quaternion
+sign convention. Only the first matching target is published. Annotated images
+are still published for every accepted image; demand-driven output is stage 4.
 
 ```bash
-ros2 run pl_detection aruco_tracker --ros-args \
-  -r /camera/image_raw:=/my_camera/image_raw \
-  -r /camera/camera_info:=/my_camera/camera_info \
-  -p marker_size:=1.0 -p optical_frame:=camera_optical_frame
+source scripts/env.sh
+ros2 run pl_detection aruco_tracker --ros-args -r __node:=aruco_tracker --params-file src/pl_detection/cfg/params.yaml
+python3 -m pytest -q src/pl_detection/test
 ```
-
-`pl_bringup/config/hardware.yaml` holds the corresponding external-camera configuration. It is not
-commissioned for flight until the actual camera calibration and mounting transform are verified.

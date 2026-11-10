@@ -1,3 +1,5 @@
+> 이 문서의 C++ 인식기 설명은 이전 구현 기준입니다. 현재 Python 구현과 실행 방법은 [2번 전환 기록](python_detection_stage2.md)을 참고하세요.
+
 # 정밀 착륙 시스템 (Precision Landing System)
 
 ## 목차

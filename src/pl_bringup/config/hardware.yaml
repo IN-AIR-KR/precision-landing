@@ -1,7 +1,6 @@
 # Optical frame: x right, y down, z forward. Camera transform maps optical to body FRD.
 # Hardware values are unverified placeholders until CSI commissioning.
 camera:
-  source: external
   image_topic: /camera/image_raw
   camera_info_topic: /camera/camera_info
   calibration_verified: false
@@ -31,8 +30,5 @@ control:
   - 0.0
   - 0.7071067811865476
 agent:
-  transport: serial
   device: /dev/ttyTHS1
   baud: 3000000
-viz:
-  gazebo: false

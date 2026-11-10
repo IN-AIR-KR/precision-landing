@@ -1,5 +1,7 @@
 ### 이 컴퓨터에서 실행
 
+Python 인식기 전환: [2번 진행 결과](docs/python_detection_stage2.md).
+
 공통 카메라 입력 분리와 CSI 보류 범위: [1번 진행 결과](docs/camera_inputs_stage1.md).
 
 리팩터링 0번 기준 기록·환경별 실행 구성·ROS bag 검증은 [기준 동작 기록](docs/baseline_stage0.md)을 참고하세요.
@@ -24,7 +26,7 @@
 * Gazebo Harmonic
 * Micro XRCE-DDS Agent
 * QGroundControl Daily Build
-* OpenCV 4.10.0
+* Python OpenCV headless wheel (requirements-detection.txt)
 
 ### Setup the Workspace
 Make sure you source ROS2 Humble in the terminal you are using. You can add this line to your ~/.bashrc if you want it sourced every time you open a new terminal.
@@ -42,9 +44,9 @@ Then navigate into the workspace:
 cd tracktor-beam
 ```
 
-Install OpenCV from source
-```
-./install_opencv.sh 
+Install the pinned binary Python dependencies and build
+```bash
+./scripts/setup.sh sim
 ```
 
 Set the GZ_VERSION environment variable
@@ -53,8 +55,8 @@ export GZ_VERSION=harmonic
 ```
 
 Build the workspace
-```
-colcon build
+```bash
+./scripts/build.sh sim
 ```
 
 After this runs, we do not need to build the whole workspace again, you can just build the individual packages you have modified
@@ -64,7 +66,7 @@ colcon build --packages-select pl_control
 
 Source the workspace
 ```
-source install/setup.bash 
+source scripts/env.sh
 ```
 
 ### Run the example
@@ -151,7 +153,7 @@ Message Patrik Dominik Pordi on the ARK Electronics / Dronecode Foundation Disco
 * Drone with downward facing camera
 * Micro XRCE-DDS Agent
 * QGroundControl
-* OpenCV 4.10.0
+* Python OpenCV headless wheel (requirements-detection.txt)
 * Camera node:
 
 You can either run the the nodes or turn them into a service, that starts at boot:
