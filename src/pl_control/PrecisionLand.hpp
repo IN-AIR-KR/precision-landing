@@ -97,7 +97,7 @@ private:
 	std::shared_ptr<px4_ros2::TrajectorySetpointType> _trajectory_setpoint;
 
 	// Data
-	State _state = State::Search;
+	State _state = State::Idle;
 	bool _search_started = false;
 
 	ArucoTag _tag;
