@@ -4,7 +4,7 @@
 
 ## 0. 기준 동작 기록 및 워크스페이스 구조 유지
 
-진행 결과와 재현 명령: [0번 기준 기록](baseline_stage0.md). 패키지는 아래 이름으로 분리한다. 인식기는 2번 전까지 기존 C++ 구현을, 제어기는 5번 전까지 기존 KF를 유지한다. 기준 비교 자료는 baselines에 보존한다.
+진행 결과: [0번 기준 기록](baseline_stage0.md). 패키지는 아래 이름으로 분리한다. 인식기는 2번 전까지 기존 C++ 구현을, 제어기는 5번 전까지 기존 KF를 유지한다. 과거 기준 데이터와 전용 기록·재생 도구는 정리했다. 5번 검증에 필요한 데이터는 해당 구현 시 새로 수집한다.
 
 - 현재 PX4·`px4_msgs`·`px4_ros2_cpp` 조합을 기록한다. 정적·이동 타겟 SITL에서 카메라 영상과 보정 정보, `/target_pose`, 기체 자세·위치, 착륙 로그를 확보한다. 같은 입력으로 인식과 추정 변경을 비교할 수 있게 ROS bag으로 저장한다.
 - 저장소 루트를 그대로 `colcon` 워크스페이스로 쓴다. 프로젝트 패키지는 `src/`, Gazebo 월드와 모델은 `simulation/`에 둔다. 실기체와 시뮬의 설치·빌드·실행 대상을 각각 정의한다.
@@ -23,7 +23,7 @@ PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS 
 
 - **시뮬** — `pl_bringup`의 `sim.launch.py`가 `ExecuteProcess`로 `MicroXRCEAgent udp4 -p 8888`을 실행한다. `pl_camera/camera_sim.launch.py`를 include하여 `ros_gz_bridge`로 Gazebo 카메라 데이터를 전달한다.
 - **실기체** — `hardware.launch.py`가 `ExecuteProcess`로 UART Agent를 띄우고, CSI 캡처·인식·제어 노드도 함께 실행한다. UART 장치와 보드레이트는 실제 배선과 PX4의 `uxrce_dds_client` 설정에 맞춘다. 제어기는 PX4 연결과 유효한 기체 상태를 확인한 뒤 착륙 제어를 시작한다.
-- **기존 서비스 정리** — 실기체 launch를 검증한 뒤 Jetson에 설치된 기존 USB 카메라·인식기·Agent 서비스를 비활성화하고 `services/`의 개별 서비스와 스크립트를 정리한다. 기존 Agent는 UART 중복 점유를 피하도록 새 launch를 시험하기 전에 중지한다. 부팅 자동 실행이 필요할 때는 `hardware.launch.py` 전체를 실행하는 `systemd` 서비스 하나를 둔다.
+- **기존 서비스 정리** — 저장소의 기존 개별 서비스와 실행 스크립트는 삭제했다. Jetson에 별도로 설치된 기존 USB 카메라·인식기·Agent 서비스의 확인 및 비활성화는 실기체 작업 시 진행한다. 기존 Agent는 UART 중복 점유를 피하도록 새 launch를 시험하기 전에 중지한다. 부팅 자동 실행이 필요할 때는 `hardware.launch.py` 전체를 실행하는 `systemd` 서비스 하나를 둔다.
 
 ### 설정 파일 위치
 

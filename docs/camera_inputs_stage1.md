@@ -1,5 +1,7 @@
 # 1번: 공통 카메라 입력 분리 (CSI 보류)
 
+> 아래 검증 결과는 당시 기록입니다. 원본 기준 데이터와 전용 기록·재생 도구는 정리했으며, 수치만 이 문서에 남깁니다.
+
 현재 인식기는 Python으로 전환되었습니다. 아래 내용은 해당 단계 당시의 기록이며, 최신 상태는 [2번 전환 기록](python_detection_stage2.md)을 참고하세요.
 
 ## 적용한 범위
@@ -13,9 +15,6 @@
 - `/target_pose`의 위치·자세 계산과 best-effort QoS는 유지합니다. timestamp는 입력 이미지의
   촬영 시각을 그대로 전달하며, 수신 시각으로 바꾸지 않습니다.
 - 카메라 장착 위치·방향을 환경별 control 파라미터로 분리했습니다. 기본값은 기존 코드를 재현합니다.
-- 새 bag은 공통 카메라 토픽을 기록합니다. 재생 도구는 예전 Gazebo 토픽 bag도 자동으로 읽습니다.
-  이전 기준 데이터/검증 결과를 덮어쓰지 않고 `.run/replays/`에 새 비교 보고서를 저장합니다.
-
 ## 설정과 좌표계
 
 설정 파일은 `src/pl_bringup/config/sim.yaml`과 `hardware.yaml`입니다.
@@ -70,30 +69,6 @@ python3 scripts/test_flight.py
 정적 월드로 보려면 `SIM_WORLD=aruco ./scripts/run.sh`를 사용하고,
 시험 명령은 `python3 scripts/test_flight.py --speed 0`입니다.
 
-전체를 종료한 뒤 bag 포함 자동 검증:
-
-```bash
-source scripts/env.sh
-python3 scripts/record_baseline.py static
-python3 scripts/record_baseline.py moving
-```
-
-예전 이동 bag을 새 공통 입력으로 재생:
-
-```bash
-python3 scripts/replay_baseline.py baselines/20261110-193450-moving
-```
-
-동일 바이너리를 다른 입력 토픽에 연결하여 검증:
-
-```bash
-python3 scripts/replay_baseline.py baselines/20261110-193346-static \
-  --image-topic /test/external_camera/image_raw \
-  --camera-info-topic /test/external_camera/camera_info
-```
-
-이는 외부 카메라 인터페이스 시험이며 실제 CSI 장치 검증은 아닙니다.
-
 카메라 장착 변환 단위 시험:
 
 ```bash
@@ -105,8 +80,8 @@ colcon test-result --test-result-base build/precision_land/test_results --verbos
 ## 검증 결과 (2026-11-10)
 
 - 변경 패키지 빌드 완료. 장착 변환 단위 시험 3개 통과.
-- 정적 SITL: `baselines/20261110-201110-static`, 착륙·자동 disarm 성공, 중심 오차 약 0.96cm.
-- 이동 SITL(0.3m/s): `baselines/20261110-201221-moving`, 착륙·자동 disarm 성공, 중심 오차 약 4.29cm.
+- 정적 SITL: `20261110-201110-static`, 착륙·자동 disarm 성공, 중심 오차 약 0.96cm.
+- 이동 SITL(0.3m/s): `20261110-201221-moving`, 착륙·자동 disarm 성공, 중심 오차 약 4.29cm.
 - 실행 중 ROS 카메라 토픽이 `/camera/image_raw`, `/camera/camera_info`로 제공되는 것을 확인.
 - 0번 이동 bag: 비교 가능한 192/192 포즈 일치, 최대 성분 차이 0.
 - 0번 정적 bag을 `/test/external_camera/*`로 remap: 210/210 포즈 일치, 최대 성분 차이 0.
@@ -116,7 +91,7 @@ colcon test-result --test-result-base build/precision_land/test_results --verbos
 - 매칭은 원본 촬영 timestamp 기준으로 수행했고 출력 프레임 `camera_frame`도 확인.
 - hardware 기본 설정은 보정/장착 검증 미완료로 실행 거부. Gazebo 경로·프로세스는 포함하지 않음.
 
-기계 판독용 요약은 `baselines/stage1-results.json`입니다. 위 비행 오차는 각 실행의 결과이며
+위 비행 오차는 각 실행의 결과이며
 제어 알고리즘 개선 효과를 의미하지 않습니다. 기존 KF·FSM·게인은 바꾸지 않았습니다.
 
 ## 패키지 구조 보완
@@ -131,8 +106,7 @@ colcon test-result --test-result-base build/precision_land/test_results --verbos
 
 패키지 이동 후 재검증:
 
-- 정지 비행 `baselines/20261110-203625-static`: 착륙·자동 disarm 통과, 수평 오차 0.019715 m.
-- 이동 비행 `baselines/20261110-203718-moving`: 0.3 m/s, 착륙·자동 disarm 통과, 수평 오차 0.028204 m.
+- 정지 비행 `20261110-203625-static`: 착륙·자동 disarm 통과, 수평 오차 0.019715 m.
+- 이동 비행 `20261110-203718-moving`: 0.3 m/s, 착륙·자동 disarm 통과, 수평 오차 0.028204 m.
 - 기존 이동 bag 재생: 비교 가능한 192/192 포즈 일치, 최대 성분 차이 0. 원본 이미지가 없는 1개 포즈는 비교 제외.
 - 카메라 장착 변환 단위 테스트 3개 통과.
-- `baselines/package-layout-results.json`에 결과 요약 보존.

@@ -1,5 +1,7 @@
 # 3번: 기존 PX4 체크아웃 호환과 Gazebo 실행 분리
 
+> 아래 검증 결과는 당시 기록입니다. 원본 기준 데이터와 전용 기록·재생 도구는 정리했으며, 수치만 이 문서에 남깁니다.
+
 사용자 선택에 따라 공식 릴리스 대신 기존 `~/PX4-Autopilot`의 현재 커밋을 기준으로 검증합니다.
 
 | 구성 | 검증 커밋 |
@@ -12,8 +14,6 @@ PX4의 사용자 차량·모델 변경사항은 유지했습니다. `setup.sh`�
 ROS 서브모듈은 위 조합으로 맞췄습니다. 사용 중인 상태·명령·등록·setpoint 설정 메시지 정의를
 PX4 소스와 비교하고 인터페이스 라이브러리의 런타임 호환성 검사도 통과시킵니다.
 `vehicle_status`는 `_v4`, `vehicle_command_ack`는 `_v1`로 변경되었습니다.
-기존 bag의 카메라/포즈 재생은 가능하지만, 구버전 PX4 메시지를 새 타입으로 역직렬화해서는 안 됩니다.
-기존 전체 비행 검증 결과는 당시 결과 파일로 보존합니다.
 
 ## 실행 구성
 
@@ -70,9 +70,6 @@ MAVLink 경로 자동 검증은 `test_flight.py --start-via mavlink`를 사용�
 
 ```bash
 source scripts/env.sh
-python3 scripts/record_baseline.py static
-python3 scripts/record_baseline.py moving
-python3 scripts/record_baseline.py moving --start-via mavlink
 python3 scripts/test_mode_safety.py
 ```
 
@@ -90,7 +87,6 @@ QGC 동작은 사용자 직접 시험으로 확인했습니다. 실기체 비행
 | 이동 0.3m/s / ROS 서비스 | 착륙·자동 disarm 통과 | 0.045352 m |
 | 이동 0.3m/s / MAVLink | 착륙·자동 disarm 통과 | 0.062857 m |
 
-기록은 각각 `baselines/20261110-212322-static`, `212409-moving`, `212513-moving`에 있습니다.
 세 bag 모두 접근 시 XY 속도+Z 위치 혼합 setpoint와 하강 속도·yaw 명령을 확인했습니다.
 지상 요청 거부, 활성화 확인 응답, 활성 상태 반복 요청 및 FSM 재시작 없음도 통과했습니다.
 카메라 장착 변환 단위 테스트 3개가 새 라이브러리 조합에서 통과했습니다.
@@ -98,6 +94,5 @@ QGC 동작은 사용자 직접 시험으로 확인했습니다. 실기체 비행
 타겟 유실·Hold/Land 회수 시험: `.run/mode-safety-20261110-212646/`.
 기본 유실 타임아웃 뒤 Descend → Idle을 확인하고 외부 모드에서 Hold로 전환한 뒤 착륙했습니다.
 별도 시작 검사에서 실제 PX4 cwd가 프로젝트의 px4-rootfs임을 확인했습니다.
-요약은 `baselines/stage3-results.json`에 보존합니다.
 
 이전 센서명 `imager`를 사용해 영상이 없었던 `212210-static`은 중단한 진단 실행이며 성공 결과에서 제외합니다.

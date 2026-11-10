@@ -1,5 +1,7 @@
 # 2번: Python 인식기와 바이너리 의존성
 
+> 아래 검증 결과는 당시 기록입니다. 원본 기준 데이터와 전용 기록·재생 도구는 정리했으며, 수치만 이 문서에 남깁니다.
+
 `pl_detection`은 ament_python 패키지로 전환했습니다. 실행 파일명 `aruco_tracker`,
 노드명, 토픽, 파라미터를 유지하므로 `run.sh`, `test_flight.py` 사용법은 같습니다.
 
@@ -40,17 +42,7 @@ vision_opencv 서브모듈과 OpenCV 소스 설치 스크립트도 제거합니�
 ```bash
 source scripts/env.sh
 python3 -m pytest -q src/pl_detection/test
-python3 scripts/replay_baseline.py baselines/20261110-193346-static
-python3 scripts/replay_baseline.py baselines/20261110-193450-moving
-python3 scripts/record_baseline.py static
-python3 scripts/record_baseline.py moving
 ```
-
-C++ 기준 실행 파일과 과거 라이브러리는 `.run/stage2-reference/`에 보존했습니다.
-보존한 라이브러리를 사용하는 실행 진입점은 `run-cpp-detector.sh`입니다.
-`replay_baseline.py --detector-executable`로 같은 bag의 모든 프레임을 재생한 뒤,
-Python 실행에 `--compare-report`를 주면 검출 timestamp 집합 전체와 포즈 성분을 비교합니다.
-실시간 기록에 이미지가 없는 포즈는 기존 bag 비교에서 별도로 표시합니다.
 
 Jetson 처리율·촬영부터 포즈 발행까지의 지연 분포와 CSI 실제 입력 검증은 보류입니다.
 PC SITL 및 bag 결과만으로 실기체 단계 완료를 주장하지 않습니다.
@@ -62,9 +54,8 @@ PC SITL 및 bag 결과만으로 실기체 단계 완료를 주장하지 않습�
 - 정지 bag 851프레임: C++/Python 검출 timestamp 215/215 일치, 최대 포즈 성분 차이 2.12e-13.
 - 이동 bag 1,004프레임: C++/Python 검출 timestamp 193/193 일치, 최대 포즈 성분 차이 2.30e-10.
 - 기준 bag에 기록된 포즈와의 비교는 정지 210/210, 이동 192/192 일치. 각 bag에서 입력 이미지가 없는 1개 포즈는 비교 제외.
-- 정지 SITL `baselines/20261110-205725-static`: 착륙·자동 disarm 통과, 수평 오차 0.011912 m.
-- 이동 SITL `baselines/20261110-205814-moving`: 0.3 m/s, 착륙·자동 disarm 통과, 수평 오차 0.074119 m.
-- 요약: `baselines/stage2-results.json`. 전체 재생 보고서: `.run/stage2-clean-{static,moving}/`.
+- 정지 SITL `20261110-205725-static`: 착륙·자동 disarm 통과, 수평 오차 0.011912 m.
+- 이동 SITL `20261110-205814-moving`: 0.3 m/s, 착륙·자동 disarm 통과, 수평 오차 0.074119 m.
 
 수평 오차는 이번 개별 비행의 결과이며, 알고리즘 성능 향상을 뜻하지 않습니다.
 다른 PX4 실행으로 시작 전에 중단된 `205535-static`, `205537-moving` 기록은 비행 검증 결과에서 제외했습니다.
