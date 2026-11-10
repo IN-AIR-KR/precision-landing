@@ -1,4 +1,5 @@
 #include "PrecisionLand.hpp"
+#include "CameraExtrinsics.hpp"
 
 #include <px4_ros2/components/node_with_mode.hpp>
 #include <px4_ros2/utils/geometry.hpp>
@@ -36,6 +37,13 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 
 void PrecisionLand::loadParameters()
 {
+	// Defaults reproduce the original downward-camera transform exactly in meaning.
+	const auto camera_position = _node.declare_parameter<std::vector<double>>(
+		"camera_position_body", {0.0, 0.0, -0.1});
+	const auto camera_orientation = _node.declare_parameter<std::vector<double>>(
+		"camera_orientation_body", {0.7071067811865476, 0.0, 0.0, 0.7071067811865476});
+	_camera_transform = cameraExtrinsics(camera_position, camera_orientation);
+
 	_node.declare_parameter<float>("descent_vel", 1.0);
 	_node.declare_parameter<float>("vel_p_gain", 1.5);
 	_node.declare_parameter<float>("vel_i_gain", 0.0);
@@ -102,22 +110,12 @@ void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::Sh
 
 PrecisionLand::ArucoTag PrecisionLand::getTagWorld(const ArucoTag& tag)
 {
-	// Convert from optical to NED
-	// Optical: X right, Y down, Z away from lens
-	// NED: X forward, Y right, Z away from viewer
-	Eigen::Matrix3d R;
-	R << 0, -1, 0,
-	1, 0, 0,
-	0, 0, 1;
-	Eigen::Quaterniond quat_NED(R);
-
 	auto vehicle_position = Eigen::Vector3d(_vehicle_local_position->positionNed().cast<double>());
 	auto vehicle_orientation = Eigen::Quaterniond(_vehicle_attitude->attitude().cast<double>());
 
 	Eigen::Affine3d drone_transform = Eigen::Translation3d(vehicle_position) * vehicle_orientation;
-	Eigen::Affine3d camera_transform = Eigen::Translation3d(0, 0, -0.1) * quat_NED;
 	Eigen::Affine3d tag_transform = Eigen::Translation3d(tag.position) * tag.orientation;
-	Eigen::Affine3d tag_world_transform = drone_transform * camera_transform * tag_transform;
+	Eigen::Affine3d tag_world_transform = drone_transform * _camera_transform * tag_transform;
 
 	ArucoTag world_tag = {
 		.position = tag_world_transform.translation(),

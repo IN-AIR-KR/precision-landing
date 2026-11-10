@@ -1,0 +1,126 @@
+{
+  "scope": "Stage-zero package layout correction and camera_sim extraction",
+  "packages": [
+    "pl_camera",
+    "pl_detection",
+    "pl_control",
+    "pl_bringup",
+    "pl_viz"
+  ],
+  "flights": {
+    "20261110-203625-static": {
+      "passed": true,
+      "scenario": "static",
+      "message_counts": {
+        "/target_pose_world": 101,
+        "/target_pose": 220,
+        "/fmu/in/trajectory_setpoint": 268,
+        "/clock": 7787,
+        "/camera/image_raw": 861,
+        "/rosout": 23,
+        "/camera/camera_info": 944,
+        "/fmu/out/vehicle_land_detected": 35,
+        "/fmu/out/vehicle_status_v1": 66,
+        "/fmu/out/vehicle_attitude": 3104,
+        "/fmu/out/vehicle_local_position_v1": 1552,
+        "/fmu/in/vehicle_command": 1
+      },
+      "image": {
+        "width": 1280,
+        "height": 960,
+        "encoding": "rgb8"
+      },
+      "camera_info": {
+        "width": 1280,
+        "height": 960,
+        "k": [
+          539.9363327026367,
+          0.0,
+          640.0,
+          0.0,
+          539.9363708496094,
+          480.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "d": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "drone_xy": [
+        0.013450885900943703,
+        0.014413695536976294
+      ],
+      "target_xy": [
+        0.0,
+        0.0
+      ],
+      "landing_error_m": 0.019714993039634997
+    },
+    "20261110-203718-moving": {
+      "passed": true,
+      "scenario": "moving",
+      "message_counts": {
+        "/target_pose_world": 142,
+        "/target_pose": 142,
+        "/fmu/in/trajectory_setpoint": 498,
+        "/clock": 8940,
+        "/camera/image_raw": 992,
+        "/rosout": 23,
+        "/camera/camera_info": 1084,
+        "/fmu/out/vehicle_land_detected": 41,
+        "/fmu/out/vehicle_status_v1": 75,
+        "/fmu/out/vehicle_attitude": 3566,
+        "/fmu/out/vehicle_local_position_v1": 1783,
+        "/fmu/in/vehicle_command": 1
+      },
+      "image": {
+        "width": 1280,
+        "height": 960,
+        "encoding": "rgb8"
+      },
+      "camera_info": {
+        "width": 1280,
+        "height": 960,
+        "k": [
+          539.9363327026367,
+          0.0,
+          640.0,
+          0.0,
+          539.9363708496094,
+          480.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "d": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "drone_xy": [
+        3.9958959133215846,
+        0.02680315263935182
+      ],
+      "target_xy": [
+        4.004674345162233,
+        7.556850291386788e-11
+      ],
+      "landing_error_m": 0.028204075112266105
+    }
+  },
+  "replay": ".run/replays/20261110-203743-20261110-193450-moving",
+  "replay_matched": 192,
+  "replay_comparable": 192,
+  "replay_max_component_error": 0.0,
+  "camera_extrinsics_tests": 3,
+  "hardware_csi": "deferred"
+}

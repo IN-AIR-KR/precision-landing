@@ -7,7 +7,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend><exec_depend>python3-yaml</exec_depend>
-  <exec_depend>aruco_tracker</exec_depend><exec_depend>precision_land</exec_depend>
-  <!-- Gazebo bridge and visualization are selected only by the sim build target. -->
+  <exec_depend>pl_detection</exec_depend><exec_depend>pl_control</exec_depend>
+  <!-- pl_camera and pl_viz (currently Gazebo-only) are selected explicitly by scripts/build.sh sim. -->
   <export><build_type>ament_cmake</build_type></export>
 </package>

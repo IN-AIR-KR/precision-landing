@@ -5,8 +5,8 @@ cd "$PRECISION_ROOT"
 profile="${1:-sim}"
 export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
 case "$profile" in
-  sim) packages=(pl_bringup precision_land precision_land_viz aruco_tracker ros_gz_bridge) ;;
-  hardware) packages=(pl_bringup precision_land aruco_tracker) ;;
+  sim) packages=(pl_camera pl_bringup pl_control pl_viz pl_detection ros_gz_bridge) ;;
+  hardware) packages=(pl_bringup pl_control pl_detection) ;;
   *) echo 'Usage: ./scripts/build.sh [sim|hardware]' >&2; exit 1 ;;
 esac
 colcon build --base-paths src --packages-up-to "${packages[@]}" \

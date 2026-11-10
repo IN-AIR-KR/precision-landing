@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(precision_land)
+project(pl_control)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -28,6 +28,9 @@ target_compile_features(precision_land PUBLIC c_std_99 cxx_std_17)
 install(TARGETS precision_land DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
+    find_package(ament_cmake_gtest REQUIRED)
+    ament_add_gtest(camera_extrinsics_test test/camera_extrinsics_test.cpp)
+    target_link_libraries(camera_extrinsics_test Eigen3::Eigen)
     find_package(ament_lint_auto REQUIRED)
     ament_lint_auto_find_test_dependencies()
 endif()

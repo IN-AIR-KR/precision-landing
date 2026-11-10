@@ -16,7 +16,7 @@
 ### 모델: [`simulation/gz/models/aruco_moving_target`](../simulation/gz/models/aruco_moving_target)
 
 - `marker_link` 하나짜리 단순 모델. 1.5 x 1.5 x 0.1m 평평한 패드, 질량 50kg, 중력/바닥 접촉 정상 작동 (물리적으로 바닥에 그냥 놓여 있는 상자입니다. 뜨는 게 아닙니다).
-- 패드 위에 **1.0 x 1.0m** ArUco 마커 평면이 붙어 있습니다 (기존 0.5m에서 2배로 키움). **크기를 바꾸려면 `src/aruco_tracker/cfg/params.yaml`의 `marker_size`도 반드시 같이 바꿔야 합니다** — PnP 포즈 추정의 스케일 기준이기 때문입니다.
+- 패드 위에 **1.0 x 1.0m** ArUco 마커 평면이 붙어 있습니다 (기존 0.5m에서 2배로 키움). **크기를 바꾸려면 `src/pl_detection/cfg/params.yaml`의 `marker_size`도 반드시 같이 바꿔야 합니다** — PnP 포즈 추정의 스케일 기준이기 때문입니다.
 - `gz-sim-velocity-control-system` (`gz::sim::systems::VelocityControl`) 플러그인이 붙어 있습니다. 이건 Gazebo에 기본 내장된 플러그인이라 별도 빌드가 필요 없습니다.
   - **커맨드를 아무것도 안 보내면 속도 0, 즉 가만히 있습니다.** (처음 준비 상태 = 정지)
   - 실행 중 아무 때나 아래 명령으로 속도를 바꿀 수 있습니다:
@@ -55,13 +55,13 @@ make px4_sitl gz_x500_mono_cam_down
 
 시뮬레이션이 뜨면 패드는 가만히 있습니다. 드론을 Precision Land 모드로 보내 탐색을 시작한 뒤(또는 그 전에), 다른 터미널에서 `gz topic` 명령으로 속도를 넣어서 움직이게 하세요.
 
-나머지(MicroXRCEAgent, `ros2 launch precision_land precision_landing_system.launch.py`)는 정적 마커일 때와 동일합니다.
+나머지(MicroXRCEAgent, `ros2 launch pl_control precision_landing_system.launch.py`)는 정적 마커일 때와 동일합니다.
 
 ## PrecisionLand.cpp 변경 사항
 
 기존 코드는 **정적 타겟을 가정**하고 있어서 그대로는 움직이는 마커에 착륙할 수 없었습니다. 수정한 부분:
 
-1. **타겟 속도 추정** ([`PrecisionLand.hpp`](../src/precision_land/PrecisionLand.hpp)의 `ArucoTag::velocity`, [`targetPoseCallback`](../src/precision_land/PrecisionLand.cpp))
+1. **타겟 속도 추정** ([`PrecisionLand.hpp`](../src/pl_control/PrecisionLand.hpp)의 `ArucoTag::velocity`, [`targetPoseCallback`](../src/pl_control/PrecisionLand.cpp))
    - 매 `/target_pose` 콜백마다 이전/현재 월드 좌표 차분으로 타겟의 월드 속도를 추정하고, 노이즈를 줄이기 위해 저역통과 필터(alpha=0.3)를 적용합니다.
 
 2. **`positionReached()`의 전환 조건 수정**
@@ -69,13 +69,13 @@ make px4_sitl gz_x500_mono_cam_down
    - 문제: 타겟이 계속 움직이면 드론도 계속 따라 움직여야 하므로, 드론의 "절대 속도"는 결코 0 근처로 떨어지지 않습니다 → `Approach` 상태에서 `Descend`로 영원히 전환되지 않습니다.
    - 수정: 드론 속도에서 **타겟 속도를 뺀 상대 속도**를 기준으로 판정합니다. 타겟이 감지되기 전(Search 단계)에는 `_tag.velocity`가 0이므로 기존 동작과 동일하게 작동합니다.
 
-3. **Descend 단계의 속도 feedforward** ([`calculateVelocitySetpointXY`](../src/precision_land/PrecisionLand.cpp))
+3. **Descend 단계의 속도 feedforward** ([`calculateVelocitySetpointXY`](../src/pl_control/PrecisionLand.cpp))
    - 기존 PI 제어기는 `vx = -(Kp*e + Ki*I)`만 계산했습니다. 움직이는 타겟을 순수 P 제어로 쫓으면 정상상태 오차가 `타겟 속도 / Kp`만큼 항상 남습니다.
    - 추정한 타겟 속도를 feedforward로 더해 `vx = -(Kp*e + Ki*I) + v_tag_x` 로 바꿔서 추적 지연을 크게 줄였습니다.
 
 ## 파라미터 튜닝
 
-- 타겟 속도가 빨라지면 `src/precision_land/cfg/params.yaml`의 `vel_p_gain`을 높이거나(응답성 ↑, 오버슈트 위험 ↑), `target_timeout`을 넉넉히(5초 이상) 주는 것이 안전합니다.
+- 타겟 속도가 빨라지면 `src/pl_control/cfg/params.yaml`의 `vel_p_gain`을 높이거나(응답성 ↑, 오버슈트 위험 ↑), `target_timeout`을 넉넉히(5초 이상) 주는 것이 안전합니다.
 - 속도 추정 저역통과 필터 계수(`alpha = 0.3`, `PrecisionLand.cpp`의 `targetPoseCallback`)는 하드코딩되어 있습니다. 탐지 노이즈가 심하면 더 작게(예: 0.15), 반응이 느리게 느껴지면 더 크게 조정하세요.
 - 마커/패드 크기를 더 키우고 싶다면 `model.sdf`의 두 치수(패드 box, 마커 plane)와 `aruco_tracker/cfg/params.yaml`의 `marker_size`를 같이 맞추세요.
 

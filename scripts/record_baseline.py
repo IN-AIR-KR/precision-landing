@@ -31,7 +31,7 @@ versions = {'scenario': a.scenario, 'world': world, 'speed_m_s': 0 if a.scenario
                 'px4_ros2_cpp': ROOT/'src/px4-ros2-interface-lib', 'ros_gz': ROOT/'src/ros_gz',
                 'vision_opencv': ROOT/'src/vision_opencv', 'PX4_gz': px4/'Tools/simulation/gz'}.items()},
             'gazebo': output(['gz', 'sim', '--versions']), 'ros_distro': env.get('ROS_DISTRO'),
-            'opencv_library_links': output(['ldd', str(ROOT/'install/aruco_tracker/lib/aruco_tracker/aruco_tracker')]),
+            'opencv_library_links': output(['ldd', str(ROOT/'install/pl_detection/lib/pl_detection/aruco_tracker')]),
             'time_basis': 'bag receive time uses ROS system time; original sensor/PX4 stamps retained without conversion'}
 # Include uncommitted and untracked project files, excluding generated artifacts.
 files = output(['git', 'ls-files', '--cached', '--others', '--exclude-standard']).splitlines()
@@ -46,13 +46,12 @@ for rel in files:
 versions['source_sha256'] = hashes
 (out/'manifest.json').write_text(json.dumps(versions, indent=2)+'\n')
 (out/'project.patch').write_text(output(['git', 'diff', 'HEAD']))
-prefix = f'/world/{world}/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/'
-topics = [prefix+'image', prefix+'camera_info', '/target_pose', '/target_pose_world',
+topics = ['/camera/image_raw', '/camera/camera_info', '/target_pose', '/target_pose_world',
           '/fmu/out/vehicle_attitude', '/fmu/out/vehicle_local_position_v1',
           '/fmu/out/vehicle_status_v1', '/fmu/out/vehicle_land_detected',
           '/fmu/in/trajectory_setpoint', '/fmu/in/vehicle_command', '/rosout', '/clock']
 (out/'topics.json').write_text(json.dumps(topics, indent=2)+'\n')
-qos = {topic: dict(history='keep_last', depth=50 if topic.endswith('/image') else 100,
+qos = {topic: dict(history='keep_last', depth=50 if topic.endswith('/image_raw') else 100,
                    reliability='best_effort', durability='volatile') for topic in topics}
 import yaml
 (out/'record_qos.yaml').write_text(yaml.safe_dump(qos))

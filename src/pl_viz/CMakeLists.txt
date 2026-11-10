@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(precision_land_viz)
+project(pl_viz)
 
 set(CMAKE_CXX_STANDARD 17)
 

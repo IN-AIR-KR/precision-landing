@@ -561,7 +561,7 @@ enum PredefinedDictionaryType {
 
 ### 파라미터 파일
 
-**위치**: `src/aruco_tracker/cfg/params.yaml`
+**위치**: `src/pl_detection/cfg/params.yaml`
 
 ```yaml
 aruco_tracker:
@@ -806,7 +806,7 @@ void annotate_image(cv_bridge::CvImagePtr image, const cv::Vec3d& target)
 ### 1. Launch File로 실행 (권장)
 
 ```bash
-ros2 launch precision_land precision_landing_system.launch.py
+ros2 launch pl_control precision_landing_system.launch.py
 ```
 
 ArUco Tracker가 자동으로 실행됩니다.
@@ -815,11 +815,11 @@ ArUco Tracker가 자동으로 실행됩니다.
 
 ```bash
 # 파라미터 파일과 함께 실행
-ros2 run aruco_tracker aruco_tracker --ros-args \
-    --params-file src/aruco_tracker/cfg/params.yaml
+ros2 run pl_detection aruco_tracker --ros-args \
+    --params-file src/pl_detection/cfg/params.yaml
 
 # 파라미터 오버라이드
-ros2 run aruco_tracker aruco_tracker --ros-args \
+ros2 run pl_detection aruco_tracker --ros-args \
     -p aruco_id:=5 \
     -p marker_size:=0.3
 ```

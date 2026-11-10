@@ -24,7 +24,7 @@
 
 ## 정밀착륙 연동
 
-1. `src/aruco_tracker/ArucoTracker.cpp` 코드에서 영상 입력 topic 수정
+1. `src/pl_bringup/config/hardware.yaml`의 `camera.image_topic`과 `camera.camera_info_topic` 설정
 
    ```c++
        _image_sub = create_subscription<sensor_msgs::msg::Image>(

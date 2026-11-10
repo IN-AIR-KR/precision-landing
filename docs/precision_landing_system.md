@@ -528,8 +528,8 @@ Eigen::Affine3d tag_world_transform =
 ### 파라미터 파일 위치
 
 ```
-src/precision_land/cfg/params.yaml
-src/aruco_tracker/cfg/params.yaml
+src/pl_control/cfg/params.yaml
+src/pl_detection/cfg/params.yaml
 ```
 
 ### 파라미터 튜닝 가이드
@@ -618,20 +618,20 @@ src/aruco_tracker/cfg/params.yaml
 
 ```bash
 # Launch file 실행 (시각화 포함)
-ros2 launch precision_land precision_landing_system.launch.py
+ros2 launch pl_control precision_landing_system.launch.py
 
 # 시각화 비활성화
-ros2 launch precision_land precision_landing_system.launch.py enable_gazebo_viz:=false
+ros2 launch pl_control precision_landing_system.launch.py enable_gazebo_viz:=false
 ```
 
 ### 2. 노드 개별 실행
 
 ```bash
 # ArUco Tracker
-ros2 run aruco_tracker aruco_tracker --ros-args --params-file src/aruco_tracker/cfg/params.yaml
+ros2 run pl_detection aruco_tracker --ros-args --params-file src/pl_detection/cfg/params.yaml
 
 # Precision Land
-ros2 run precision_land precision_land --ros-args --params-file src/precision_land/cfg/params.yaml
+ros2 run pl_control precision_land --ros-args --params-file src/pl_control/cfg/params.yaml
 ```
 
 ### 3. 모드 활성화 (PX4)
@@ -730,9 +730,9 @@ ros2 run rviz2 rviz2
 
 ### 코드 위치
 
-- **Launch File**: `src/precision_land/launch/precision_landing_system.launch.py`
-- **Main Code**: `src/precision_land/PrecisionLand.cpp`, `PrecisionLand.hpp`
-- **ArUco Tracker**: `src/aruco_tracker/`
+- **Launch File**: `src/pl_control/launch/precision_landing_system.launch.py`
+- **Main Code**: `src/pl_control/PrecisionLand.cpp`, `PrecisionLand.hpp`
+- **ArUco Tracker**: `src/pl_detection/`
 
 ### 외부 문서
 

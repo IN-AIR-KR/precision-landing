@@ -13,7 +13,7 @@ esac
 # Isolate Gazebo discovery from other simulations on this computer.
 export GZ_PARTITION="${GZ_PARTITION:-precision_landing}"
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-42}"
-if [[ ! -x "$PX4_DIR/build/px4_sitl_default/bin/px4" || ! -f install/precision_land/share/precision_land/package.xml ]]; then
+if [[ ! -x "$PX4_DIR/build/px4_sitl_default/bin/px4" || ! -f install/pl_control/share/pl_control/package.xml ]]; then
   echo 'Build the example first: ./scripts/setup.sh' >&2
   exit 1
 fi

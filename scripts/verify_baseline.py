@@ -18,11 +18,11 @@ for db in sorted((folder/'bag').glob('*.db3')):
     for ident, name, typ in con.execute('SELECT id,name,type FROM topics'):
         count = con.execute('SELECT count(*) FROM messages WHERE topic_id=?', (ident,)).fetchone()[0]
         counts[name] = counts.get(name, 0)+count
-        if name.endswith('/image') or name.endswith('/camera_info'):
+        if typ in ['sensor_msgs/msg/Image', 'sensor_msgs/msg/CameraInfo']:
             raw = con.execute('SELECT data FROM messages WHERE topic_id=? ORDER BY timestamp LIMIT 1', (ident,)).fetchone()
             if raw:
                 msg = deserialize_message(raw[0], get_message(typ))
-                if name.endswith('/image'): images = dict(width=msg.width, height=msg.height, encoding=msg.encoding)
+                if typ == 'sensor_msgs/msg/Image': images = dict(width=msg.width, height=msg.height, encoding=msg.encoding)
                 else: camera_info = dict(width=msg.width, height=msg.height, k=list(msg.k), d=list(msg.d))
         if name in ['/fmu/out/vehicle_status_v1', '/fmu/out/vehicle_land_detected']:
             for (raw,) in con.execute('SELECT data FROM messages WHERE topic_id=? ORDER BY timestamp', (ident,)):

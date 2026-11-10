@@ -1,20 +1,21 @@
 # 리팩터링 0번: 기준 동작과 실행 경계
 
+이 문서는 0번 시점의 기준 기록입니다. 이후 입력 분리 변경은 [1번 안내](camera_inputs_stage1.md)에 기록합니다. 현재 재생 도구의 새 결과는 원본 bag 폴더를 덮어쓰지 않고 `.run/replays/`에 저장합니다.
+
 ## 적용 범위
 
 현재 C++ 인식기, 좌표 변환, KF, 착륙 FSM과 `PrecisionLandCustom` 모드를 그대로 유지했습니다.
 저장소 루트는 colcon 워크스페이스이며 패키지는 `src/`, 모델과 월드는 `simulation/`에 있습니다.
-`pl_bringup`만 추가하여 실행 설정과 DDS Agent 실행 주체를 통합했습니다.
+최초 0번 구현에서 패키지 분리를 누락했으며, 사용자 지적에 따라 아래 구조로 보완했습니다.
+아래의 기존 비행 기록은 변경하지 않고 보존합니다. 패키지 이동 후 검증 기록은 별도로 남깁니다.
 
-계획의 전체 패키지 표는 후속 단계의 도착점입니다. 현재 대응은 다음과 같습니다.
-
-| 계획 패키지 | 0번 시점 |
+| 패키지 | 현재 구현 |
 |---|---|
-| pl_camera | CSI 캡처 구현은 1번. 현재 시뮬 영상은 ros_gz_bridge |
-| pl_detection | 기존 aruco_tracker 유지, Python 전환은 2번 |
-| pl_control | 기존 precision_land 및 px4_ros2_cpp 유지 |
-| pl_bringup | 추가 완료. sim/hardware launch와 YAML 설정 |
-| pl_viz | 기존 precision_land_viz 유지, 공통 모니터는 3번 |
+| pl_camera | camera_sim.launch.py에서 Gazebo 브리지 소유. CSI는 보류 |
+| pl_detection | 기존 C++ ArUco 구현 이동. Python 전환은 2번 |
+| pl_control | 기존 PX4 모드·KF·착륙 FSM 이동. Delayed KF는 4번 |
+| pl_bringup | sim/hardware launch, YAML 설정, Agent 실행 |
+| pl_viz | 기존 Gazebo 마커 표시 이동. 공통 모니터는 3번 |
 
 하드웨어 설정에는 UART 장치/baud, 외부 Image/CameraInfo 토픽과 보정 확인 플래그를 둡니다.
 CSI 캡처·보정값·카메라 장착 변환의 실제 구현/검증은 1번입니다. 기본 hardware 프로필은
@@ -29,9 +30,9 @@ CSI 캡처·보정값·카메라 장착 변환의 실제 구현/검증은 1번�
 | 실기체 | `./scripts/setup.sh hardware`, `./scripts/build.sh hardware` | `./scripts/run_hardware.sh` | 현재 PC에서 미보정 설정 거부 확인. 실기체 비행 미검증 |
 
 setup은 기존 시스템 ROS Humble, Gazebo(시뮬), MicroXRCEAgent 및 C++ 빌드 도구 설치를 전제로 합니다.
-hardware 빌드 대상은 `pl_bringup`, `precision_land`, `aruco_tracker` 및 그 의존성입니다.
+hardware 빌드 대상은 `pl_bringup`, `pl_control`, `pl_detection` 및 그 의존성입니다.
 Gazebo 브리지/시각화와 PX4 SITL은 제외합니다. 하드웨어 프로필의 외부 카메라 입력은
-현재 인식기의 토픽에 launch remap으로 연결하며, 코드 내부 Gazebo 경로 제거는 1번에 수행합니다.
+현재 인식기의 공통 카메라 토픽에 launch remap으로 연결합니다. 코드 내부 Gazebo 경로는 1번에서 제거했습니다.
 
 `pl_bringup/sim.launch.py`가 UDP Agent 하나를 소유하고 `hardware.launch.py`가 UART Agent 하나를
 소유합니다. `run.sh`는 PX4를 먼저 부팅하고 sim launch를 실행하며 Agent를 따로 띄우지 않습니다.

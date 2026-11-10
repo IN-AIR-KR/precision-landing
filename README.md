@@ -1,5 +1,7 @@
 ### 이 컴퓨터에서 실행
 
+공통 카메라 입력 분리와 CSI 보류 범위: [1번 진행 결과](docs/camera_inputs_stage1.md).
+
 리팩터링 0번 기준 기록·환경별 실행 구성·ROS bag 검증은 [기준 동작 기록](docs/baseline_stage0.md)을 참고하세요.
 
 빌드·실행 스크립트와 검증 환경은 [로컬 실행 안내](docs/run_local.md)를 참고하세요.
@@ -7,6 +9,10 @@
 ```bash
 ./scripts/run.sh
 ```
+
+프로젝트 패키지: `pl_camera`(카메라 브리지), `pl_detection`(인식),
+`pl_control`(PX4·착륙 제어), `pl_bringup`(환경 설정·실행), `pl_viz`(시각화).
+시뮬 카메라 브리지는 `src/pl_camera/launch/camera_sim.launch.py`에 있습니다.
 
 ### Video Walkthrough
 [Watch the video on YouTube](https://youtu.be/3BJB3OAo3tw?si=rJiTScTOzJzZjN2t)
@@ -53,7 +59,7 @@ colcon build
 
 After this runs, we do not need to build the whole workspace again, you can just build the individual packages you have modified
 ```
-colcon build --packages-select precision_land
+colcon build --packages-select pl_control
 ```
 
 Source the workspace
@@ -78,7 +84,7 @@ MicroXRCEAgent udp4 -p 8888
 
 Launch all of the nodes
 ```
-ros2 launch precision_land precision_landing_system.launch.py
+ros2 launch pl_control precision_landing_system.launch.py
 ```
 
 View the video (/image_proc is the annoted image)
@@ -114,7 +120,7 @@ gz topic -t "/model/aruco_moving_target/cmd_vel" -m gz.msgs.Twist -p "linear: {x
 ```
 Change `linear: {x: ..., y: ...}` for speed/direction (m/s, world frame), or publish
 `linear: {x: 0, y: 0}` to stop it again. Everything else (MicroXRCEAgent,
-`ros2 launch precision_land ...`) is launched the same way as above.
+`ros2 launch pl_control ...`) is launched the same way as above.
 
 ## ARK Electronics
 Checkout our [online store](https://arkelectron.com/)

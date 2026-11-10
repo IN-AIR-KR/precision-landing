@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(aruco_tracker)
+project(pl_detection)
 
 add_compile_options(-Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter)
 

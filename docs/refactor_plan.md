@@ -4,7 +4,7 @@
 
 ## 0. 기준 동작 기록 및 워크스페이스 구조 유지
 
-진행 결과와 재현 명령: [0번 기준 기록](baseline_stage0.md). 기존 인식·제어 패키지는 기준 비교를 위해 유지하며, 아래 패키지 표의 나머지 전환은 후속 단계에서 수행한다.
+진행 결과와 재현 명령: [0번 기준 기록](baseline_stage0.md). 패키지는 아래 이름으로 분리한다. 인식기는 2번 전까지 기존 C++ 구현을, 제어기는 4번 전까지 기존 KF를 유지한다. 기준 비교 자료는 baselines에 보존한다.
 
 - 현재 PX4·`px4_msgs`·`px4_ros2_cpp` 조합을 기록한다. 정적·이동 타겟 SITL에서 카메라 영상과 보정 정보, `/target_pose`, 기체 자세·위치, 착륙 로그를 확보한다. 같은 입력으로 인식과 추정 변경을 비교할 수 있게 ROS bag으로 저장한다.
 - 저장소 루트를 그대로 `colcon` 워크스페이스로 쓴다. 프로젝트 패키지는 `src/`, Gazebo 월드와 모델은 `simulation/`에 둔다. 실기체와 시뮬의 설치·빌드·실행 대상을 각각 정의한다.
@@ -13,7 +13,7 @@
 
 | 패키지 | 역할 |
 |---|---|
-| `pl_camera` | 실기체 CSI 캡처, 촬영 시각 기록, `Image`·`CameraInfo` 발행 |
+| `pl_camera` | `camera_sim.launch.py`의 Gazebo 브리지, 실기체 CSI 캡처, 촬영 시각 기록, `Image`·`CameraInfo` 발행 |
 | `pl_detection` | Python ArUco 검출 및 카메라 기준 `/target_pose` 발행 |
 | `pl_control` | Delayed KF, 착륙 상태 머신, PX4 상태 수신·모드 등록·명령 전송 |
 | `pl_bringup` | `sim.launch.py`와 `hardware.launch.py`, 환경별 설정과 토픽 연결 |
@@ -21,7 +21,7 @@
 
 PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS Agent는 별도 프로세스로 실행하고, 연결마다 실행 주체를 하나로 둔다. [PX4 uXRCE-DDS 문서](https://docs.px4.io/v1.17/en/middleware/uxrce_dds)
 
-- **시뮬** — `pl_bringup`의 `sim.launch.py`가 `ExecuteProcess`로 `MicroXRCEAgent udp4 -p 8888`을 실행한다. `ros_gz_bridge`는 별도로 Gazebo 카메라 데이터를 전달한다.
+- **시뮬** — `pl_bringup`의 `sim.launch.py`가 `ExecuteProcess`로 `MicroXRCEAgent udp4 -p 8888`을 실행한다. `pl_camera/camera_sim.launch.py`를 include하여 `ros_gz_bridge`로 Gazebo 카메라 데이터를 전달한다.
 - **실기체** — `hardware.launch.py`가 `ExecuteProcess`로 UART Agent를 띄우고, CSI 캡처·인식·제어 노드도 함께 실행한다. UART 장치와 보드레이트는 실제 배선과 PX4의 `uxrce_dds_client` 설정에 맞춘다. 제어기는 PX4 연결과 유효한 기체 상태를 확인한 뒤 착륙 제어를 시작한다.
 - **기존 서비스 정리** — 실기체 launch를 검증한 뒤 Jetson에 설치된 기존 USB 카메라·인식기·Agent 서비스를 비활성화하고 `services/`의 개별 서비스와 스크립트를 정리한다. 기존 Agent는 UART 중복 점유를 피하도록 새 launch를 시험하기 전에 중지한다. 부팅 자동 실행이 필요할 때는 `hardware.launch.py` 전체를 실행하는 `systemd` 서비스 하나를 둔다.
 
@@ -41,6 +41,8 @@ PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS 
 `hardware.yaml`의 `camera` 섹션에 실제 출력 해상도에 맞는 보정값을 함께 둔다. `sim.yaml`은 `bridge` 섹션을 통해 Gazebo가 제공하는 `CameraInfo`를 전달한다.
 
 ## 1. 실기체와 시뮬 영상 입력 분리
+
+상태: **공통 입력·환경별 장착 설정 분리 완료, CSI 구현·실기체 검증은 사용자 요청으로 보류**. [적용 범위와 시험 방법](camera_inputs_stage1.md). 아래 완료 기준 중 Jetson/CSI 항목은 아직 충족하지 않았다.
 
 - 실기체는 Jetson에 연결한 MIPI CSI 카메라를 사용한다. IMX219는 후보로 두고, 실제 카메라 모듈·Jetson 보드·JetPack 조합의 드라이버 지원과 캡처 동작을 확인한다. Jetson ISP를 사용하는 경우 `libargus` 또는 GStreamer `nvarguscamerasrc`를 검토하고, 촬영 시각을 가져와 ROS 시간 기준으로 변환할 수 있는 경로를 선택한다. [NVIDIA 카메라 개발 문서](https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/CameraDevelopment/CameraSoftwareDevelopmentSolution.html)
 - 인식기의 Gazebo 월드·모델 경로를 제거한다. 실기체 CSI 캡처 노드와 시뮬 `ros_gz_bridge`를 launch에서 같은 `Image`·`CameraInfo` 인터페이스에 연결한다. CSI 캡처 노드는 이미지 발행 시각 대신 촬영 시각을 `Image.header.stamp`에 넣고, 인식기는 이를 카메라 optical frame 기준 `/target_pose`에 그대로 전달한다.

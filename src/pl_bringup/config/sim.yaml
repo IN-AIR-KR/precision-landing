@@ -1,8 +1,10 @@
-# Stage 0: unchanged detector/controller parameters. Sensor abstraction follows in stage 1.
+# Optical frame: x right, y down, z forward. Camera transform maps optical to body FRD.
+# Mount defaults preserve the stage-0 downward-camera transform.
 camera:
   source: gazebo
   image_topic: /camera/image_raw
   camera_info_topic: /camera/camera_info
+  optical_frame: camera_frame
 detection:
   aruco_id: 0
   dictionary: 2
@@ -17,6 +19,15 @@ control:
   delta_velocity: 0.2
   target_accel_noise: 1.0
   target_pos_noise: 0.1
+  camera_position_body:
+  - 0.0
+  - 0.0
+  - -0.1
+  camera_orientation_body:
+  - 0.7071067811865476
+  - 0.0
+  - 0.0
+  - 0.7071067811865476
 agent:
   transport: udp4
   port: 8888

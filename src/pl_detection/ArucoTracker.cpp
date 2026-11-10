@@ -17,15 +17,11 @@ ArucoTrackerNode::ArucoTrackerNode()
 
 	auto qos = rclcpp::QoS(1).best_effort();
 
-	// Gazebo includes the world name in sensor topic paths, so it must match whatever
-	// world is actually running (e.g. "aruco" vs "aruco_moving"); see world_name param.
-	const std::string camera_prefix = "/world/" + _param_world_name + "/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/";
-
+	// Input transport and topic remapping belong to bringup, not the detector.
 	_image_sub = create_subscription<sensor_msgs::msg::Image>(
-			     camera_prefix + "image", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
-
+			     "/camera/image_raw", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
 	_camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(
-				   camera_prefix + "camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
+				   "/camera/camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
 
 	// Publishers
 	_image_pub = create_publisher<sensor_msgs::msg::Image>("/image_proc", qos);
@@ -37,12 +33,12 @@ void ArucoTrackerNode::loadParameters()
 	declare_parameter<int>("aruco_id", 0);
 	declare_parameter<int>("dictionary", 2); // DICT_4X4_250
 	declare_parameter<double>("marker_size", 0.5);
-	declare_parameter<std::string>("world_name", "aruco");
+	declare_parameter<std::string>("optical_frame", "camera_frame");
 
 	get_parameter("aruco_id", _param_aruco_id);
 	get_parameter("dictionary", _param_dictionary);
 	get_parameter("marker_size", _param_marker_size);
-	get_parameter("world_name", _param_world_name);
+	get_parameter("optical_frame", _param_optical_frame);
 }
 
 void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
@@ -95,7 +91,7 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 				// Publish target pose
 				geometry_msgs::msg::PoseStamped pose_msg;
 				pose_msg.header.stamp = msg->header.stamp;
-				pose_msg.header.frame_id = "camera_frame";
+				pose_msg.header.frame_id = _param_optical_frame.empty() ? msg->header.frame_id : _param_optical_frame;
 				pose_msg.pose.position.x = tvec[0];
 				pose_msg.pose.position.y = tvec[1];
 				pose_msg.pose.position.z = tvec[2];

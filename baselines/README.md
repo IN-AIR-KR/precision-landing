@@ -20,3 +20,10 @@
 
 원시 Image는 1280×960 RGB 3채널이므로 한 비행에 약 3GB가 필요합니다.
 다시 기록하려면 기존 SITL을 종료하고 `scripts/record_baseline.py`를 실행하세요.
+
+## 1번 이후 입력 분리
+
+새 기록은 `/camera/image_raw`, `/camera/camera_info`를 사용합니다. 재생 도구는
+`topics.json`을 읽어 기존 Gazebo 토픽 bag과 새 bag을 모두 지원합니다. 새 재생 보고서는
+`.run/replays/`에 저장하여 기준 기록을 덮어쓰지 않습니다. 1번 검증 요약은
+`stage1-results.json`과 [1번 안내](../docs/camera_inputs_stage1.md)에 있습니다.

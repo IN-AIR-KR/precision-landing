@@ -1,4 +1,5 @@
 #pragma once
+#include <Eigen/Geometry>
 
 #include <px4_ros2/components/mode.hpp>
 #include <px4_ros2/odometry/local_position.hpp>
@@ -82,6 +83,7 @@ private:
 
 	ArucoTag _tag;
 	float _approach_altitude = {};
+	Eigen::Affine3d _camera_transform = Eigen::Affine3d::Identity();
 
 	// Target Kalman filter state (world/NED frame): position + velocity, and their covariance.
 	// State vector order is [px, py, pz, vx, vy, vz].

@@ -33,6 +33,6 @@ private:
 	int _param_aruco_id {};
 	int _param_dictionary {};
 	double _param_marker_size {};
-	std::string _param_world_name;
+	std::string _param_optical_frame;
 };
 
