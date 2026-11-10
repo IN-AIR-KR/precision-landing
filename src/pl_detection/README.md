@@ -23,7 +23,11 @@ for a calibrated distortion-free camera.
 Detection uses default ArucoDetector parameters, float32 marker corners,
 undistortPoints followed by iterative solvePnP, and the original OpenCV quaternion
 sign convention. Only the first matching target is published. Annotated images
-are still published for every accepted image; demand-driven output is stage 4.
+are drawn/published only when raw or compressed debug subscribers exist, capped by
+`debug_fps` (default 15). JPEG encoding runs only for `/image_proc/compressed`
+subscribers, with `jpeg_quality` (default 80). Detection and `/target_pose` are
+independent of debug subscriptions. `/pl/detection/status` publishes frame-level
+JSON detection/pose metadata only when subscribed.
 
 ```bash
 source scripts/env.sh

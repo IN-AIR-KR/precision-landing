@@ -1,6 +1,7 @@
 #pragma once
 #include <Eigen/Geometry>
 #include <chrono>
+#include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <px4_msgs/msg/vehicle_status.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
@@ -47,6 +48,8 @@ private:
 	using Trigger = std_srvs::srv::Trigger;
 	using SteadyClock = std::chrono::steady_clock;
 	void setupStartService();
+	rclcpp::Publisher<std_msgs::msg::String>::SharedPtr _monitor_pub;
+	rclcpp::TimerBase::SharedPtr _monitor_timer;
 	void respondStart(bool success, const std::string& message);
 	rclcpp::Service<Trigger>::SharedPtr _start_service;
 	rclcpp::TimerBase::SharedPtr _start_timer;

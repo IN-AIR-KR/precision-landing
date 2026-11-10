@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-10",
+  "build": {
+    "sim_packages": [
+      "pl_detection",
+      "pl_control",
+      "pl_camera",
+      "pl_viz",
+      "pl_bringup"
+    ],
+    "passed": true,
+    "hardware_monitor_without_gazebo": true
+  },
+  "tests": {
+    "passed": 21,
+    "log": ".run/stage4-overlay-tests.log",
+    "scenarios": [
+      "raw and compressed upstream",
+      "no subscribers",
+      "status only",
+      "raw only",
+      "JPEG only",
+      "simultaneous outputs",
+      "unsubscribe and resubscribe",
+      "camera loss with live control status",
+      "continued pose publication without HUD",
+      "PX4 telemetry validity and unknown battery values"
+    ]
+  },
+  "gazebo_debug_bridge": {
+    "passed": true,
+    "subscription_counts": [
+      0,
+      1,
+      0
+    ],
+    "log": ".run/stage4-bridge.log"
+  },
+  "sitl_flight": {
+    "status": "pending",
+    "reason": "Separate ARMS SITL is running; waiting for user authorization to stop it."
+  },
+  "hardware_flight": "deferred"
+}

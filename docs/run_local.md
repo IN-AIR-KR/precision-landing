@@ -16,7 +16,7 @@ export PX4_DIR="$HOME/PX4-Autopilot"
 ./scripts/run.sh
 ```
 
-`aruco_moving` 월드, Gazebo GUI, `/image_proc` 영상 창, DDS Agent(pl_bringup launch 소유), ROS 노드를 함께
+`aruco_moving` 월드, Gazebo GUI, `/pl/monitor/image` 공통 모니터 창, DDS Agent(pl_bringup launch 소유), ROS 노드를 함께
 실행합니다. 기존 `aruco_moving_target` 패드를 원점에서 X 방향 1.5m 떨어진 곳에 배치합니다.
 마커 크기는 모델과 같은 1.0m입니다. 처음에 패드는 정지해 있습니다.
 
@@ -49,8 +49,7 @@ cd ~/precision-landing
 - `simulation/gz/worlds/aruco_moving.sdf`: 누락된 월드를 기존 문서의 배치 조건으로 추가했습니다.
   PX4 기본 `aruco.sdf`의 지면·조명·시뮬레이션 플러그인을 사용합니다.
 - `simulation/gz/models/aruco_moving_target`: 저장소에 있던 움직이는 패드 모델을 그대로 사용합니다.
-- `run.sh`가 월드를 전용 PX4 checkout의 `Tools/simulation/gz/worlds`로 복사합니다.
-  기존 `~/PX4-Autopilot`은 수정하지 않습니다.
+- `run.sh`가 프로젝트 월드를 직접 읽어 Gazebo를 실행합니다. 기존 `~/PX4-Autopilot`은 수정하지 않습니다.
 
 ## 명령 환경과 재빌드
 
@@ -98,3 +97,5 @@ PX4 로그는 `.run/px4.log`에 기록됩니다.
 ## 1번 공통 카메라 입력
 
 입력 토픽과 카메라 장착 설정, CSI 보류 범위는 [1번 안내](camera_inputs_stage1.md)를 참고하세요.
+
+공통 카메라·제어 HUD 설정과 구독 동작은 [4번 모니터 안내](monitoring_stage4.md)를 참고하세요.

@@ -33,7 +33,9 @@ def setup(context):
     if cfg['viz']['gazebo']:
         nodes.append(Node(package='pl_viz', executable='tag_pose_visualizer', name='tag_pose_visualizer', output='screen'))
     # A dead Agent, bridge or flight node must be visible as a failed bringup.
-    return [camera] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
+    monitor = Node(package='pl_viz', executable='monitor', output='screen',
+                   parameters=[{k: v for k, v in cfg['viz'].items() if k != 'gazebo'}])
+    return [camera, monitor] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
 
 
 def generate_launch_description():

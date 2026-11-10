@@ -35,6 +35,15 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 
 	modeRequirements().manual_control = false;
 	setupStartService();
+    _monitor_pub = _node.create_publisher<std_msgs::msg::String>("/pl/control/status", rclcpp::QoS(1).best_effort());
+    _monitor_timer = _node.create_wall_timer(std::chrono::milliseconds(100), [this]() {
+        if (!_monitor_pub->get_subscription_count()) { return; }
+        std_msgs::msg::String message;
+        message.data = "{\"state\":\"" + stateName(_state) + "\",\"active\":" +
+            (isActive() ? "true" : "false") + ",\"target_lost\":" +
+            (checkTargetTimeout() ? "true" : "false") + ",\"mode_id\":" + std::to_string(id()) + "}";
+        _monitor_pub->publish(message);
+    });
 }
 
 // Deferred service responses keep the single ROS executor free to receive

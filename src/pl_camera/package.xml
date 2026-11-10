@@ -5,6 +5,7 @@
   <maintainer email="jake@arkelectron.com">Precision Landing Maintainers</maintainer>
   <license>BSD-3-Clause</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <export><build_type>ament_cmake</build_type></export>

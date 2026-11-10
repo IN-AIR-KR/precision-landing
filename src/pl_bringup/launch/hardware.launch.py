@@ -22,7 +22,9 @@ def setup(context):
              parameters=[dict(cfg['detection'], optical_frame=cfg['camera']['optical_frame'])],
              remappings=[('/camera/image_raw',cfg['camera']['image_topic']), ('/camera/camera_info',cfg['camera']['camera_info_topic'])]),
         Node(package='pl_control', executable='precision_land', name='precision_land', output='screen', parameters=[cfg['control']])]
-    return nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
+    monitor = Node(package='pl_viz', executable='monitor', output='screen',
+                   parameters=[{k: v for k, v in cfg['viz'].items() if k != 'gazebo'}])
+    return [monitor] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
 
 
 def generate_launch_description():

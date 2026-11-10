@@ -10,6 +10,8 @@ detection:
   aruco_id: 0
   dictionary: 2
   marker_size: 1.0
+  debug_fps: 15.0
+  jpeg_quality: 80
 control:
   descent_vel: 0.6
   vel_p_gain: 1.7
@@ -32,3 +34,8 @@ control:
 agent:
   device: /dev/ttyTHS1
   baud: 3000000
+viz:
+  transport: compressed
+  fps: 10.0
+  jpeg_quality: 80
+  stale_after: 2.0
