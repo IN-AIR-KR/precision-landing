@@ -54,7 +54,13 @@ subs = [node.create_subscription(t, topic, cb, qos_profile_sensor_data) for t, t
     (PoseStamped, '/target_pose', tag), (Image, '/image_proc', image)]]
 pub = node.create_publisher(VehicleCommand, '/fmu/in/vehicle_command', 10)
 def velocity(speed):
-    subprocess.run(['gz', 'topic', '-t', '/model/aruco_moving_target/cmd_vel', '-m', 'gz.msgs.Twist', '-p', f'linear: {{x: {speed}, y: 0}}'], check=True)
+    if os.environ.get('SIM_WORLD') == 'aruco':
+        return
+    command = ['gz', 'topic', '-t', '/model/aruco_moving_target/cmd_vel',
+               '-m', 'gz.msgs.Twist', '-p', f'linear: {{x: {speed}, y: 0}}']
+    # A one-shot publisher can exit before Gazebo transport discovers the subscriber.
+    for _ in range(3):
+        subprocess.run(command, check=True, timeout=5)
 phase = 'ready'
 start = last = time.monotonic()
 success = False
