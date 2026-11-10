@@ -2,3 +2,7 @@ build/
 install/
 log/
 .vscode
+.deps/
+.run/
+baselines/*/
+__pycache__/

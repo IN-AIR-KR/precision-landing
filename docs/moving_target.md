@@ -35,14 +35,16 @@
     ```
   - 속도는 world frame(ENU) 기준입니다.
 
-### 월드: `PX4-Autopilot/Tools/simulation/gz/worlds/aruco_moving.sdf`
+### 월드: `simulation/gz/worlds/aruco_moving.sdf`
 
 - 기존 `aruco.sdf`(지면 + 조명만 있는 월드)를 복사하고, `arucotag` 모델 대신 `aruco_moving_target`을 `<pose>1.5 0 0 0 0 0</pose>`로 원점에서 1.5m 떨어진 곳에 include합니다.
   - 드론도 원점 근처에서 스폰되므로, 겹치지 않게 떨어뜨려 놓은 것입니다. 그러면서도 `PrecisionLand.cpp`의 나선 탐색 반경(2.0m) 안에는 들어옵니다.
-- PX4 벤더 디렉터리에 새 파일 하나만 추가했을 뿐, 기존 PX4 파일은 건드리지 않았습니다. `PX4_GZ_WORLDS` 환경변수가 이 경로로 고정돼 있어서 월드 파일 자체는 이 위치에 있어야 합니다.
+- 월드 원본은 이 저장소에 포함되어 있습니다. `scripts/run.sh`가 전용 PX4 checkout의 `Tools/simulation/gz/worlds/`로 복사합니다. PX4 시작 스크립트가 해당 위치에서 월드를 읽습니다.
 - 모델(텍스처 포함)은 `precision-landing` 저장소 안에 두고 `GZ_SIM_RESOURCE_PATH`로 참조합니다.
 
 ## 실행 방법
+
+이 컴퓨터에서는 `./scripts/run.sh`로 전체 실행하고, `./scripts/move_target.sh 0.3`으로 패드를 움직일 수 있습니다. [로컬 실행 안내](run_local.md)를 참고하세요. 아래 수동 명령은 월드 파일을 PX4의 `Tools/simulation/gz/worlds/`에 먼저 복사한 경우에 사용합니다.
 
 ```bash
 # PX4-Autopilot 디렉터리에서

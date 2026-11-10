@@ -22,17 +22,22 @@ def generate_launch_description():
         description='Gazebo world name (must match PX4_GZ_WORLD used to launch the sim)'
     )
     world = LaunchConfiguration('world')
+    marker_size_arg = DeclareLaunchArgument(
+        'marker_size', default_value='1.0',
+        description='Physical marker width in meters (PX4 aruco world: 0.5)'
+    )
 
     return LaunchDescription([
         enable_viz_arg,
         world_arg,
+        marker_size_arg,
         # Bridge camera image from Gazebo to ROS2
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
             name='image_bridge',
             arguments=[
-                ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image@sensor_msgs/msg/Image@gz.msgs.Image']
+                ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image@sensor_msgs/msg/Image[gz.msgs.Image']
             ],
             output='screen',
         ),
@@ -42,7 +47,7 @@ def generate_launch_description():
             executable='parameter_bridge',
             name='camera_info_bridge',
             arguments=[
-                ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo']
+                ['/world/', world, '/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo']
             ],
             output='screen',
         ),
@@ -52,7 +57,7 @@ def generate_launch_description():
             executable='parameter_bridge',
             name='image_proc_bridge',
             arguments=[
-                '/image_proc@sensor_msgs/msg/Image[gz.msgs.Image'
+                '/image_proc@sensor_msgs/msg/Image]gz.msgs.Image'
             ],
             parameters=[{
                 'qos_overrides./image_proc.subscription.reliability': 'best_effort',
@@ -69,6 +74,7 @@ def generate_launch_description():
             parameters=[
                 PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
                 {'world_name': world},
+                {'marker_size': LaunchConfiguration('marker_size')},
             ]
         ),
         # Precision landing node

@@ -1,0 +1,120 @@
+{
+  "algorithm_sources_unchanged": true,
+  "runtime_parameters_unchanged": true,
+  "runs": [
+    {
+      "stage": "before",
+      "path": "20261110-193346-static",
+      "scenario": "static",
+      "passed": true,
+      "landing_error_m": 0.006796361794615278,
+      "messages": {
+        "/rosout": 33,
+        "/clock": 7806,
+        "/fmu/out/vehicle_attitude": 3052,
+        "/fmu/out/vehicle_land_detected": 35,
+        "/fmu/out/vehicle_local_position_v1": 1526,
+        "/fmu/out/vehicle_status_v1": 65,
+        "/target_pose": 211,
+        "/fmu/in/trajectory_setpoint": 264,
+        "/target_pose_world": 96,
+        "/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info": 891,
+        "/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image": 851,
+        "/fmu/in/vehicle_command": 1
+      }
+    },
+    {
+      "stage": "after",
+      "path": "20261110-193601-static",
+      "scenario": "static",
+      "passed": true,
+      "landing_error_m": 0.011262431569917651,
+      "messages": {
+        "/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image": 919,
+        "/world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info": 942,
+        "/target_pose": 224,
+        "/rosout": 27,
+        "/clock": 7768,
+        "/fmu/out/vehicle_attitude": 3097,
+        "/fmu/in/trajectory_setpoint": 268,
+        "/fmu/out/vehicle_land_detected": 36,
+        "/fmu/out/vehicle_local_position_v1": 1549,
+        "/fmu/out/vehicle_status_v1": 65,
+        "/target_pose_world": 104,
+        "/fmu/in/vehicle_command": 1
+      }
+    },
+    {
+      "stage": "before",
+      "path": "20261110-193450-moving",
+      "scenario": "moving",
+      "passed": true,
+      "landing_error_m": 0.07988240651121972,
+      "messages": {
+        "/rosout": 33,
+        "/clock": 9368,
+        "/fmu/out/vehicle_attitude": 3586,
+        "/fmu/out/vehicle_land_detected": 41,
+        "/fmu/out/vehicle_local_position_v1": 1793,
+        "/fmu/out/vehicle_status_v1": 76,
+        "/fmu/in/trajectory_setpoint": 591,
+        "/target_pose": 193,
+        "/target_pose_world": 193,
+        "/world/aruco_moving/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image": 1004,
+        "/world/aruco_moving/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info": 1077,
+        "/fmu/in/vehicle_command": 1
+      }
+    },
+    {
+      "stage": "after",
+      "path": "20261110-193706-moving",
+      "scenario": "moving",
+      "passed": true,
+      "landing_error_m": 0.07480337059124069,
+      "messages": {
+        "/world/aruco_moving/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/camera_info": 1099,
+        "/world/aruco_moving/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image": 1005,
+        "/target_pose_world": 154,
+        "/target_pose": 154,
+        "/rosout": 25,
+        "/fmu/in/trajectory_setpoint": 498,
+        "/clock": 9069,
+        "/fmu/out/vehicle_attitude": 3617,
+        "/fmu/out/vehicle_land_detected": 41,
+        "/fmu/out/vehicle_local_position_v1": 1808,
+        "/fmu/out/vehicle_status_v1": 76,
+        "/fmu/in/vehicle_command": 1
+      }
+    }
+  ],
+  "replays": {
+    "20261110-193346-static": {
+      "reference_count": 211,
+      "replayed_count": 215,
+      "matched": 210,
+      "images_replayed": 851,
+      "coverage": 0.995260663507109,
+      "comparable_reference_count": 210,
+      "reference_without_image": 1,
+      "comparable_coverage": 1.0,
+      "max_component_error": 0.0,
+      "domain": 84,
+      "note": "Original images replayed one at a time with original headers; no PX4 commands were published.",
+      "passed": true
+    },
+    "20261110-193450-moving": {
+      "reference_count": 193,
+      "replayed_count": 193,
+      "matched": 192,
+      "images_replayed": 1004,
+      "coverage": 0.9948186528497409,
+      "comparable_reference_count": 192,
+      "reference_without_image": 1,
+      "comparable_coverage": 1.0,
+      "max_component_error": 0.0,
+      "domain": 84,
+      "note": "Original images replayed one at a time with original headers; no PX4 commands were published.",
+      "passed": true
+    }
+  }
+}

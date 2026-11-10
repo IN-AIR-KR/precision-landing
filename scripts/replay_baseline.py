@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Paced replay of original bag camera inputs in isolated domain 84.
+Wait for each detector debug frame before sending the next, avoiding its depth-1
+input queue dropping frames. No PX4 commands or vehicle state are published.
+"""
+import argparse
+import json
+import os
+from pathlib import Path
+import signal
+import sqlite3
+import subprocess
+import time
+import rclpy
+from rclpy.qos import qos_profile_sensor_data
+from rclpy.serialization import deserialize_message
+from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import Image, CameraInfo
+
+p = argparse.ArgumentParser()
+p.add_argument('baseline', type=Path)
+a = p.parse_args()
+folder = a.baseline.resolve()
+manifest = json.loads((folder/'manifest.json').read_text())
+world = manifest['world']
+prefix=f'/world/{world}/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/'
+def key(msg): return (msg.header.stamp.sec, msg.header.stamp.nanosec)
+def values(msg):
+    p,q=msg.pose.position,msg.pose.orientation
+    return [p.x,p.y,p.z,q.x,q.y,q.z,q.w]
+reference = {}
+for db in sorted((folder/'bag').glob('*.db3')):
+    with sqlite3.connect(db) as con:
+        for (raw,) in con.execute("SELECT m.data FROM messages m JOIN topics t ON m.topic_id=t.id WHERE t.name='/target_pose' ORDER BY m.timestamp"):
+            msg=deserialize_message(raw,PoseStamped); reference[key(msg)] = values(msg)
+assert reference, 'No reference detections'
+os.environ['ROS_DOMAIN_ID']='84'
+os.environ['RMW_IMPLEMENTATION']='rmw_fastrtps_cpp'
+os.environ['FASTRTPS_DEFAULT_PROFILES_FILE']=str(Path(__file__).resolve().parent/'config/replay_fastdds.xml')
+rclpy.init(); node=rclpy.create_node('baseline_replay_compare')
+received = {}; processed=set()
+subs=[node.create_subscription(PoseStamped,'/target_pose',lambda m: received.update({key(m):values(m)}),qos_profile_sensor_data),
+      node.create_subscription(Image,'/image_proc',lambda m: processed.add(key(m)),qos_profile_sensor_data)]
+image_pub=node.create_publisher(Image,prefix+'image',qos_profile_sensor_data)
+info_pub=node.create_publisher(CameraInfo,prefix+'camera_info',qos_profile_sensor_data)
+def spin_until(predicate,timeout):
+    end=time.monotonic()+timeout
+    while not predicate() and time.monotonic()<end:rclpy.spin_once(node,timeout_sec=.01)
+    return predicate()
+frames=0
+input_stamps=set()
+with (folder/'replay-detector.log').open('w') as log:
+    detector=subprocess.Popen(['ros2','run','aruco_tracker','aruco_tracker','--ros-args','-r','__node:=aruco_tracker','--params-file',str(folder/'aruco_tracker.yaml')],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+try:
+    assert spin_until(lambda:image_pub.get_subscription_count()>0 and info_pub.get_subscription_count()>0,10),'Detector input discovery failed'
+    # Camera calibration must be delivered before the first image, regardless of
+    # discovery/record receive ordering. It is copied unchanged from this bag.
+    info=None
+    for db in sorted((folder/'bag').glob('*.db3')):
+        with sqlite3.connect(db) as con:
+            row=con.execute('SELECT m.data FROM messages m JOIN topics t ON m.topic_id=t.id WHERE t.name=? ORDER BY m.timestamp LIMIT 1',(prefix+'camera_info',)).fetchone()
+            if row:info=deserialize_message(row[0],CameraInfo);break
+    assert info is not None
+    for _ in range(10):
+        info_pub.publish(info)
+        end=time.monotonic()+.05
+        while time.monotonic()<end:rclpy.spin_once(node,timeout_sec=.01)
+    assert spin_until(lambda:info_pub.get_subscription_count()==0,5),'Detector did not accept CameraInfo'
+    for db in sorted((folder/'bag').glob('*.db3')):
+        with sqlite3.connect(db) as con:
+            for (raw,) in con.execute('SELECT m.data FROM messages m JOIN topics t ON m.topic_id=t.id WHERE t.name=? ORDER BY m.timestamp',(prefix+'image',)):
+                assert detector.poll() is None,'Detector exited'
+                msg=deserialize_message(raw,Image);stamp=key(msg);input_stamps.add(stamp)
+                for attempt in range(3):
+                    image_pub.publish(msg)
+                    if spin_until(lambda:stamp in processed,2):break
+                else:raise RuntimeError(f'Detector did not process frame {stamp}')
+                # Pose is published before the processed image, but DDS topics may
+                # arrive in either order. Allow its callback to catch up.
+                if stamp in reference:spin_until(lambda:stamp in received,.2)
+                frames+=1
+                if frames%200==0: print(f'Replayed {frames} images',flush=True)
+    spin_until(lambda:False,.5)
+finally:
+    if detector.poll() is None:
+        os.killpg(detector.pid,signal.SIGINT)
+        try:detector.wait(timeout=5)
+        except subprocess.TimeoutExpired:os.killpg(detector.pid,signal.SIGTERM);detector.wait(timeout=5)
+    node.destroy_node();rclpy.shutdown()
+matched=reference.keys() & received.keys()
+comparable=reference.keys() & input_stamps
+max_error=max((max(abs(x-y) for x,y in zip(reference[k],received[k])) for k in matched),default=float('inf'))
+result=dict(reference_count=len(reference),replayed_count=len(received),matched=len(matched),images_replayed=frames,
+            coverage=len(matched)/len(reference),comparable_reference_count=len(comparable),
+            reference_without_image=len(reference)-len(comparable),
+            comparable_coverage=len(matched)/len(comparable) if comparable else 0.,
+            max_component_error=max_error,domain=84,
+            note='Original images replayed one at a time with original headers; no PX4 commands were published.')
+result['passed']=bool(comparable) and matched==comparable and max_error<1e-6
+(folder/'replay-verification.json').write_text(json.dumps(result,indent=2)+'\n')
+print(json.dumps(result,indent=2))
+assert result['passed'],'Replay differs from baseline'

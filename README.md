@@ -1,3 +1,13 @@
+### 이 컴퓨터에서 실행
+
+리팩터링 0번 기준 기록·환경별 실행 구성·ROS bag 검증은 [기준 동작 기록](docs/baseline_stage0.md)을 참고하세요.
+
+빌드·실행 스크립트와 검증 환경은 [로컬 실행 안내](docs/run_local.md)를 참고하세요.
+
+```bash
+./scripts/run.sh
+```
+
 ### Video Walkthrough
 [Watch the video on YouTube](https://youtu.be/3BJB3OAo3tw?si=rJiTScTOzJzZjN2t)
 
@@ -87,6 +97,8 @@ ground (normal gravity + contact, not held up by a force controller) and only mo
 to, via Gazebo's stock `VelocityControl` plugin. See
 [simulation/gz/models/aruco_moving_target](simulation/gz/models/aruco_moving_target) for the model and
 [docs/moving_target.md](docs/moving_target.md) for details.
+
+The world is included at `simulation/gz/worlds/aruco_moving.sdf`. The local `./scripts/run.sh` installs it into the dedicated PX4 checkout and starts the full example. For the manual commands below, first copy that world into your PX4 `Tools/simulation/gz/worlds/` directory.
 
 Launch PX4 SITL with the moving target world (run from the `PX4-Autopilot` directory):
 ```
