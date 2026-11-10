@@ -17,13 +17,14 @@ import rclpy
 from rclpy.qos import qos_profile_sensor_data
 from px4_msgs.msg import VehicleCommand, VehicleLocalPosition, VehicleStatus, VehicleLandDetected
 from geometry_msgs.msg import PoseStamped
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CompressedImage
 from std_srvs.srv import Trigger
 from pymavlink import mavutil
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--exercise-handover', action='store_true', help='Use via test_mode_safety.py with its slow-descent profile: target loss then Hold/Land')
 parser.add_argument('--start-via', choices=['service', 'mavlink'], default='service')
+parser.add_argument('--image-transport', choices=['raw', 'compressed'], default='raw', help='Use compressed when testing the PC/Jetson split over Wi-Fi')
 parser.add_argument('--speed', type=float, default=0.3)
 parser.add_argument('--output', type=Path, default=Path('.run/moving-flight.jsonl'))
 args = parser.parse_args()
@@ -62,7 +63,9 @@ subs = [node.create_subscription(t, topic, cb, qos_profile_sensor_data) for t, t
     (VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', position),
     (VehicleStatus, '/fmu/out/vehicle_status_v4', status),
     (VehicleLandDetected, '/fmu/out/vehicle_land_detected', landed),
-    (PoseStamped, '/target_pose', tag), (Image, '/image_proc', image)]]
+    (PoseStamped, '/target_pose', tag),
+    (CompressedImage if args.image_transport == 'compressed' else Image,
+     '/image_proc/compressed' if args.image_transport == 'compressed' else '/image_proc', image)]]
 client = node.create_client(Trigger, '/pl/start_landing')
 assert client.wait_for_service(timeout_sec=10), 'Start landing service unavailable'
 mode_id = None

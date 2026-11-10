@@ -106,7 +106,7 @@ class ArucoTracker(Node):
     def __init__(self):
         super().__init__('aruco_tracker_node')
         defaults = {'aruco_id': 0, 'dictionary': 2, 'marker_size': 0.5,
-                    'optical_frame': 'camera_frame', 'debug_fps': 15.0, 'jpeg_quality': 80}
+                    'optical_frame': 'camera_frame', 'input_transport': 'raw', 'debug_fps': 15.0, 'jpeg_quality': 80}
         values = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
         self.frame = values['optical_frame']
         self.debug_fps = float(values['debug_fps'])
@@ -118,7 +118,12 @@ class ArucoTracker(Node):
         self.camera = self.distortion = None
         qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT,
                          durability=DurabilityPolicy.VOLATILE)
-        self.create_subscription(Image, '/camera/image_raw', self.image_callback, qos)
+        transport = values['input_transport']
+        if transport not in ('raw', 'compressed'):
+            raise ValueError('input_transport must be raw or compressed')
+        self.create_subscription(CompressedImage if transport == 'compressed' else Image,
+                                 '/camera/image_raw/compressed' if transport == 'compressed' else '/camera/image_raw',
+                                 self.image_callback, qos)
         self.info_sub = self.create_subscription(CameraInfo, '/camera/camera_info', self.info_callback, qos)
         self.image_pub = self.create_publisher(Image, '/image_proc', qos)
         self.compressed_pub = self.create_publisher(CompressedImage, '/image_proc/compressed', qos)
@@ -135,7 +140,12 @@ class ArucoTracker(Node):
 
     def image_callback(self, msg):
         try:
-            image = to_bgr(msg)
+            if isinstance(msg, CompressedImage):
+                image = cv2.imdecode(np.frombuffer(msg.data, np.uint8), cv2.IMREAD_COLOR)
+                if image is None:
+                    raise ValueError('Invalid compressed camera image')
+            else:
+                image = to_bgr(msg)
             now = time.monotonic()
             raw = self.image_pub.get_subscription_count() > 0
             compressed = self.compressed_pub.get_subscription_count() > 0

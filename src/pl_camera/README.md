@@ -12,3 +12,10 @@ ros2 launch pl_camera camera_sim.launch.py world:=aruco_moving
 Do not start a second bridge while pl_bringup is running.
 The simulation build explicitly selects pl_camera and pl_viz; hardware excludes
 these Gazebo-only implementations until their hardware support is implemented.
+
+`image_relay` provides lazy JPEG encoding/decoding with original headers.
+`hitl_pc.launch.py` encodes `/hitl/pc/camera/image_raw` to
+`/camera/image_raw/compressed` (quality 90, maximum 30 fps), and decodes
+`/pl/monitor/image/compressed` to `/hitl/pc/monitor/image` for the local viewer.
+The camera launch's `debug_bridge:=false` disables the Gazebo debug-image bridge
+for the distributed PC/Jetson profile.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Source this file before using ROS CLI tools for this workspace.
-PRECISION_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PRECISION_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source /opt/ros/humble/setup.bash
 export GZ_VERSION=harmonic
 export PX4_DIR="${PX4_DIR:-$HOME/PX4-Autopilot}"

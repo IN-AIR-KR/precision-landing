@@ -3,7 +3,8 @@
 Python ArUco detector. Install binary-only requirements with `scripts/setup.sh`;
 source `scripts/env.sh` to select the workspace-local wheel runtime.
 
-Inputs: `/camera/image_raw` (`sensor_msgs/Image`) and `/camera/camera_info`
+Inputs: `/camera/image_raw` (`sensor_msgs/Image`, default `input_transport=raw`)
+or `/camera/image_raw/compressed` (`sensor_msgs/CompressedImage`, `input_transport=compressed`), and `/camera/camera_info`
 (`sensor_msgs/CameraInfo`), best-effort, volatile, depth 1. Launch may remap them.
 Outputs: `/target_pose` (`geometry_msgs/PoseStamped`) and `/image_proc` (BGR8),
 with the same QoS and original image timestamp. Optical axes are x right, y down,
@@ -14,7 +15,7 @@ respected using `Image.step`; data length must equal height * step. All supporte
 channels are 8-bit, so byte order is irrelevant. Unsupported encodings and invalid
 buffers are rejected without publishing a pose. Output owns its BGR buffer.
 
-Parameters: `aruco_id`, `dictionary`, `marker_size` (meters), `optical_frame`.
+Parameters: `input_transport` (`raw` / `compressed`), `aruco_id`, `dictionary`, `marker_size` (meters), `optical_frame`.
 The first CameraInfo with nonzero fx is latched, matching the C++ baseline.
 Restart after changing calibration or image resolution. Empty distortion arrays
 retain the baseline's no-pose behavior; publish explicit zero distortion values

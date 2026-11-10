@@ -2,6 +2,7 @@
 from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, EmitEvent, OpaqueFunction, RegisterEventHandler
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
@@ -23,7 +24,7 @@ def setup(context):
     # This ros_gz revision ignores the global CLI lazy flag. A separate YAML
     # bridge is necessary: config_file is read only when there are no CLI bridges.
     debug_bridge = Node(package='ros_gz_bridge', executable='parameter_bridge',
-        name='debug_image_bridge', output='screen', parameters=[{
+        name='debug_image_bridge', output='screen', condition=IfCondition(LaunchConfiguration('debug_bridge')), parameters=[{
             'config_file': str(Path(get_package_share_directory('pl_camera')) / 'config/debug_bridge.yaml'),
             'subscription_heartbeat': 200,
             'qos_overrides./image_proc.subscription.reliability': 'best_effort'}])
@@ -33,6 +34,7 @@ def setup(context):
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('debug_bridge', default_value='true'),
         DeclareLaunchArgument('world', default_value='aruco_moving'),
         DeclareLaunchArgument('model', default_value='x500_mono_cam_down_0'),
         DeclareLaunchArgument('link', default_value='camera_link'),

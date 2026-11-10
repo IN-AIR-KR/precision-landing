@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-11",
+  "configuration": "hitl_pc + hitl_jetson, both executed on the existing x86 PC",
+  "camera": {
+    "transport": "JPEG",
+    "quality": 90,
+    "max_fps": 30,
+    "header_preserved": true
+  },
+  "automated_tests": {
+    "passed": 22,
+    "log": ".run/hitl-tests.log"
+  },
+  "flights": [
+    {
+      "world": "aruco_moving",
+      "target_speed_m_s": 0.3,
+      "landed_and_disarmed": true,
+      "path": ".run/hitl-validation-20261111-022000"
+    },
+    {
+      "world": "aruco",
+      "target_speed_m_s": 0,
+      "landed_and_disarmed": true,
+      "path": ".run/hitl-validation-20261111-022121"
+    }
+  ],
+  "reverse_monitor_path": {
+    "passed": true,
+    "decoded_frames": 47,
+    "resolution": [
+      1280,
+      960
+    ]
+  },
+  "sample_camera_jpeg_mean_bytes": 31058.176470588234,
+  "not_tested": [
+    "physical Jetson/ARM build and runtime",
+    "Wi-Fi throughput, latency and packet loss",
+    "physical flight controller HITL"
+  ],
+  "note": "Local validation only; sample JPEG size is scene-dependent, not a Wi-Fi performance guarantee."
+}

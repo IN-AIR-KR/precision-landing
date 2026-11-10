@@ -305,3 +305,119 @@ ros2 run pl_viz tag_pose_visualizer
 실기체는 `./scripts/setup.sh hardware` 후 `ros2 launch pl_bringup hardware.launch.py`를 사용합니다. 카메라 보정·장착 확인 플래그와 UART 경로를 먼저 설정해야 하며, CSI 입력·실기체 검증은 보류 상태입니다.
 
 세부 안내: [실행 환경](docs/run_local.md) · [카메라 입력](docs/camera_inputs_stage1.md) · [PX4 호환](docs/px4_compatibility_stage3.md) · [모니터링](docs/monitoring_stage4.md) · [리팩터링 계획](docs/refactor_plan.md)
+
+### 6.3 HITL PC / Jetson 분리 실행 — Wi-Fi, JPEG 전송
+
+여기서 `hitl`은 **실물 Jetson에서 ROS 스택을 돌리는 분산 SITL**을 뜻합니다. PX4는 PC에서 SITL로 실행하며 실물 FC는 사용하지 않습니다.
+
+| 장치 | launch | 실행 구성 |
+|---|---|---|
+| PC | `hitl_pc.launch.py` | Gazebo, PX4 SITL, DDS Agent, 카메라 브리지·JPEG 인코더, 모니터 JPEG 디코더·뷰어 |
+| Jetson | `hitl_jetson.launch.py` | JPEG 입력 인식기, 착륙 제어, 공통 모니터 |
+
+```mermaid
+flowchart LR
+    GZ[PC: Gazebo] --> RAW("/hitl/pc/camera/image_raw") --> ENC[PC: JPEG encode]
+    ENC --> JPEG("/camera/image_raw/compressed<br/>Wi-Fi") --> DET[Jetson: pl_detection]
+    DET --> POSE("/target_pose") --> CTRL[Jetson: pl_control]
+    PX4[PC: PX4 SITL + Agent] <-->|DDS: 상태 · setpoint| CTRL
+    DET --> DEBUG("/image_proc<br/>Jetson 내부") --> HUD[Jetson: pl_viz]
+    HUD --> OUT("/pl/monitor/image/compressed<br/>Wi-Fi") --> DEC[PC: JPEG decode]
+    DEC --> VIEW[PC: 영상 뷰어]
+```
+
+- 카메라: 원본 해상도 유지, **JPEG 품질 90 / 최대 30 fps**. CameraInfo와 원본 촬영 timestamp·frame_id 유지.
+- 모니터: Jetson 내부에서는 raw 사용, PC로는 JPEG 출력만 전송. 뷰어를 닫으면 모니터 영상 구독·압축도 중지.
+- PC의 Gazebo 디버그 영상 역방향 브리지는 끔. 기본 구성에서 원본 영상 토픽을 Jetson이 구독하지 않음.
+- 인식·제어와 Agent는 각각 한 곳에서만 실행. `run.sh`, `sim.launch.py`, 별도 Agent를 중복 실행하지 않음.
+
+**① 양쪽 준비 — 같은 버전의 소스를 각 장치에서 빌드**
+
+PC는 기존 시뮬 요구사항, Jetson은 Ubuntu 22.04 / ROS 2 Humble과 ROS 빌드 도구가 필요합니다. Jetson에는 Gazebo·PX4 체크아웃·Agent가 필요하지 않습니다. PC의 `build/`, `install/`, `.deps/`를 Jetson으로 복사하지 말고 각 아키텍처에서 설치·빌드합니다.
+
+PC:
+
+```bash
+cd ~/precision-landing
+export PX4_DIR="$HOME/PX4-Autopilot"
+./scripts/setup.sh hitl_pc
+```
+
+Jetson:
+
+```bash
+cd ~/precision-landing
+./scripts/setup.sh hitl_jetson
+```
+
+이후 소스 수정 시 각각 `./scripts/build.sh hitl_pc`, `./scripts/build.sh hitl_jetson`을 사용합니다.
+
+**② 양쪽 공통 네트워크 환경 — 사용하는 각 터미널에서 실행**
+
+```bash
+cd ~/precision-landing
+source scripts/env.sh
+export ROS_DOMAIN_ID=42
+export ROS_LOCALHOST_ONLY=0
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+```
+
+- 같은 Wi-Fi/LAN에 연결하고 AP의 기기 간 통신 차단(Client/AP isolation)을 해제합니다.
+- DDS 검색 multicast와 장치 간 UDP 통신이 허용돼야 합니다. 기본 구성은 IP를 코드에 지정하지 않고 DDS 자동 검색을 사용합니다.
+- PC와 Jetson의 시스템 시간을 동기화합니다. 정밀한 단방향 영상 지연 측정에는 별도 시계 오차 확인이 필요합니다.
+- Jetson에서 별도 MicroXRCEAgent를 띄우지 않습니다. PC의 Agent가 만든 ROS 토픽에 네트워크로 참여합니다.
+
+**③ PC 먼저 실행**
+
+```bash
+ros2 launch pl_bringup hitl_pc.launch.py
+```
+
+PX4의 `Startup script returned successfully` 출력을 확인한 뒤 Jetson을 실행합니다. 모니터 창은 Jetson이 연결되기 전에는 영상이 없을 수 있습니다. QGC도 PC에서 실행합니다.
+
+**④ Jetson 실행**
+
+```bash
+ros2 launch pl_bringup hitl_jetson.launch.py
+```
+
+`Got RegisterExtComponentReply` 출력으로 외부 모드 등록을 확인합니다. `Waiting for FMU`에서 진행되지 않으면 PC 기동 상태와 DDS 네트워크 연결을 확인합니다.
+
+**⑤ PC의 별도 터미널 — 자동 비행 시험**
+
+②의 환경을 적용한 뒤 실행합니다. 이 스크립트는 PC의 로컬 PX4 SITL을 확인하므로 Jetson에서 실행하지 않습니다.
+
+```bash
+python3 scripts/test_flight.py --image-transport compressed
+# 정지 타겟 시험: 새 시뮬에서 실행
+# python3 scripts/test_flight.py --image-transport compressed --speed 0
+```
+
+`--image-transport compressed`는 시험 코드가 디버그 원본 영상을 Wi-Fi로 끌어오지 않도록 합니다. 수동 시험은 QGC 이륙 후 모드 선택 또는 `/pl/start_landing` 서비스를 사용합니다.
+
+**실행 옵션**
+
+```bash
+# PC: 전송 fps/품질 조정, GUI/영상 뷰어 비활성화
+ros2 launch pl_bringup hitl_pc.launch.py camera_fps:=20.0 jpeg_quality:=90 gui:=false viewer:=false
+
+# PC: 영상 창만 다시 열기 (PC의 JPEG 디코더가 압축 토픽을 구독)
+ros2 run rqt_image_view rqt_image_view /hitl/pc/monitor/image
+```
+
+`world:=aruco`를 쓰면 0.5 m 마커의 정적 월드를 사용합니다. 이때 **양쪽 launch 모두** `world:=aruco`를 지정해야 합니다. 기본 `aruco_moving`은 1 m 마커이며 `--speed 0`으로 정지 시험도 가능합니다. 양쪽은 기본적으로 같은 `sim.yaml`의 제어 설정을 사용합니다.
+
+**연결·대역폭 확인 — Jetson에서 실행**
+
+```bash
+ros2 topic list
+ros2 topic hz /camera/image_raw/compressed
+ros2 topic bw /camera/image_raw/compressed
+ros2 topic echo /fmu/out/vehicle_status_v4 --once --qos-reliability best_effort
+```
+
+PC에서 `ros2 multicast receive`, Jetson에서 `ros2 multicast send`로 검색용 multicast 전달을 점검할 수 있습니다. 이 시험의 성공만으로 모든 DDS 통신이 보장되지는 않습니다. 영상은 best-effort/depth 1로 오래된 프레임 적체를 줄이며, Wi-Fi 부하가 높으면 프레임이 누락될 수 있습니다. PC 뷰어에서는 `/hitl/pc/monitor/image`를 사용하고 Jetson의 `/image_proc`·`/pl/monitor/image` 원본을 직접 선택하지 않습니다.
+
+종료는 먼저 Jetson launch, 다음 PC launch에서 `Ctrl+C`입니다. PC launch는 자신이 시작한 시뮬과 Agent를 종료하며, 영상 창만 닫는 것은 비행 스택을 종료하지 않습니다.
+
+**검증 범위:** JPEG 변환·원본 header 보존·검출·뷰어 구독 해제 통합 테스트와 같은 PC에서 양쪽 launch를 함께 실행한 정지·이동 타겟 착륙 및 자동 disarm 시험을 통과했습니다. 실제 Jetson의 ARM 환경과 Wi-Fi 처리율·지연은 별도 장치 시험이 필요합니다.
