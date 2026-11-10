@@ -39,7 +39,7 @@ install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )
 
-install(DIRECTORY cfg
+install(DIRECTORY config
   DESTINATION share/${PROJECT_NAME}/
 )
 

@@ -19,14 +19,14 @@ class ImageRelay(Node):
         super().__init__(name, **kwargs)
         defaults = {'direction': 'encode', 'input_topic': '/hitl/pc/camera/image_raw',
                     'output_topic': '/camera/image_raw/compressed', 'fps': 30.0, 'jpeg_quality': 90}
-        cfg = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
-        self.encode = cfg['direction'] == 'encode'
-        self.fps, self.quality = float(cfg['fps']), int(cfg['jpeg_quality'])
-        if cfg['direction'] not in ('encode', 'decode') or not math.isfinite(self.fps) or self.fps <= 0 or not 1 <= self.quality <= 100:
+        config = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
+        self.encode = config['direction'] == 'encode'
+        self.fps, self.quality = float(config['fps']), int(config['jpeg_quality'])
+        if config['direction'] not in ('encode', 'decode') or not math.isfinite(self.fps) or self.fps <= 0 or not 1 <= self.quality <= 100:
             raise ValueError('Invalid image relay direction, fps or JPEG quality')
-        self.input_topic = cfg['input_topic']
+        self.input_topic = config['input_topic']
         self.qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
-        self.publisher = self.create_publisher(CompressedImage if self.encode else Image, cfg['output_topic'], self.qos)
+        self.publisher = self.create_publisher(CompressedImage if self.encode else Image, config['output_topic'], self.qos)
         self.subscription = None
         self.last_frame = -math.inf
         self.create_timer(.1, self.update_subscription)

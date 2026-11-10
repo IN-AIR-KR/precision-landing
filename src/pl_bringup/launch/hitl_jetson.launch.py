@@ -12,18 +12,18 @@ from launch_ros.actions import Node
 
 
 def setup(context):
-    cfg = yaml.safe_load(Path(LaunchConfiguration('config').perform(context)).read_text())
+    config = yaml.safe_load(Path(LaunchConfiguration('config').perform(context)).read_text())
     world = LaunchConfiguration('world').perform(context)
     if world not in ('aruco', 'aruco_moving'):
         raise ValueError('world must be aruco or aruco_moving')
     detector = Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen',
-        parameters=[dict(cfg['detection'], optical_frame=cfg['camera']['optical_frame'],
+        parameters=[dict(config['detection'], optical_frame=config['camera']['optical_frame'],
                          input_transport='compressed', marker_size=.5 if world == 'aruco' else 1.0)])
     control = Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
-                   parameters=[cfg['control']])
+                   parameters=[config['control']])
     # Raw stays on Jetson. Only the final overlay is encoded for the PC viewer.
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
-                   parameters=[dict({k: v for k, v in cfg['viz'].items() if k != 'gazebo'}, transport='raw')])
+                   parameters=[dict({k: v for k, v in config['viz'].items() if k != 'gazebo'}, transport='raw')])
     handlers = [RegisterEventHandler(OnProcessExit(target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='Required Jetson process exited'))])) for node in (detector, control)]
     return [*handlers, detector, control, monitor]

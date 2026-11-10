@@ -111,9 +111,9 @@ class Monitor(Node):
     def __init__(self):
         super().__init__('landing_monitor')
         defaults = {'transport': 'raw', 'fps': 10.0, 'jpeg_quality': 80, 'stale_after': 2.0}
-        cfg = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
-        self.transport = cfg['transport']
-        self.fps, self.quality, self.stale = float(cfg['fps']), int(cfg['jpeg_quality']), float(cfg['stale_after'])
+        config = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
+        self.transport = config['transport']
+        self.fps, self.quality, self.stale = float(config['fps']), int(config['jpeg_quality']), float(config['stale_after'])
         if self.transport not in ('raw', 'compressed') or self.fps <= 0 or self.stale <= 0 or not 1 <= self.quality <= 100:
             raise ValueError('Invalid monitoring transport/rate/quality/staleness configuration')
         qos = SENSOR_QOS
