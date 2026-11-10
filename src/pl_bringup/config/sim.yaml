@@ -34,3 +34,5 @@ viz:
 bridge:
   world: aruco_moving
   model: x500_mono_cam_down_0
+  link: camera_link
+  sensor: camera

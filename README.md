@@ -1,5 +1,7 @@
 ### 이 컴퓨터에서 실행
 
+기존 PX4 연동·Gazebo 분리·ROS 시작 서비스: [3번 진행 결과](docs/px4_compatibility_stage3.md).
+
 Python 인식기 전환: [2번 진행 결과](docs/python_detection_stage2.md).
 
 공통 카메라 입력 분리와 CSI 보류 범위: [1번 진행 결과](docs/camera_inputs_stage1.md).
@@ -72,7 +74,7 @@ source scripts/env.sh
 ### Run the example
 
 #### Run the simulation environment
-This workspace is tested against a specific version of PX4. Please use PX4 commit 86f2fdfd7de7f5e5d29ab61f60d81e892a557376.
+This workspace uses your existing `~/PX4-Autopilot` checkout (override with `PX4_DIR`). Tested at `ee99864808e03c164975fc38c450fa22179fe0cb`; setup does not switch or reset your PX4 checkout. See [PX4 compatibility and standalone Gazebo](docs/px4_compatibility_stage3.md).
 
 Launch PX4 Simulation
 ```

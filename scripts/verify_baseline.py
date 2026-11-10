@@ -24,7 +24,7 @@ for db in sorted((folder/'bag').glob('*.db3')):
                 msg = deserialize_message(raw[0], get_message(typ))
                 if typ == 'sensor_msgs/msg/Image': images = dict(width=msg.width, height=msg.height, encoding=msg.encoding)
                 else: camera_info = dict(width=msg.width, height=msg.height, k=list(msg.k), d=list(msg.d))
-        if name in ['/fmu/out/vehicle_status_v1', '/fmu/out/vehicle_land_detected']:
+        if name.startswith('/fmu/out/vehicle_status') or name == '/fmu/out/vehicle_land_detected':
             for (raw,) in con.execute('SELECT data FROM messages WHERE topic_id=? ORDER BY timestamp', (ident,)):
                 msg = deserialize_message(raw, get_message(typ))
                 if hasattr(msg, 'arming_state'):
@@ -32,11 +32,13 @@ for db in sorted((folder/'bag').glob('*.db3')):
                     disarmed |= airborne and msg.arming_state == 1
                 else: landed |= msg.landed
     con.close()
-missing = [t for t in required if not counts.get(t)]
+missing = [t for t in required if not counts.get(t) and not
+           (t == '/fmu/in/vehicle_command' and manifest.get('start_via') == 'mavlink')]
 assert not missing, f'Missing/empty topics: {missing}'
 assert images['width'] == camera_info['width'] and images['height'] == camera_info['height'] and camera_info['k'][0]>0
 roslog = (folder/'logs/ros.log').read_text()
 assert all(f'Switching to {s}' in roslog for s in ['Search', 'Approach', 'Descend', 'Finished'])
+assert roslog.count('Switching to Search') == 1, 'Repeated request restarted the FSM'
 assert 'Disarmed by landing' in (folder/'logs/px4.log').read_text()
 assert airborne and landed and disarmed
 poses = (folder/'final-gazebo-poses.txt').read_text()

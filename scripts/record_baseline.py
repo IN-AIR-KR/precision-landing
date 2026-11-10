@@ -14,17 +14,18 @@ ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser()
 p.add_argument('scenario', choices=['static', 'moving'])
 p.add_argument('--output', type=Path)
+p.add_argument('--start-via', choices=['service','mavlink'], default='service')
 a = p.parse_args()
 world = 'aruco' if a.scenario == 'static' else 'aruco_moving'
 out = (a.output or ROOT / 'baselines' / (time.strftime('%Y%m%d-%H%M%S') + '-' + a.scenario)).resolve()
 out.mkdir(parents=True, exist_ok=False)
 env = dict(os.environ, ROS_DOMAIN_ID='42', GZ_PARTITION='precision_landing', HEADLESS='1', SIM_WORLD=world, RUN_LOG_DIR=str(out / 'logs'))
-px4 = Path(env.get('PX4_DIR', str(Path.home() / 'PX4-precision-landing')))
+px4 = Path(env.get('PX4_DIR', str(Path.home() / 'PX4-Autopilot')))
 def output(cmd, cwd=ROOT):
     return subprocess.check_output(cmd, cwd=cwd, text=True).strip()
 def revision(path):
     return dict(path=str(path), commit=output(['git', 'rev-parse', 'HEAD'], path), status=output(['git', 'status', '--short'], path))
-versions = {'scenario': a.scenario, 'world': world, 'speed_m_s': 0 if a.scenario == 'static' else .3,
+versions = {'scenario': a.scenario, 'world': world, 'start_via': a.start_via, 'speed_m_s': 0 if a.scenario == 'static' else .3,
             'ros_domain_id': 42, 'gazebo_partition': 'precision_landing',
             'repositories': {name: revision(path) for name, path in {
                 'project': ROOT, 'PX4': px4, 'px4_msgs': ROOT/'src/px4_msgs',
@@ -48,7 +49,7 @@ versions['source_sha256'] = hashes
 (out/'project.patch').write_text(output(['git', 'diff', 'HEAD']))
 topics = ['/camera/image_raw', '/camera/camera_info', '/target_pose', '/target_pose_world',
           '/fmu/out/vehicle_attitude', '/fmu/out/vehicle_local_position_v1',
-          '/fmu/out/vehicle_status_v1', '/fmu/out/vehicle_land_detected',
+          '/fmu/out/vehicle_status_v4', '/fmu/out/vehicle_land_detected',
           '/fmu/in/trajectory_setpoint', '/fmu/in/vehicle_command', '/rosout', '/clock']
 (out/'topics.json').write_text(json.dumps(topics, indent=2)+'\n')
 qos = {topic: dict(history='keep_last', depth=50 if topic.endswith('/image_raw') else 100,
@@ -82,14 +83,14 @@ try:
     if bag.poll() is not None: raise RuntimeError('Recorder failed')
     subprocess.run(['ros2', 'param', 'dump', '/aruco_tracker', '--output-dir', str(out)], env=env, check=True)
     subprocess.run(['ros2', 'param', 'dump', '/precision_land', '--output-dir', str(out)], env=env, check=True)
-    flight = start(['python3', 'scripts/test_flight.py', '--speed', str(versions['speed_m_s']), '--output', str(out/'flight.jsonl')], 'flight.log')
+    flight = start(['python3', 'scripts/test_flight.py', '--start-via', a.start_via, '--speed', str(versions['speed_m_s']), '--output', str(out/'flight.jsonl')], 'flight.log')
     if flight.wait(timeout=150): raise RuntimeError('Flight test failed')
     pose = subprocess.run(['gz', 'topic', '-e', '-t', f'/world/{world}/pose/info', '-n', '1'], env=env, capture_output=True, text=True, timeout=10)
     (out/'final-gazebo-poses.txt').write_text(pose.stdout)
     time.sleep(2)
     stop(bag)
     # Preserve the flight controller log generated during this run.
-    ulogs = list((px4/'build/px4_sitl_default/rootfs/log').rglob('*.ulg'))
+    ulogs = list((out/'logs/px4-rootfs/log').rglob('*.ulg'))
     if ulogs: shutil.copy2(max(ulogs, key=lambda x: x.stat().st_mtime), out/'flight.ulg')
 finally:
     for proc in reversed(processes): stop(proc)

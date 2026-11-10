@@ -1,5 +1,6 @@
 #include "PrecisionLand.hpp"
 #include "CameraExtrinsics.hpp"
+#include <px4_ros2/utils/message_version.hpp>
 
 #include <px4_ros2/components/node_with_mode.hpp>
 #include <px4_ros2/utils/geometry.hpp>
@@ -33,6 +34,73 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 	loadParameters();
 
 	modeRequirements().manual_control = false;
+	setupStartService();
+}
+
+// Deferred service responses keep the single ROS executor free to receive
+// PX4 status/acknowledgements and run the landing controller while we wait.
+void PrecisionLand::setupStartService()
+{
+    using Status = px4_msgs::msg::VehicleStatus;
+    using Command = px4_msgs::msg::VehicleCommand;
+    using Ack = px4_msgs::msg::VehicleCommandAck;
+    _command_pub = _node.create_publisher<Command>(
+        "/fmu/in/vehicle_command" + px4_ros2::getMessageNameVersion<Command>(), 10);
+    _status_sub = _node.create_subscription<Status>(
+        "/fmu/out/vehicle_status" + px4_ros2::getMessageNameVersion<Status>(), rclcpp::QoS(1).best_effort(),
+        [this](Status::SharedPtr msg) { _status = *msg; _status_received = SteadyClock::now(); });
+    _ack_sub = _node.create_subscription<Ack>(
+        "/fmu/out/vehicle_command_ack" + px4_ros2::getMessageNameVersion<Ack>(), rclcpp::QoS(10).best_effort(),
+        [this](Ack::SharedPtr msg) {
+            if (!_start_requests.empty() && msg->command == Command::VEHICLE_CMD_SET_NAV_STATE &&
+                msg->target_system == 255 && msg->target_component == 191 &&
+                msg->result != Ack::VEHICLE_CMD_RESULT_ACCEPTED && msg->result != Ack::VEHICLE_CMD_RESULT_IN_PROGRESS) {
+                respondStart(false, "PX4 rejected mode request: result=" + std::to_string(msg->result));
+            }
+        });
+    _start_service = _node.create_service<Trigger>("/pl/start_landing",
+        [this](std::shared_ptr<rmw_request_id_t> header, std::shared_ptr<Trigger::Request>) {
+            auto reply = [this, &header](bool success, const std::string& message) {
+                Trigger::Response response; response.success = success; response.message = message + "; mode=" + std::to_string(id());
+                _start_service->send_response(*header, response);
+            };
+            const auto now = SteadyClock::now();
+            if (id() == kModeIDInvalid) { reply(false, "Mode is not registered"); return; }
+            if (now - _status_received > std::chrono::seconds(2) || now - _land_received > std::chrono::seconds(2) ||
+                !_vehicle_local_position->positionXYValid() || !_vehicle_local_position->positionZValid()) {
+                reply(false, "Missing or stale vehicle state"); return;
+            }
+            if (_status.arming_state != Status::ARMING_STATE_ARMED || _land_detected) {
+                reply(false, "Vehicle must already be armed and airborne"); return;
+            }
+            if (_status.nav_state == id() && isActive()) { reply(true, "Already active"); return; }
+            _start_requests.push_back(header);
+            if (_start_requests.size() > 1) { return; }
+            Command command{};
+            command.command = Command::VEHICLE_CMD_SET_NAV_STATE;
+            command.param1 = id();
+            command.target_system = _status.system_id;
+            command.target_component = _status.component_id;
+            command.source_system = 255; command.source_component = 191; command.from_external = true;
+            _start_deadline = now + std::chrono::seconds(5);
+            _command_pub->publish(command);
+        });
+    _start_timer = _node.create_wall_timer(std::chrono::milliseconds(50), [this]() {
+        if (_start_requests.empty()) { return; }
+        const auto now = SteadyClock::now();
+        if (now - _status_received < std::chrono::seconds(2) && _status.nav_state == id() && isActive()) {
+            respondStart(true, "Activated: mode=" + std::to_string(id()));
+        } else if (now >= _start_deadline) {
+            respondStart(false, "Timed out waiting for PX4 mode activation");
+        }
+    });
+}
+
+void PrecisionLand::respondStart(bool success, const std::string& message)
+{
+    Trigger::Response response; response.success = success; response.message = message;
+    for (const auto& header : _start_requests) { _start_service->send_response(*header, response); }
+    _start_requests.clear();
 }
 
 void PrecisionLand::loadParameters()
@@ -71,6 +139,7 @@ void PrecisionLand::loadParameters()
 void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg)
 {
 	_land_detected = msg->landed;
+	_land_received = SteadyClock::now();
 }
 
 void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)

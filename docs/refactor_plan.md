@@ -1,6 +1,6 @@
 # 정밀착륙 개선 순서
 
-기준 브랜치는 `feature/moving-aruco` (`5df7b91`)이다. 현재 이동 타겟의 탐색·접근·하강 동작과 QGC의 `PrecisionLandCustom` 모드를 기준으로 각 변경을 검증한다. **영상 입력 분리 → Python 인식기 전환 → PX4 공식 릴리스 검증 → 공통 모니터링 → Delayed KF 적용** 순서로 진행한다.
+기준 브랜치는 `feature/moving-aruco` (`5df7b91`)이다. 현재 이동 타겟의 탐색·접근·하강 동작과 QGC의 `PrecisionLandCustom` 모드를 기준으로 각 변경을 검증한다. **영상 입력 분리 → Python 인식기 전환 → 기존 PX4 커밋 호환 검증 → 공통 모니터링 → Delayed KF 적용** 순서로 진행한다.
 
 ## 0. 기준 동작 기록 및 워크스페이스 구조 유지
 
@@ -58,11 +58,13 @@ PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS 
 - 인식기의 `px4_msgs`·Eigen, 제어기의 `tf2`·`tf2_ros`처럼 코드가 사용하지 않는 직접 의존성을 제거한다. 제어기의 Eigen은 좌표 변환과 칼만 필터에 사용한다.
 - **완료 기준** — 같은 ROS bag에서 기존 인식기와 마커 검출 결과, 위치·자세를 비교한다. Jetson에서 처리율과 촬영부터 포즈 발행까지의 지연 분포를 측정하고, OpenCV 소스 빌드 없이 새 환경에서 실행한다.
 
-## 3. PX4 커밋 의존성을 검증된 릴리스 조합으로 전환
+## 3. 기존 PX4 체크아웃 호환 및 Gazebo 실행 분리
+
+상태: **사용자가 선택한 `ee99864808` 조합으로 standalone Gazebo·ROS 시작 서비스·정지/이동 SITL·MAVLink 전환·타겟 유실 및 제어권 회수 검증 완료**. QGC 동작은 사용자 직접 시험으로 확인. 실물 RC·실기체 비행은 미검증. [구현과 결과](px4_compatibility_stage3.md).
 
 - `aruco_moving.sdf`를 이 저장소의 `simulation/gz/worlds/`에 두고, Gazebo를 별도로 띄워 PX4 SITL을 연결하는 방식을 검증한다. 프로젝트의 월드 파일을 PX4 소스 트리에 복사하는 절차를 제거한다. [PX4 Gazebo Standalone](https://docs.px4.io/v1.16/en/sim_gazebo_gz/#standalone-mode)
-- 실기체에 사용할 공식 PX4 릴리스 하나를 정하고, 그 릴리스에 맞는 `px4_msgs`와 `px4_ros2_cpp` 버전을 검증한다. 커스텀 모드 등록, 착륙 감지 토픽, 접근 단계의 XY 속도와 Z 위치 혼합 setpoint, 하강 중 속도와 yaw 명령을 확인한다. 검증된 조합을 문서와 의존성 설정에 기록한 뒤 README의 기존 PX4 SHA 요구사항을 교체한다. [PX4 ROS 2 호환성 문서](https://docs.px4.io/main/en/ros2/user_guide#compatibility-issues)
-- **완료 기준** — 공식 릴리스로 새 환경에서 정적·이동 타겟 SITL을 재현한다. QGC와 ROS 양쪽에서 모드 시작, 접근·하강·착륙 완료, 타겟 유실 및 제어권 회수를 확인한 뒤 실기체에서 검증한다.
+- 사용자 요청에 따라 기존 `~/PX4-Autopilot`의 `ee99864808`을 기준으로 삼고, 해당 커밋에 맞는 `px4_msgs`와 `px4_ros2_cpp` 버전을 검증한다. 커스텀 모드 등록, 착륙 감지 토픽, 접근 단계의 XY 속도와 Z 위치 혼합 setpoint, 하강 중 속도와 yaw 명령을 확인한다. 검증된 조합을 문서와 의존성 설정에 기록한 뒤 README의 기존 PX4 SHA 요구사항을 교체한다. [PX4 ROS 2 호환성 문서](https://docs.px4.io/main/en/ros2/user_guide#compatibility-issues)
+- **완료 기준** — 선택한 기존 PX4 커밋으로 정적·이동 타겟 SITL을 재현한다. QGC와 ROS 양쪽에서 모드 시작, 접근·하강·착륙 완료, 타겟 유실 및 제어권 회수를 확인한 뒤 실기체에서 검증한다.
 
 ### QGC와 ROS에서 정밀착륙 시작
 

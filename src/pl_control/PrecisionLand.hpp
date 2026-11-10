@@ -1,5 +1,10 @@
 #pragma once
 #include <Eigen/Geometry>
+#include <chrono>
+#include <std_srvs/srv/trigger.hpp>
+#include <px4_msgs/msg/vehicle_status.hpp>
+#include <px4_msgs/msg/vehicle_command.hpp>
+#include <px4_msgs/msg/vehicle_command_ack.hpp>
 
 #include <px4_ros2/components/mode.hpp>
 #include <px4_ros2/odometry/local_position.hpp>
@@ -39,6 +44,19 @@ private:
 	};
 
 	void loadParameters();
+	using Trigger = std_srvs::srv::Trigger;
+	using SteadyClock = std::chrono::steady_clock;
+	void setupStartService();
+	void respondStart(bool success, const std::string& message);
+	rclcpp::Service<Trigger>::SharedPtr _start_service;
+	rclcpp::TimerBase::SharedPtr _start_timer;
+	rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr _command_pub;
+	rclcpp::Subscription<px4_msgs::msg::VehicleCommandAck>::SharedPtr _ack_sub;
+	rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr _status_sub;
+	px4_msgs::msg::VehicleStatus _status{};
+	SteadyClock::time_point _status_received{}, _land_received{}, _start_deadline{};
+	std::vector<std::shared_ptr<rmw_request_id_t>> _start_requests;
+
 
 	ArucoTag getTagWorld(const ArucoTag& tag);
 

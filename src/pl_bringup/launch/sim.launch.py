@@ -21,6 +21,7 @@ def setup(context):
     camera = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(Path(get_package_share_directory('pl_camera'))/'launch/camera_sim.launch.py')),
         launch_arguments={'world': world, 'model': cfg['bridge']['model'],
+                          'link': cfg['bridge']['link'], 'sensor': cfg['bridge']['sensor'],
                           'image_topic': cfg['camera']['image_topic'],
                           'camera_info_topic': cfg['camera']['camera_info_topic']}.items())
     agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(cfg['agent']['port'])], output='screen')

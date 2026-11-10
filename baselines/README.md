@@ -29,3 +29,5 @@
 `stage1-results.json`과 [1번 안내](../docs/camera_inputs_stage1.md)에 있습니다.
 
 Python 인식기 전환 검증은 `stage2-results.json`과 [2번 기록](../docs/python_detection_stage2.md)에 정리합니다. C++ 기준 실행 파일·라이브러리는 `.run/stage2-reference/`에 보관하며, 새 실행 환경에서는 사용하지 않습니다.
+
+기존 PX4 `ee99864808` 조합의 결과는 `stage3-results.json`과 [3번 기록](../docs/px4_compatibility_stage3.md)에 있습니다. PX4 메시지 버전이 바뀌었으므로 과거 전체 비행 bag을 현재 메시지 타입으로 검증하지 말고 당시 보존한 결과를 참고하세요. 카메라/포즈 재생은 그대로 사용할 수 있습니다.

@@ -3,7 +3,7 @@
 PRECISION_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source /opt/ros/humble/setup.bash
 export GZ_VERSION=harmonic
-export PX4_DIR="${PX4_DIR:-$HOME/PX4-precision-landing}"
+export PX4_DIR="${PX4_DIR:-$HOME/PX4-Autopilot}"
 export CMAKE_PREFIX_PATH="$PRECISION_ROOT/.deps/apt/root/opt/ros/humble:${CMAKE_PREFIX_PATH:-}"
 export AMENT_PREFIX_PATH="$PRECISION_ROOT/.deps/apt/root/opt/ros/humble:${AMENT_PREFIX_PATH:-}"
 export LD_LIBRARY_PATH="$PRECISION_ROOT/.deps/apt/root/opt/ros/humble/lib:${LD_LIBRARY_PATH:-}"
