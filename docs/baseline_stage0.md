@@ -13,9 +13,9 @@
 |---|---|
 | pl_camera | camera_sim.launch.py에서 Gazebo 브리지 소유. CSI는 보류 |
 | pl_detection | 기존 C++ ArUco 구현 이동. Python 전환은 2번 |
-| pl_control | 기존 PX4 모드·KF·착륙 FSM 이동. Delayed KF는 4번 |
+| pl_control | 기존 PX4 모드·KF·착륙 FSM 이동. Delayed KF는 5번 |
 | pl_bringup | sim/hardware launch, YAML 설정, Agent 실행 |
-| pl_viz | 기존 Gazebo 마커 표시 이동. 공통 모니터는 3번 |
+| pl_viz | 기존 Gazebo 마커 표시 이동. 공통 모니터는 4번 |
 
 하드웨어 설정에는 UART 장치/baud, 외부 Image/CameraInfo 토픽과 보정 확인 플래그를 둡니다.
 CSI 캡처·보정값·카메라 장착 변환의 실제 구현/검증은 1번입니다. 기본 hardware 프로필은
@@ -78,7 +78,7 @@ python3 scripts/replay_baseline.py baselines/실행폴더
 
 bag의 수신 시각은 ROS 시스템 시각이며 Image/CameraInfo의 Gazebo 시각과 PX4 timestamp는
 원본대로 보존합니다. 시간 변환을 새로 적용하지 않았습니다. `/clock`도 함께 저장합니다.
-공통 촬영 시각 기준의 상태 보간과 Delayed KF는 4번에서 검증합니다.
+공통 촬영 시각 기준의 상태 보간과 Delayed KF는 5번에서 검증합니다.
 
 버전은 [versions.json](../baselines/versions.json)에 고정했습니다. 매 실행의 manifest에는
 실제 checkout SHA와 dirty 상태, 소스 스냅샷 및 파일 해시가 별도로 기록됩니다.

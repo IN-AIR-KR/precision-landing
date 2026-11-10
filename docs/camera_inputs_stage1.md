@@ -46,7 +46,7 @@
 따라서 계획 1번은 **소프트웨어 입력 분리 완료 / CSI 완료 조건 보류** 상태입니다.
 
 인식기는 최초 유효 CameraInfo를 유지합니다. 해상도나 보정이 달라지면 노드를 재시작해야 합니다.
-촬영 시각을 이용한 기체 상태 보간과 Delayed KF는 4번 항목입니다.
+촬영 시각을 이용한 기체 상태 보간과 Delayed KF는 5번 항목입니다.
 
 ## 직접 테스트
 
@@ -121,8 +121,8 @@ colcon test-result --test-result-base build/precision_land/test_results --verbos
 
 - `pl_camera/launch/camera_sim.launch.py`: Gazebo 카메라 브리지. pl_bringup에서 include. CSI 드라이버는 보류.
 - `pl_detection`: 기존 C++ 인식기를 이동. Python 전환은 2번.
-- `pl_control`: 기존 PX4 모드, 착륙 FSM, KF를 이동. Delayed KF는 4번.
-- `pl_viz`: 기존 Gazebo 표시를 이동. 공통 모니터링은 3번.
+- `pl_control`: 기존 PX4 모드, 착륙 FSM, KF를 이동. Delayed KF는 5번.
+- `pl_viz`: 기존 Gazebo 표시를 이동. 공통 모니터링은 4번.
 - `pl_bringup`: 프로필과 프로세스 연결.
 
 노드명과 실행 파일명은 기준 bag 및 파라미터 호환성을 위해 유지합니다.
