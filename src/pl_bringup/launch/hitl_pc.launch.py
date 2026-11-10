@@ -19,7 +19,7 @@ def setup(context):
     def arg(name):
         return LaunchConfiguration(name).perform(context)
     root, px4 = Path(arg('workspace')).expanduser().resolve(), Path(arg('px4_dir')).expanduser().resolve()
-    cfg = yaml.safe_load(Path(arg('config')).read_text())
+    config = yaml.safe_load(Path(arg('config')).read_text())
     world = arg('world')
     if world not in ('aruco', 'aruco_moving'):
         raise ValueError('world must be aruco or aruco_moving')
@@ -36,7 +36,7 @@ def setup(context):
         raise RuntimeError('Another PX4 is running. Stop it before starting hitl_pc.')
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         try:
-            sock.bind(('0.0.0.0', int(cfg['agent']['port'])))
+            sock.bind(('0.0.0.0', int(config['agent']['port'])))
         except OSError as exc:
             raise RuntimeError('DDS Agent UDP port is already in use; run only one Agent on the PC') from exc
     runtime = Path(arg('run_dir')).expanduser().resolve()/'px4-rootfs'
@@ -56,11 +56,11 @@ def setup(context):
     flight = ExecuteProcess(cmd=gz_command(str(binary), '-d', str(px4/'build/px4_sitl_default/etc'), '-w', str(runtime)),
         additional_env=dict(env, PX4_GZ_STANDALONE='1', PX4_SYS_AUTOSTART='4014',
                             PX4_SIM_MODEL='gz_x500_mono_cam_down', PX4_GZ_WORLD=world, GZ_IP='127.0.0.1'), output='screen')
-    agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(cfg['agent']['port'])], output='screen')
+    agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(config['agent']['port'])], output='screen')
     camera = IncludeLaunchDescription(PythonLaunchDescriptionSource(str(
         Path(get_package_share_directory('pl_camera'))/'launch/camera_sim.launch.py')),
-        launch_arguments={'world': world, 'model': cfg['bridge']['model'], 'link': cfg['bridge']['link'],
-            'sensor': cfg['bridge']['sensor'], 'image_topic': '/hitl/pc/camera/image_raw',
+        launch_arguments={'world': world, 'model': config['bridge']['model'], 'link': config['bridge']['link'],
+            'sensor': config['bridge']['sensor'], 'image_topic': '/hitl/pc/camera/image_raw',
             'camera_info_topic': '/camera/camera_info', 'debug_bridge': 'false'}.items())
     encoder = Node(package='pl_camera', executable='image_relay', name='hitl_camera_encoder', output='screen',
         parameters=[{'direction': 'encode', 'input_topic': '/hitl/pc/camera/image_raw',
@@ -68,7 +68,7 @@ def setup(context):
             'jpeg_quality': int(arg('jpeg_quality'))}])
     decoder = Node(package='pl_camera', executable='image_relay', name='hitl_monitor_decoder', output='screen',
         parameters=[{'direction': 'decode', 'input_topic': '/pl/monitor/image/compressed',
-            'output_topic': '/hitl/pc/monitor/image', 'fps': float(cfg['viz']['fps'])}])
+            'output_topic': '/hitl/pc/monitor/image', 'fps': float(config['viz']['fps'])}])
     viewer = Node(package='rqt_image_view', executable='rqt_image_view', name='hitl_image_view',
                   arguments=['/hitl/pc/monitor/image'], condition=IfCondition(LaunchConfiguration('viewer')))
     required = [gazebo, flight, agent, encoder]

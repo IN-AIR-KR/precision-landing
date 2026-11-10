@@ -16,7 +16,7 @@
 ### 모델: [`simulation/gz/models/aruco_moving_target`](../simulation/gz/models/aruco_moving_target)
 
 - `marker_link` 하나짜리 단순 모델. 1.5 x 1.5 x 0.1m 평평한 패드, 질량 50kg, 중력/바닥 접촉 정상 작동 (물리적으로 바닥에 그냥 놓여 있는 상자입니다. 뜨는 게 아닙니다).
-- 패드 위에 **1.0 x 1.0m** ArUco 마커 평면이 붙어 있습니다 (기존 0.5m에서 2배로 키움). **크기를 바꾸려면 `src/pl_detection/cfg/params.yaml`의 `marker_size`도 반드시 같이 바꿔야 합니다** — PnP 포즈 추정의 스케일 기준이기 때문입니다.
+- 패드 위에 **1.0 x 1.0m** ArUco 마커 평면이 붙어 있습니다 (기존 0.5m에서 2배로 키움). **크기를 바꾸려면 `src/pl_detection/config/params.yaml`의 `marker_size`도 반드시 같이 바꿔야 합니다** — PnP 포즈 추정의 스케일 기준이기 때문입니다.
 - `gz-sim-velocity-control-system` (`gz::sim::systems::VelocityControl`) 플러그인이 붙어 있습니다. 이건 Gazebo에 기본 내장된 플러그인이라 별도 빌드가 필요 없습니다.
   - **커맨드를 아무것도 안 보내면 속도 0, 즉 가만히 있습니다.** (처음 준비 상태 = 정지)
   - 실행 중 아무 때나 아래 명령으로 속도를 바꿀 수 있습니다:
@@ -75,9 +75,9 @@ make px4_sitl gz_x500_mono_cam_down
 
 ## 파라미터 튜닝
 
-- 타겟 속도가 빨라지면 `src/pl_control/cfg/params.yaml`의 `vel_p_gain`을 높이거나(응답성 ↑, 오버슈트 위험 ↑), `target_timeout`을 넉넉히(5초 이상) 주는 것이 안전합니다.
+- 타겟 속도가 빨라지면 `src/pl_control/config/params.yaml`의 `vel_p_gain`을 높이거나(응답성 ↑, 오버슈트 위험 ↑), `target_timeout`을 넉넉히(5초 이상) 주는 것이 안전합니다.
 - 속도 추정 저역통과 필터 계수(`alpha = 0.3`, `PrecisionLand.cpp`의 `targetPoseCallback`)는 하드코딩되어 있습니다. 탐지 노이즈가 심하면 더 작게(예: 0.15), 반응이 느리게 느껴지면 더 크게 조정하세요.
-- 마커/패드 크기를 더 키우고 싶다면 `model.sdf`의 두 치수(패드 box, 마커 plane)와 `aruco_tracker/cfg/params.yaml`의 `marker_size`를 같이 맞추세요.
+- 마커/패드 크기를 더 키우고 싶다면 `model.sdf`의 두 치수(패드 box, 마커 plane)와 `src/pl_detection/config/params.yaml`의 `marker_size`를 같이 맞추세요.
 
 ## 알려진 한계
 

@@ -220,7 +220,19 @@ python3 scripts/test_flight.py             # 이동 타겟 0.3 m/s
 
 각 시험 전 시뮬을 새로 실행합니다. 시험은 이륙·모드 전환·타겟 이동·착륙·자동 disarm을 확인합니다.
 
-**수동 시험:** QGC에서 이륙한 뒤 `PrecisionLandCustom`을 선택하거나 다음 서비스를 호출합니다. 서비스는 무장·이륙을 수행하지 않습니다.
+#### QGC에서 수동 착륙 시험
+
+1. 시뮬레이션을 실행한 뒤 QGroundControl(QGC)을 열고, PX4 SITL에 연결된 **Fly** 화면으로 이동합니다.
+2. 화면 왼쪽의 **Takeoff** 버튼을 누릅니다. 오른쪽 고도 슬라이더에서 약 **2.5 m**를 지정한 뒤 확인 슬라이더를 밀어 이륙합니다. [QGC 이륙 조작 안내](https://docs.qgroundcontrol.com/Stable_V5.0/en/qgc-user-guide/fly_view/fly_tools.html#takeoff)
+3. 이륙한 뒤 상단의 **현재 비행 모드**를 누릅니다. 아래 화면에서는 **Position**이라고 표시된 곳입니다.
+4. 펼쳐진 목록 맨 아래에서 **PrecisionLandCustom**을 누릅니다. 바로 위의 **Precision Landing**과 이름이 비슷하므로 전체 이름을 확인합니다.
+5. 상단 모드 표시가 **PrecisionLandCustom**으로 바뀌면, 모니터에서 탐색·접근·하강 진행을 확인합니다.
+
+![QGC Fly 화면에서 상단 Position을 눌러 연 비행 모드 목록과 맨 아래 PrecisionLandCustom 버튼](Precision.png)
+
+목록에 **PrecisionLandCustom**이 보이지 않으면 ROS 실행 로그에서 PX4 외부 모드 등록 메시지(`Got RegisterExtComponentReply`)를 확인합니다.
+
+**ROS 서비스로 모드 전환** — QGC에서 먼저 이륙한 뒤 아래 명령을 실행해도 됩니다.
 
 ```bash
 source scripts/env.sh
@@ -281,7 +293,7 @@ ros2 launch pl_bringup sim.launch.py world:=aruco_moving
 ros2 run rqt_image_view rqt_image_view /pl/monitor/image
 ```
 
-비행 시험은 별도 터미널에서 6.1의 `test_flight.py` 또는 수동 모드 전환 절차를 따릅니다. 종료할 때는 각 실행 터미널에서 `Ctrl+C`를 누릅니다.
+비행 시험은 별도 터미널에서 6.1의 `test_flight.py`를 실행하거나 [QGC 수동 착륙 절차](#qgc에서-수동-착륙-시험)를 따릅니다. 종료할 때는 각 실행 터미널에서 `Ctrl+C`를 누릅니다.
 
 실기체는 `./scripts/setup.sh hardware` 후 `ros2 launch pl_bringup hardware.launch.py`를 사용합니다. 카메라 보정·장착 확인 플래그와 UART 경로를 먼저 설정해야 하며, CSI 입력·실기체 검증은 보류 상태입니다.
 
@@ -374,7 +386,7 @@ python3 scripts/test_flight.py --image-transport compressed
 # python3 scripts/test_flight.py --image-transport compressed --speed 0
 ```
 
-`--image-transport compressed`는 시험 코드가 디버그 원본 영상을 Wi-Fi로 끌어오지 않도록 합니다. 수동 시험은 QGC 이륙 후 모드 선택 또는 `/pl/start_landing` 서비스를 사용합니다.
+`--image-transport compressed`는 시험 코드가 디버그 원본 영상을 Wi-Fi로 끌어오지 않도록 합니다. 수동 시험은 PC에서 [QGC 수동 착륙 절차](#qgc에서-수동-착륙-시험)를 따릅니다.
 
 **실행 옵션**
 

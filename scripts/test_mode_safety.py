@@ -6,9 +6,9 @@ import yaml
 root=Path(__file__).resolve().parents[1]
 os.chdir(root)
 out=root/'.run'/('mode-safety-'+time.strftime('%Y%m%d-%H%M%S'));out.mkdir(exist_ok=False)
-cfg=yaml.safe_load((root/'src/pl_bringup/config/sim.yaml').read_text())
-cfg['control']['descent_vel']=0.1
-(out/'sim.yaml').write_text(yaml.safe_dump(cfg))
+config=yaml.safe_load((root/'src/pl_bringup/config/sim.yaml').read_text())
+config['control']['descent_vel']=0.1
+(out/'sim.yaml').write_text(yaml.safe_dump(config))
 env=dict(os.environ,HEADLESS='1',RUN_LOG_DIR=str(out),BRINGUP_CONFIG=str(out/'sim.yaml'))
 with (out/'runner.log').open('w') as log:
  p=subprocess.Popen(['bash','scripts/run.sh'],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)

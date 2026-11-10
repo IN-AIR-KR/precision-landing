@@ -12,29 +12,29 @@ from launch_ros.actions import Node
 
 
 def setup(context):
-    cfg = yaml.safe_load(Path(LaunchConfiguration('config').perform(context)).read_text())
-    world = LaunchConfiguration('world').perform(context) or cfg['bridge']['world']
+    config = yaml.safe_load(Path(LaunchConfiguration('config').perform(context)).read_text())
+    world = LaunchConfiguration('world').perform(context) or config['bridge']['world']
     size = LaunchConfiguration('marker_size').perform(context)
-    detection = dict(cfg['detection'], optical_frame=cfg['camera']['optical_frame'])
+    detection = dict(config['detection'], optical_frame=config['camera']['optical_frame'])
     if size:
         detection['marker_size'] = float(size)
     camera = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(Path(get_package_share_directory('pl_camera'))/'launch/camera_sim.launch.py')),
-        launch_arguments={'world': world, 'model': cfg['bridge']['model'],
-                          'link': cfg['bridge']['link'], 'sensor': cfg['bridge']['sensor'],
-                          'image_topic': cfg['camera']['image_topic'],
-                          'camera_info_topic': cfg['camera']['camera_info_topic']}.items())
-    agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(cfg['agent']['port'])], output='screen')
+        launch_arguments={'world': world, 'model': config['bridge']['model'],
+                          'link': config['bridge']['link'], 'sensor': config['bridge']['sensor'],
+                          'image_topic': config['camera']['image_topic'],
+                          'camera_info_topic': config['camera']['camera_info_topic']}.items())
+    agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(config['agent']['port'])], output='screen')
     nodes = [agent,
         Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen', parameters=[detection],
-             remappings=[('/camera/image_raw', cfg['camera']['image_topic']),
-                         ('/camera/camera_info', cfg['camera']['camera_info_topic'])]),
-        Node(package='pl_control', executable='precision_land', name='precision_land', output='screen', parameters=[cfg['control']])]
-    if cfg['viz']['gazebo']:
+             remappings=[('/camera/image_raw', config['camera']['image_topic']),
+                         ('/camera/camera_info', config['camera']['camera_info_topic'])]),
+        Node(package='pl_control', executable='precision_land', name='precision_land', output='screen', parameters=[config['control']])]
+    if config['viz']['gazebo']:
         nodes.append(Node(package='pl_viz', executable='tag_pose_visualizer', name='tag_pose_visualizer', output='screen'))
     # A dead Agent, bridge or flight node must be visible as a failed bringup.
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
-                   parameters=[{k: v for k, v in cfg['viz'].items() if k != 'gazebo'}])
+                   parameters=[{k: v for k, v in config['viz'].items() if k != 'gazebo'}])
     return [camera, monitor] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
 
 

@@ -32,6 +32,6 @@ JSON detection/pose metadata only when subscribed.
 
 ```bash
 source scripts/env.sh
-ros2 run pl_detection aruco_tracker --ros-args -r __node:=aruco_tracker --params-file src/pl_detection/cfg/params.yaml
+ros2 run pl_detection aruco_tracker --ros-args -r __node:=aruco_tracker --params-file src/pl_detection/config/params.yaml
 python3 -m pytest -q src/pl_detection/test
 ```
