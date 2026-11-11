@@ -121,64 +121,70 @@ stateDiagram-v2
 - 기체 FRD: **X 전방, Y 오른쪽, Z 아래**. 제어 좌표 NED: **북·동·아래**.
 - 장착 변환과 기체 pose를 합성:
 
-$$
+```math
 T_{N,M}=T_{N,B}\,T_{B,C}\,T_{C,M}
-$$
+```
 
-- $T_{A,B}$: B 좌표를 A 좌표로 옮기는 변환. N: NED, B: 기체, C: 카메라, M: 마커.
+- $`T_{A,B}`$: B 좌표를 A 좌표로 옮기는 변환. N: NED, B: 기체, C: 카메라, M: 마커.
 - 장착 설정: `camera_position_body`, `camera_orientation_body`(w, x, y, z).
 
 ### 5.2 타겟 위치·속도 추정
 
-- 상태: $\mathbf{x}=[\mathbf{p}_t^T,\mathbf{v}_t^T]^T$; 관측은 NED 위치 $\mathbf{z}$만 사용.
+- 상태는 $`\mathbf{x}=[\mathbf{p}_t^T,\mathbf{v}_t^T]^T`$입니다. 관측에는 NED 위치 $`\mathbf{z}`$ 만 사용합니다.
 - **등속도 예측:** 제어 tick마다 실행. 짧은 미검출 구간에도 타겟 위치 예측 지속.
 
-$$
-F=\begin{bmatrix}I&\Delta t I\\0&I\end{bmatrix},\quad
+```math
+F=\begin{bmatrix}
+I & \Delta t I \\
+0 & I
+\end{bmatrix},\quad
 \hat{\mathbf{x}}^-=F\hat{\mathbf{x}},\quad P^-=FPF^T+Q
-$$
+```
 
-$$
-Q=\sigma_a^2\begin{bmatrix}\frac{\Delta t^4}{4}I&\frac{\Delta t^3}{2}I\\\frac{\Delta t^3}{2}I&\Delta t^2 I\end{bmatrix}
-$$
+```math
+Q=\sigma_a^2\begin{bmatrix}
+\frac{\Delta t^4}{4}I & \frac{\Delta t^3}{2}I \\
+\frac{\Delta t^3}{2}I & \Delta t^2 I
+\end{bmatrix}
+```
 
 - **관측 보정:** 새 마커 pose를 받을 때 실행.
 
-$$
+```math
 H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
-$$
+```
 
-$$
+```math
 \hat{\mathbf{x}}=\hat{\mathbf{x}}^-+K(\mathbf{z}-H\hat{\mathbf{x}}^-),\quad P=(I-KH)P^-
-$$
+```
 
-- 초기값: 위치는 첫 관측, 속도는 0; $P_{pp}=\sigma_p^2I$, $P_{vv}=4I$.
-- 기본값: $\sigma_a=1.0\;\mathrm{m/s^2}$, $\sigma_p=0.1\;\mathrm{m}$.
+- 초기값: 위치는 첫 관측, 속도는 0; $`P_{pp}=\sigma_p^2I`$, $`P_{vv}=4I`$.
+- 기본값: $`\sigma_a=1.0\;\mathrm{m/s^2}`$, $`\sigma_p=0.1\;\mathrm{m}`$.
 - 마커 자세는 KF 상태에 포함하지 않고 관측값 사용.
 - **현재 제한:** 수신 시점의 기체 pose로 변환하며 유실 시간도 수신 시점 기준. 촬영 시각 보간·Delayed KF·모드 재진입 시 추정 초기화는 [5번 계획](docs/refactor_plan.md)의 후속 작업.
 
 ### 5.3 수평 추종·하강 제어
 
-- 위치 오차: $\mathbf{e}_{xy}=\mathbf{p}_{vehicle,xy}-\hat{\mathbf{p}}_{target,xy}$.
+- 위치 오차: $`\mathbf{e}_{xy}=\mathbf{p}_{vehicle,xy}-\hat{\mathbf{p}}_{target,xy}`$.
 - **타겟 속도 feedforward + PI 보정**, 축별 속도 제한:
 
-$$
-\mathbf{I}_k=\operatorname{clip}(\mathbf{I}_{k-1}+\mathbf{e}_{xy,k},-v_{max},v_{max})
-$$
+```math
+\mathbf{I}_k=\mathrm{clip}(\mathbf{I}_{k-1}+\mathbf{e}_{xy,k},-v_{max},v_{max})
+```
 
-$$
-\mathbf{v}_{cmd,xy}=\operatorname{clip}(\hat{\mathbf{v}}_{target,xy}-K_p\mathbf{e}_{xy}-K_i\mathbf{I}_k,-v_{max},v_{max})
-$$
+```math
+\mathbf{v}_{cmd,xy}=\mathrm{clip}(\hat{\mathbf{v}}_{target,xy}-K_p\mathbf{e}_{xy}-K_i\mathbf{I}_k,-v_{max},v_{max})
+```
 
-- 현재 적분 구현은 오차 누적이며 $\Delta t$를 곱하지 않음. 기본 $K_i=0$이므로 **P + feedforward**로 동작.
-- 기본 설정: $K_p=1.7$, $v_{max}=10\;\mathrm{m/s}$, 하강 속도 $v_z=+0.6\;\mathrm{m/s}$.
+- 현재 적분 구현은 오차 누적이며 $`\Delta t`$를 곱하지 않음. 기본 $`K_i=0`$이므로 **P + feedforward**로 동작.
+- 기본 설정: $`K_p=1.7`$, $`v_{max}=10\;\mathrm{m/s}`$, 하강 속도 $`v_z=+0.6\;\mathrm{m/s}`$.
 - `Approach`: XY 속도 + 진입 시 Z 위치 유지. `Descend`: XYZ 속도 + 마커 yaw.
 - 하강 진입 판정(3차원 norm, 목표 Z는 유지 고도):
 
-$$
+```math
 \|\mathbf{p}_{goal}-\mathbf{p}_{vehicle}\|<0.2\;\mathrm{m},\quad
 \|\mathbf{v}_{vehicle}-\hat{\mathbf{v}}_{target}\|<0.2\;\mathrm{m/s}
-$$
+```
 
 - 마지막 관측 수신 후 기본 **5초** 초과 시 타겟 유실. 접근·하강 중이면 실패 보고 후 `Idle`.
 - 기본값은 [sim.yaml](src/pl_bringup/config/sim.yaml), 실기체 설정은 [hardware.yaml](src/pl_bringup/config/hardware.yaml).
