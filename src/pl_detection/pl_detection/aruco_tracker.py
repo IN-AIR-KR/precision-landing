@@ -9,6 +9,10 @@ from rclpy.executors import ExternalShutdownException
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
 import math
+import json
+import time
+from std_msgs.msg import String
+from sensor_msgs.msg import CompressedImage
 
 
 def to_bgr(msg):
@@ -61,9 +65,28 @@ class Detector:
         h = np.float32(marker_size / 2)
         self.objects = np.array([[-h, h, 0], [h, h, 0], [h, -h, 0], [-h, -h, 0]], np.float32)
 
-    def process(self, image, camera, distortion):
+    def process(self, image, camera, distortion, draw=True):
         corners, ids, _ = self.detector.detectMarkers(image)
-        cv2.aruco.drawDetectedMarkers(image, corners, ids)
+        self.detected = ids is not None and self.marker_id in ids.flatten()
+        if draw:
+            if ids is not None:
+                stroke = max(3, round(image.shape[1] / 256))
+                for corner, marker_id in zip(corners, ids.flatten()):
+                    points = np.rint(corner.reshape(4, 2)).astype(np.int32)
+                    cv2.polylines(image, [points], True, (0, 255, 0), stroke, cv2.LINE_AA)
+                    label = f'ID {marker_id}'
+                    origin = tuple(points[0] + [0, -12])
+                    cv2.putText(image, label, origin, cv2.FONT_HERSHEY_SIMPLEX,
+                                .8, (0, 0, 0), 4, cv2.LINE_AA)
+                    cv2.putText(image, label, origin, cv2.FONT_HERSHEY_SIMPLEX,
+                                .8, (0, 255, 0), 2, cv2.LINE_AA)
+                    if marker_id == self.marker_id:
+                        # Use corners from this exact frame, never a later pose/status sample.
+                        center = tuple(np.rint(corner.reshape(4, 2).mean(axis=0)).astype(int))
+                        origin = (image.shape[1] // 2, image.shape[0] // 2)
+                        if center != origin:
+                            cv2.arrowedLine(image, origin, center, (0, 255, 255),
+                                            stroke + 1, cv2.LINE_AA, tipLength=.15)
         if camera is None or distortion is None or not distortion.size or ids is None:
             return None
         for corner, marker_id in zip(corners, ids.flatten()):
@@ -74,12 +97,7 @@ class Detector:
                                         flags=cv2.SOLVEPNP_ITERATIVE)
             if not ok:
                 return None
-            cv2.drawFrameAxes(image, camera, None, rvec, tvec, self.marker_size)
             position = tvec.flatten()
-            text = 'X: %.2f Y: %.2f Z: %.2f' % tuple(position)
-            (width, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
-            cv2.putText(image, text, (image.shape[1]-width-10, image.shape[0]-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2, cv2.LINE_8)
             return position, quaternion_xyzw(cv2.Rodrigues(rvec)[0])
         return None
 
@@ -88,16 +106,28 @@ class ArucoTracker(Node):
     def __init__(self):
         super().__init__('aruco_tracker_node')
         defaults = {'aruco_id': 0, 'dictionary': 2, 'marker_size': 0.5,
-                    'optical_frame': 'camera_frame'}
+                    'optical_frame': 'camera_frame', 'input_transport': 'raw', 'debug_fps': 15.0, 'jpeg_quality': 80}
         values = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
         self.frame = values['optical_frame']
+        self.debug_fps = float(values['debug_fps'])
+        self.jpeg_quality = int(values['jpeg_quality'])
+        if self.debug_fps <= 0 or not 1 <= self.jpeg_quality <= 100:
+            raise ValueError('debug_fps must be positive and jpeg_quality in [1,100]')
+        self.last_debug = -math.inf
         self.detector = Detector(values['dictionary'], values['aruco_id'], values['marker_size'])
         self.camera = self.distortion = None
         qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT,
                          durability=DurabilityPolicy.VOLATILE)
-        self.create_subscription(Image, '/camera/image_raw', self.image_callback, qos)
+        transport = values['input_transport']
+        if transport not in ('raw', 'compressed'):
+            raise ValueError('input_transport must be raw or compressed')
+        self.create_subscription(CompressedImage if transport == 'compressed' else Image,
+                                 '/camera/image_raw/compressed' if transport == 'compressed' else '/camera/image_raw',
+                                 self.image_callback, qos)
         self.info_sub = self.create_subscription(CameraInfo, '/camera/camera_info', self.info_callback, qos)
         self.image_pub = self.create_publisher(Image, '/image_proc', qos)
+        self.compressed_pub = self.create_publisher(CompressedImage, '/image_proc/compressed', qos)
+        self.status_pub = self.create_publisher(String, '/pl/detection/status', qos)
         self.pose_pub = self.create_publisher(PoseStamped, '/target_pose', qos)
 
     def info_callback(self, msg):
@@ -110,8 +140,24 @@ class ArucoTracker(Node):
 
     def image_callback(self, msg):
         try:
-            image = to_bgr(msg)
-            result = self.detector.process(image, self.camera, self.distortion)
+            if isinstance(msg, CompressedImage):
+                image = cv2.imdecode(np.frombuffer(msg.data, np.uint8), cv2.IMREAD_COLOR)
+                if image is None:
+                    raise ValueError('Invalid compressed camera image')
+            else:
+                image = to_bgr(msg)
+            now = time.monotonic()
+            raw = self.image_pub.get_subscription_count() > 0
+            compressed = self.compressed_pub.get_subscription_count() > 0
+            draw = (raw or compressed) and now - self.last_debug >= 1 / self.debug_fps
+            result = self.detector.process(image, self.camera, self.distortion, draw=draw)
+            if self.status_pub.get_subscription_count():
+                self.status_pub.publish(String(data=json.dumps({
+                    'stamp_ns': msg.header.stamp.sec * 1000000000 + msg.header.stamp.nanosec,
+                    'detected': bool(self.detector.detected), 'marker_id': self.detector.marker_id,
+                    'pose_valid': result is not None,
+                    'position_m': result[0].tolist() if result is not None else None,
+                    'distance_m': float(np.linalg.norm(result[0])) if result is not None else None})))
             if result is not None:
                 p, q = result
                 pose = PoseStamped()
@@ -120,13 +166,22 @@ class ArucoTracker(Node):
                 pose.pose.position.x, pose.pose.position.y, pose.pose.position.z = map(float, p)
                 pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w = map(float, q)
                 self.pose_pub.publish(pose)
-            output = Image()
-            output.header = msg.header
-            output.height, output.width = image.shape[:2]
-            output.encoding, output.is_bigendian = 'bgr8', 0
-            output.step = output.width * 3
-            output.data = array('B', image.tobytes())
-            self.image_pub.publish(output)
+            if draw:
+                self.last_debug = now
+                if raw:
+                    output = Image()
+                    output.header = msg.header
+                    output.height, output.width = image.shape[:2]
+                    output.encoding, output.is_bigendian = 'bgr8', 0
+                    output.step = output.width * 3
+                    output.data = array('B', image.tobytes())
+                    self.image_pub.publish(output)
+                if compressed:
+                    ok, encoded = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, self.jpeg_quality])
+                    if ok:
+                        output = CompressedImage(header=msg.header, format='bgr8; jpeg compressed bgr8')
+                        output.data = array('B', encoded.tobytes())
+                        self.compressed_pub.publish(output)
         except (ValueError, cv2.error) as exc:
             self.get_logger().error(str(exc), throttle_duration_sec=5)
 

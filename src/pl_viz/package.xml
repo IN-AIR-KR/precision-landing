@@ -3,7 +3,7 @@
 <package format="3">
   <name>pl_viz</name>
   <version>0.0.1</version>
-  <description>Simulation-only visualization for precision landing (Gazebo markers)</description>
+  <description>Common precision landing camera and telemetry monitor</description>
   <maintainer email="jake@arkelectron.com">Jacob Dahl</maintainer>
   <license>BSD-3-Clause</license>
 
@@ -15,9 +15,14 @@
   <depend>geometry_msgs</depend>
 
   <!-- Gazebo Dependencies (simulation only) -->
-  <depend>gz-transport13</depend>
-  <depend>gz-msgs10</depend>
+  <!-- Optional PL_VIZ_GAZEBO build uses system gz-transport13 / gz-msgs10. -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>px4_msgs</exec_depend>
+  <exec_depend>pl_detection</exec_depend>
 
+  <test_depend>python3-pytest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 

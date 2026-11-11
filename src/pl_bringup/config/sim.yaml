@@ -8,6 +8,8 @@ detection:
   aruco_id: 0
   dictionary: 2
   marker_size: 1.0
+  debug_fps: 15.0
+  jpeg_quality: 80
 control:
   descent_vel: 0.6
   vel_p_gain: 1.7
@@ -30,7 +32,13 @@ control:
 agent:
   port: 8888
 viz:
+  transport: raw
+  fps: 10.0
+  jpeg_quality: 80
+  stale_after: 2.0
   gazebo: true
 bridge:
   world: aruco_moving
   model: x500_mono_cam_down_0
+  link: camera_link
+  sensor: camera

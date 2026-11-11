@@ -48,6 +48,11 @@ def test_known_marker_pose_and_missing_target():
     image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     camera = np.array([[600., 0, 399.5], [0, 600., 299.5], [0, 0, 1.]])
     position, quaternion = Detector(2, 0, 1.).process(image.copy(), camera, np.zeros(5))
+    unannotated = image.copy()
+    plain_position, plain_quaternion = Detector(2, 0, 1.).process(unannotated, camera, np.zeros(5), draw=False)
+    np.testing.assert_array_equal(unannotated, image)
+    np.testing.assert_array_equal(plain_position, position)
+    np.testing.assert_array_equal(plain_quaternion, quaternion)
     np.testing.assert_allclose(position, [0, 0, 600/199], atol=1e-6)
     assert abs(quaternion[0]) == pytest.approx(1.)
     assert Detector(2, 1, 1.).process(image.copy(), camera, np.zeros(5)) is None

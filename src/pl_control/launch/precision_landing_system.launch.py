@@ -43,7 +43,7 @@ def generate_launch_description():
             name='aruco_tracker',
             output='screen',
             parameters=[
-                PathJoinSubstitution([FindPackageShare('pl_detection'), 'cfg', 'params.yaml']),
+                PathJoinSubstitution([FindPackageShare('pl_detection'), 'config', 'params.yaml']),
                 {'marker_size': LaunchConfiguration('marker_size')},
             ]
         ),
@@ -54,7 +54,7 @@ def generate_launch_description():
             name='precision_land',
             output='screen',
             parameters=[
-                PathJoinSubstitution([FindPackageShare('pl_control'), 'cfg', 'params.yaml'])
+                PathJoinSubstitution([FindPackageShare('pl_control'), 'config', 'params.yaml'])
             ]
         ),
         # Gazebo visualization node (simulation only)

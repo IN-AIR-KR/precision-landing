@@ -1,19 +1,22 @@
+현재 기본 PX4는 `~/PX4-Autopilot`입니다. 기존 터미널에서는 `export PX4_DIR="$HOME/PX4-Autopilot"`으로 갱신하세요. [3번 호환 검증과 실행 구성](px4_compatibility_stage3.md).
+
 Python 인식기 설치·검증: [2번 진행 결과](python_detection_stage2.md). 현재 `setup.sh`는 OpenCV 소스를 빌드하지 않고 고정된 wheel을 설치합니다.
 
 # 로컬 실행 (Ubuntu 22.04 / ROS 2 Humble / Gazebo Harmonic)
 
-기존 `~/PX4-Autopilot` 수정사항은 보존했습니다. 예제 전용 `~/PX4-precision-landing`
-worktree는 README 지정 커밋 `86f2fdfd7de7f5e5d29ab61f60d81e892a557376`입니다.
+기존 `~/PX4-Autopilot`의 `ee99864808`에서 실행하며 사용자 수정사항은 보존합니다.
+이전 비교용 `~/PX4-precision-landing` worktree는 보관만 하며 기본 실행에는 사용하지 않습니다.
 Python OpenCV 4.10.0 wheel은 `.deps/python`, 추가 gps_msgs는 `.deps/apt`에 설치합니다. OpenCV 소스 빌드는 사용하지 않습니다.
 
 ## 실행
 
 ```bash
 cd ~/precision-landing
+export PX4_DIR="$HOME/PX4-Autopilot"
 ./scripts/run.sh
 ```
 
-`aruco_moving` 월드, Gazebo GUI, `/image_proc` 영상 창, DDS Agent(pl_bringup launch 소유), ROS 노드를 함께
+`aruco_moving` 월드, Gazebo GUI, `/pl/monitor/image` 공통 모니터 창, DDS Agent(pl_bringup launch 소유), ROS 노드를 함께
 실행합니다. 기존 `aruco_moving_target` 패드를 원점에서 X 방향 1.5m 떨어진 곳에 배치합니다.
 마커 크기는 모델과 같은 1.0m입니다. 처음에 패드는 정지해 있습니다.
 
@@ -46,8 +49,7 @@ cd ~/precision-landing
 - `simulation/gz/worlds/aruco_moving.sdf`: 누락된 월드를 기존 문서의 배치 조건으로 추가했습니다.
   PX4 기본 `aruco.sdf`의 지면·조명·시뮬레이션 플러그인을 사용합니다.
 - `simulation/gz/models/aruco_moving_target`: 저장소에 있던 움직이는 패드 모델을 그대로 사용합니다.
-- `run.sh`가 월드를 전용 PX4 checkout의 `Tools/simulation/gz/worlds`로 복사합니다.
-  기존 `~/PX4-Autopilot`은 수정하지 않습니다.
+- `run.sh`가 프로젝트 월드를 직접 읽어 Gazebo를 실행합니다. 기존 `~/PX4-Autopilot`은 수정하지 않습니다.
 
 ## 명령 환경과 재빌드
 
@@ -88,10 +90,8 @@ PX4 로그는 `.run/px4.log`에 기록됩니다.
   드론과 패드 중심의 수평 거리는 약 7.9cm. 이 결과는 이번 0.3m/s 시험 기준입니다.
 - 시험 종료 시 패드를 정지시키고, 전체 시뮬레이터 프로세스도 종료했습니다.
 
-## 0번 기준 데이터 기록
-
-정적·이동 비행의 ROS bag 기록과 격리 재생은 [0번 실행 안내](baseline_stage0.md)를 참고하세요.
-
 ## 1번 공통 카메라 입력
 
 입력 토픽과 카메라 장착 설정, CSI 보류 범위는 [1번 안내](camera_inputs_stage1.md)를 참고하세요.
+
+공통 카메라·제어 HUD 설정과 구독 동작은 [4번 모니터 안내](monitoring_stage4.md)를 참고하세요.

@@ -1,10 +1,10 @@
 # 정밀착륙 개선 순서
 
-기준 브랜치는 `feature/moving-aruco` (`5df7b91`)이다. 현재 이동 타겟의 탐색·접근·하강 동작과 QGC의 `PrecisionLandCustom` 모드를 기준으로 각 변경을 검증한다. **영상 입력 분리 → Python 인식기 전환 → PX4 공식 릴리스 검증 → 공통 모니터링 → Delayed KF 적용** 순서로 진행한다.
+기준 브랜치는 `feature/moving-aruco` (`5df7b91`)이다. 현재 이동 타겟의 탐색·접근·하강 동작과 QGC의 `PrecisionLandCustom` 모드를 기준으로 각 변경을 검증한다. **영상 입력 분리 → Python 인식기 전환 → 기존 PX4 커밋 호환 검증 → 공통 모니터링 → Delayed KF 적용** 순서로 진행한다.
 
 ## 0. 기준 동작 기록 및 워크스페이스 구조 유지
 
-진행 결과와 재현 명령: [0번 기준 기록](baseline_stage0.md). 패키지는 아래 이름으로 분리한다. 인식기는 2번 전까지 기존 C++ 구현을, 제어기는 5번 전까지 기존 KF를 유지한다. 기준 비교 자료는 baselines에 보존한다.
+진행 결과: [0번 기준 기록](baseline_stage0.md). 패키지는 아래 이름으로 분리한다. 인식기는 2번 전까지 기존 C++ 구현을, 제어기는 5번 전까지 기존 KF를 유지한다. 과거 기준 데이터와 전용 기록·재생 도구는 정리했다. 5번 검증에 필요한 데이터는 해당 구현 시 새로 수집한다.
 
 - 현재 PX4·`px4_msgs`·`px4_ros2_cpp` 조합을 기록한다. 정적·이동 타겟 SITL에서 카메라 영상과 보정 정보, `/target_pose`, 기체 자세·위치, 착륙 로그를 확보한다. 같은 입력으로 인식과 추정 변경을 비교할 수 있게 ROS bag으로 저장한다.
 - 저장소 루트를 그대로 `colcon` 워크스페이스로 쓴다. 프로젝트 패키지는 `src/`, Gazebo 월드와 모델은 `simulation/`에 둔다. 실기체와 시뮬의 설치·빌드·실행 대상을 각각 정의한다.
@@ -23,7 +23,7 @@ PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS 
 
 - **시뮬** — `pl_bringup`의 `sim.launch.py`가 `ExecuteProcess`로 `MicroXRCEAgent udp4 -p 8888`을 실행한다. `pl_camera/camera_sim.launch.py`를 include하여 `ros_gz_bridge`로 Gazebo 카메라 데이터를 전달한다.
 - **실기체** — `hardware.launch.py`가 `ExecuteProcess`로 UART Agent를 띄우고, CSI 캡처·인식·제어 노드도 함께 실행한다. UART 장치와 보드레이트는 실제 배선과 PX4의 `uxrce_dds_client` 설정에 맞춘다. 제어기는 PX4 연결과 유효한 기체 상태를 확인한 뒤 착륙 제어를 시작한다.
-- **기존 서비스 정리** — 실기체 launch를 검증한 뒤 Jetson에 설치된 기존 USB 카메라·인식기·Agent 서비스를 비활성화하고 `services/`의 개별 서비스와 스크립트를 정리한다. 기존 Agent는 UART 중복 점유를 피하도록 새 launch를 시험하기 전에 중지한다. 부팅 자동 실행이 필요할 때는 `hardware.launch.py` 전체를 실행하는 `systemd` 서비스 하나를 둔다.
+- **기존 서비스 정리** — 저장소의 기존 개별 서비스와 실행 스크립트는 삭제했다. Jetson에 별도로 설치된 기존 USB 카메라·인식기·Agent 서비스의 확인 및 비활성화는 실기체 작업 시 진행한다. 기존 Agent는 UART 중복 점유를 피하도록 새 launch를 시험하기 전에 중지한다. 부팅 자동 실행이 필요할 때는 `hardware.launch.py` 전체를 실행하는 `systemd` 서비스 하나를 둔다.
 
 ### 설정 파일 위치
 
@@ -58,11 +58,13 @@ PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS 
 - 인식기의 `px4_msgs`·Eigen, 제어기의 `tf2`·`tf2_ros`처럼 코드가 사용하지 않는 직접 의존성을 제거한다. 제어기의 Eigen은 좌표 변환과 칼만 필터에 사용한다.
 - **완료 기준** — 같은 ROS bag에서 기존 인식기와 마커 검출 결과, 위치·자세를 비교한다. Jetson에서 처리율과 촬영부터 포즈 발행까지의 지연 분포를 측정하고, OpenCV 소스 빌드 없이 새 환경에서 실행한다.
 
-## 3. PX4 커밋 의존성을 검증된 릴리스 조합으로 전환
+## 3. 기존 PX4 체크아웃 호환 및 Gazebo 실행 분리
+
+상태: **사용자가 선택한 `ee99864808` 조합으로 standalone Gazebo·ROS 시작 서비스·정지/이동 SITL·MAVLink 전환·타겟 유실 및 제어권 회수 검증 완료**. QGC 동작은 사용자 직접 시험으로 확인. 실물 RC·실기체 비행은 미검증. [구현과 결과](px4_compatibility_stage3.md).
 
 - `aruco_moving.sdf`를 이 저장소의 `simulation/gz/worlds/`에 두고, Gazebo를 별도로 띄워 PX4 SITL을 연결하는 방식을 검증한다. 프로젝트의 월드 파일을 PX4 소스 트리에 복사하는 절차를 제거한다. [PX4 Gazebo Standalone](https://docs.px4.io/v1.16/en/sim_gazebo_gz/#standalone-mode)
-- 실기체에 사용할 공식 PX4 릴리스 하나를 정하고, 그 릴리스에 맞는 `px4_msgs`와 `px4_ros2_cpp` 버전을 검증한다. 커스텀 모드 등록, 착륙 감지 토픽, 접근 단계의 XY 속도와 Z 위치 혼합 setpoint, 하강 중 속도와 yaw 명령을 확인한다. 검증된 조합을 문서와 의존성 설정에 기록한 뒤 README의 기존 PX4 SHA 요구사항을 교체한다. [PX4 ROS 2 호환성 문서](https://docs.px4.io/main/en/ros2/user_guide#compatibility-issues)
-- **완료 기준** — 공식 릴리스로 새 환경에서 정적·이동 타겟 SITL을 재현한다. QGC와 ROS 양쪽에서 모드 시작, 접근·하강·착륙 완료, 타겟 유실 및 제어권 회수를 확인한 뒤 실기체에서 검증한다.
+- 사용자 요청에 따라 기존 `~/PX4-Autopilot`의 `ee99864808`을 기준으로 삼고, 해당 커밋에 맞는 `px4_msgs`와 `px4_ros2_cpp` 버전을 검증한다. 커스텀 모드 등록, 착륙 감지 토픽, 접근 단계의 XY 속도와 Z 위치 혼합 setpoint, 하강 중 속도와 yaw 명령을 확인한다. 검증된 조합을 문서와 의존성 설정에 기록한 뒤 README의 기존 PX4 SHA 요구사항을 교체한다. [PX4 ROS 2 호환성 문서](https://docs.px4.io/main/en/ros2/user_guide#compatibility-issues)
+- **완료 기준** — 선택한 기존 PX4 커밋으로 정적·이동 타겟 SITL을 재현한다. QGC와 ROS 양쪽에서 모드 시작, 접근·하강·착륙 완료, 타겟 유실 및 제어권 회수를 확인한 뒤 실기체에서 검증한다.
 
 ### QGC와 ROS에서 정밀착륙 시작
 
@@ -77,11 +79,14 @@ ros2 service call /pl/start_landing std_srvs/srv/Trigger '{}'
 
 ## 4. 실기체와 시뮬 공통 모니터링
 
+상태: **공통 HUD·구독 기반 처리·영상 유실 표시 구현, ROS 통합 테스트 통과**. 새 구성의 SITL 비행은 다른 실행 중인 PX4 종료 대기, 실기체 화면 검증은 보류. [구현과 검증](monitoring_stage4.md).
+
+- 원본 영상 위에 직접 오버레이한다. 좌상단은 대문자 상태, 우상단은 GPS·위성 수·수평/수직 속도, 하단 가운데는 배터리 전압·잔량을 배치한다.
 - `hardware.launch.py`와 `sim.launch.py`에서 `pl_viz`의 모니터링 출력을 기본으로 제공한다. 운영자가 화면을 열면 아래 항목을 같은 화면에서 확인할 수 있게 한다.
 
 | 표시 항목 | 내용 |
 |---|---|
-| ArUco 인식 | 카메라 영상, 검출·미검출 여부, 마커 ID와 윤곽, 검출된 마커의 위치·거리 |
+| ArUco 인식 | 카메라 영상 위 굵은 마커 윤곽·ID, 중앙 십자와 마커 중심까지 노란 화살표 (사용자 지정 배치) |
 | 착륙 FSM | 현재 단계(`Idle`, `Search`, `Approach`, `Descend`, `Finished`)와 타겟 유실 여부 |
 | 기체 상태 | GPS fix 상태, 사용 중인 위성 수, 기체 수평·수직 속도(m/s) |
 | 배터리 | 팩 전압(V), PX4가 추정한 잔량(%) |
