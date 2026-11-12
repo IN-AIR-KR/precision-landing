@@ -69,7 +69,7 @@ subs = [node.create_subscription(t, topic, cb, qos_profile_sensor_data) for t, t
 client = node.create_client(Trigger, '/pl/start_landing')
 assert client.wait_for_service(timeout_sec=10), 'Start landing service unavailable'
 mode_id = None
-start_future = repeat_future = None
+start_future = repeat_future = paused_detector = None
 def velocity(speed):
     if os.environ.get('SIM_WORLD') == 'aruco':
         return
