@@ -1,0 +1,32 @@
+# Jetson CSI camera (IMX219) defaults. camera_csi.launch.py reads this file for
+# its launch-argument defaults, so this is the single place to edit them.
+#
+# width/height/fps must name an IMX219 sensor mode, or Argus renegotiates and
+# the field of view and frame rate change:
+#   3280x2464@21  3280x1848@28  1920x1080@30  1640x1232@30  1280x720@60
+csi_camera:
+  ros__parameters:
+    sensor_id: 0
+    width: 1920
+    height: 1080
+    fps: 30.0
+    # nvvidconv flip-method: 0 none, 2 rotate 180, 4 flip horizontally, 6 flip vertically.
+    # Set this to match how the camera is mounted, so the optical frame stays
+    # x right / y down / z forward as pl_bringup's hardware.yaml documents.
+    flip_method: 0
+    # mono8 skips the colour conversion and halves the message size. ArUco
+    # detection only needs luminance, so prefer it unless a colour debug view
+    # is wanted.
+    encoding: bgr8
+    image_topic: /camera/image_raw
+    camera_info_topic: /camera/camera_info
+    frame_id: camera_optical_frame
+    # Path to a camera_calibration YAML. Empty publishes an uncalibrated
+    # CameraInfo (k zeroed); aruco_tracker then waits instead of using wrong
+    # intrinsics, so target poses stay unavailable until this is filled in.
+    camera_info_url: ''
+    # Argus ISP controls. wbmode 1 is auto white balance; empty ranges leave
+    # exposure and gain on Argus auto.
+    wbmode: 1
+    exposure_time_range: ''
+    gain_range: ''
