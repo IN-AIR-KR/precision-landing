@@ -9,6 +9,6 @@
   <exec_depend>ament_index_python</exec_depend><exec_depend>python3-yaml</exec_depend>
   <exec_depend>pl_detection</exec_depend><exec_depend>pl_control</exec_depend>
   <exec_depend>pl_viz</exec_depend>
-  <!-- pl_camera is selected explicitly by scripts/build.sh sim. -->
+  <!-- Optional camera launch dependency selected by scripts/build.sh for sim and hardware. -->
   <export><build_type>ament_cmake</build_type></export>
 </package>
