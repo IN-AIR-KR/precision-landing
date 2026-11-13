@@ -33,7 +33,8 @@ control:
   - 0.7071067811865476
 agent:
   device: /dev/ttyTHS1
-  baud: 3000000
+  # 921600: FC 의 SER_TEL2_BAUD 와 맞춘 값. 3000000 은 아직 검증되지 않았다.
+  baud: 921600
 viz:
   transport: compressed
   fps: 10.0
