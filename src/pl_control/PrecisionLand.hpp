@@ -75,11 +75,11 @@ private:
 	bool positionReached(const Eigen::Vector3f& target) const;
 
 	enum class State {
-		Idle,
-		Search, 	// Searches for target using a search pattern
-		Approach, 	// Positioning over landing target while maintaining altitude
-		Descend, 	// Stay over landing target while descending
-		Finished
+		IDLE,
+		SEARCH, 	// Searches for target using a search pattern
+		ALIGN, 	// Positioning over landing target while maintaining altitude
+		APPROACH, 	// Stay over landing target while descending
+		FINISHED
 	};
 
 	void switchToState(State state);
@@ -97,7 +97,7 @@ private:
 	std::shared_ptr<px4_ros2::TrajectorySetpointType> _trajectory_setpoint;
 
 	// Data
-	State _state = State::Idle;
+	State _state = State::IDLE;
 	bool _search_started = false;
 
 	ArucoTag _tag;
@@ -115,11 +115,11 @@ private:
 	bool _land_detected = false;
 	bool _target_lost_prev = true;
 
-	// Waypoints for Search pattern
+	// Waypoints for SEARCH pattern
 	std::vector<Eigen::Vector3f> _search_waypoints;
-	// Search pattern generation
+	// SEARCH pattern generation
 	void generateSearchWaypoints();
-	// Search pattern index
+	// SEARCH pattern index
 	int _search_waypoint_index = 0;
 
 	// Parameters

@@ -52,7 +52,7 @@ def test_demand_and_camera_loss(transport, monkeypatch, tmp_path):
     pose_sub = probe.create_subscription(PoseStamped, '/target_pose', poses.append, qos)
     subs = [pose_sub]
     camera_on = True
-    phase = 'Approach'
+    phase = 'ALIGN'
 
     def spin(seconds):
         end = time.monotonic()+seconds
@@ -116,13 +116,13 @@ def test_demand_and_camera_loss(transport, monkeypatch, tmp_path):
         assert both_images
         remove(both_sub)
         camera_on=False
-        phase='Descend'
+        phase='APPROACH'
         count=len(jpegs)
         spin(2.5)
         state=json.loads(states[-1].data)
         assert state['image']['health']=='stale'
         assert state['detection']['health']=='stale'
-        assert state['control']['health']=='ok' and state['control']['value']['state']=='Descend'
+        assert state['control']['health']=='ok' and state['control']['value']['state']=='APPROACH'
         assert len(jpegs)>count
         velocity.v_xy_valid=False
         velocity.v_z_valid=False

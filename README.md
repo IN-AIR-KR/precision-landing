@@ -89,28 +89,28 @@ graph TD
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Idle
-    Idle --> Search: 모드 활성화
-    Search --> Search: 웨이포인트 탐색 반복
-    Search --> Approach: 타겟 필터 초기화됨
-    Approach --> Descend: 위치 오차와 상대 속도 조건 충족
-    Approach --> Idle: 타겟 유실 / 실패 보고
-    Descend --> Idle: 타겟 유실 / 실패 보고
-    Descend --> Finished: PX4 landed 감지
-    Finished --> [*]: PX4에 성공 보고
+    [*] --> IDLE
+    IDLE --> SEARCH: 모드 활성화
+    SEARCH --> SEARCH: 웨이포인트 탐색 반복
+    SEARCH --> ALIGN: 타겟 필터 초기화됨
+    ALIGN --> APPROACH: 위치 오차와 상대 속도 조건 충족
+    ALIGN --> IDLE: 타겟 유실 / 실패 보고
+    APPROACH --> IDLE: 타겟 유실 / 실패 보고
+    APPROACH --> FINISHED: PX4 landed 감지
+    FINISHED --> [*]: PX4에 성공 보고
 ```
 
 | 단계       | 알고리즘 / 전이 조건                                                                                  |
 | ---------- | ----------------------------------------------------------------------------------------------------- |
-| `Idle`     | 초기 대기 상태. 타겟 유실로 실패하면 복귀하며, 모드 활성화 시 탐색 시작                                  |
-| `Search`   | NED 원점 XY 기준 반경 최대 2 m의 나선형 웨이포인트 탐색. 높이 간격 0.5 m. 필터가 초기화되면 접근 시작 |
-| `Approach` | 진입 고도를 유지하며 XY 속도로 타겟 추종. 위치 오차와 기체−타겟 상대 속도가 임계값보다 작으면 하강    |
-| `Descend`  | XY 추종을 유지하며 일정 수직 속도로 하강. 마커 자세에서 yaw 지정. PX4 착륙 감지 시 완료               |
-| `Finished` | PX4 모드 실행 결과를 성공으로 보고                                                                    |
+| `IDLE`     | 초기 대기 상태. 타겟 유실로 실패하면 복귀하며, 모드 활성화 시 탐색 시작                                  |
+| `SEARCH`   | NED 원점 XY 기준 반경 최대 2 m의 나선형 웨이포인트 탐색. 높이 간격 0.5 m. 필터가 초기화되면 접근 시작 |
+| `ALIGN` | 진입 고도를 유지하며 XY 속도로 타겟 추종. 위치 오차와 기체−타겟 상대 속도가 임계값보다 작으면 하강    |
+| `APPROACH`  | XY 추종을 유지하며 일정 수직 속도로 하강. 마커 자세에서 yaw 지정. PX4 착륙 감지 시 완료               |
+| `FINISHED` | PX4 모드 실행 결과를 성공으로 보고                                                                    |
 
 - FSM은 **5단계**. 화면의 `INACTIVE`는 별도 단계가 아니라 외부 모드 비활성 표시.
 - 색상: 대기 회색, 탐색·접근·하강 노란색, 완료 초록색. 활성 중 타겟 유실 또는 제어 상태 수신 이상은 빨간색 우선.
-- 수동 모드 전환 시 외부 모드가 비활성화됨. `Idle` 자체가 Hold/자동 착륙 명령을 보내는 것은 아님.
+- 수동 모드 전환 시 외부 모드가 비활성화됨. `IDLE` 자체가 Hold/자동 착륙 명령을 보내는 것은 아님.
 
 ## 5. 상태 추정 및 제어
 
@@ -178,7 +178,7 @@ H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
 
 - 현재 적분 구현은 오차 누적이며 $`\Delta t`$를 곱하지 않음. 기본 $`K_i=0`$이므로 **P + feedforward**로 동작.
 - 기본 설정: $`K_p=1.7`$, $`v_{max}=10\;\mathrm{m/s}`$, 하강 속도 $`v_z=+0.6\;\mathrm{m/s}`$.
-- `Approach`: XY 속도 + 진입 시 Z 위치 유지. `Descend`: XYZ 속도 + 마커 yaw.
+- `ALIGN`: XY 속도 + 진입 시 Z 위치 유지. `APPROACH`: XYZ 속도 + 마커 yaw.
 - 하강 진입 판정(3차원 norm, 목표 Z는 유지 고도):
 
 ```math
@@ -186,7 +186,7 @@ H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
 \|\mathbf{v}_{vehicle}-\hat{\mathbf{v}}_{target}\|<0.2\;\mathrm{m/s}
 ```
 
-- 마지막 관측 수신 후 기본 **5초** 초과 시 타겟 유실. 접근·하강 중이면 실패 보고 후 `Idle`.
+- 마지막 관측 수신 후 기본 **5초** 초과 시 타겟 유실. 접근·하강 중이면 실패 보고 후 `IDLE`.
 - 기본값은 [sim.yaml](src/pl_bringup/config/sim.yaml), 실기체 설정은 [hardware.yaml](src/pl_bringup/config/hardware.yaml).
 
 ## 6. 실행방법

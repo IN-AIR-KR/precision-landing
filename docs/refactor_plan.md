@@ -87,7 +87,7 @@ ros2 service call /pl/start_landing std_srvs/srv/Trigger '{}'
 | 표시 항목 | 내용 |
 |---|---|
 | ArUco 인식 | 카메라 영상 위 굵은 마커 윤곽·ID, 중앙 십자와 마커 중심까지 노란 화살표 (사용자 지정 배치) |
-| 착륙 FSM | 현재 단계(`Idle`, `Search`, `Approach`, `Descend`, `Finished`)와 타겟 유실 여부 |
+| 착륙 FSM | 현재 단계(`IDLE`, `SEARCH`, `ALIGN`, `APPROACH`, `FINISHED`)와 타겟 유실 여부. 최종 궤적 추종을 사용하는 제어기는 `FINAL_APPROACH`도 표시 |
 | 기체 상태 | GPS fix 상태, 사용 중인 위성 수, 기체 수평·수직 속도(m/s) |
 | 배터리 | 팩 전압(V), PX4가 추정한 잔량(%) |
 

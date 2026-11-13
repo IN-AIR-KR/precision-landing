@@ -273,7 +273,7 @@ void PrecisionLand::onActivate()
 {
 	generateSearchWaypoints();
 	_search_started = true;
-	switchToState(State::Search);
+	switchToState(State::SEARCH);
 }
 
 void PrecisionLand::onDeactivate()
@@ -301,16 +301,16 @@ void PrecisionLand::updateSetpoint(float dt_s)
 
 	// State machine
 	switch (_state) {
-	case State::Idle: {
+	case State::IDLE: {
 		// No-op -- just spin
 		break;
 	}
 
-	case State::Search: {
+	case State::SEARCH: {
 
 		if (_target_initialized) {
 			_approach_altitude = _vehicle_local_position->positionNed().z();
-			switchToState(State::Approach);
+			switchToState(State::ALIGN);
 			break;
 		}
 
@@ -330,20 +330,20 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		break;
 	}
 
-	case State::Approach: {
+	case State::ALIGN: {
 
 		if (target_lost) {
 			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
 			ModeBase::completed(px4_ros2::Result::ModeFailureOther);
-			switchToState(State::Idle);
+			switchToState(State::IDLE);
 			return;
 		}
 
-		// Approach using the same feedforward-compensated horizontal velocity controller as
-		// Descend, holding altitude fixed at _approach_altitude. A plain position setpoint here
+		// In ALIGN, use the same feedforward-compensated horizontal velocity controller as
+		// APPROACH, holding altitude fixed at _approach_altitude. A plain position setpoint here
 		// structurally lags a moving target (PX4's internal position controller has no
 		// feedforward for a moving setpoint), so delta_pos would never shrink below the
-		// Approach->Descend threshold once the target moves fast enough.
+		// ALIGN->APPROACH threshold once the target moves fast enough.
 		Eigen::Vector2f vel = calculateVelocitySetpointXY();
 		px4_ros2::TrajectorySetpoint setpoint;
 		setpoint.withHorizontalVelocity(vel).withPositionZ(_approach_altitude);
@@ -352,18 +352,18 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		auto target_position = Eigen::Vector3f(_target_position.x(), _target_position.y(), _approach_altitude);
 
 		if (positionReached(target_position)) {
-			switchToState(State::Descend);
+			switchToState(State::APPROACH);
 		}
 
 		break;
 	}
 
-	case State::Descend: {
+	case State::APPROACH: {
 
 		if (target_lost) {
 			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
 			ModeBase::completed(px4_ros2::Result::ModeFailureOther);
-			switchToState(State::Idle);
+			switchToState(State::IDLE);
 			return;
 		}
 
@@ -373,13 +373,13 @@ void PrecisionLand::updateSetpoint(float dt_s)
 					     px4_ros2::quaternionToYaw(_tag.orientation));
 
 		if (_land_detected) {
-			switchToState(State::Finished);
+			switchToState(State::FINISHED);
 		}
 
 		break;
 	}
 
-	case State::Finished: {
+	case State::FINISHED: {
 		ModeBase::completed(px4_ros2::Result::Success);
 		break;
 	}
@@ -500,9 +500,9 @@ bool PrecisionLand::positionReached(const Eigen::Vector3f& target) const
 
 	const auto delta_pos = target - position;
 	// Compare against velocity relative to the target instead of absolute vehicle velocity:
-	// for a moving target (e.g. Approach tracking the tag), the vehicle must keep moving at the
+	// for a moving target (e.g. ALIGN tracking the tag), the vehicle must keep moving at the
 	// target's speed, so absolute velocity would never settle near zero. _target_velocity is zero
-	// while no tag has been detected yet, so this is unchanged for the static Search waypoints.
+	// while no tag has been detected yet, so this is unchanged for the static SEARCH waypoints.
 	const auto relative_velocity = velocity - _target_velocity.cast<float>();
 	return (delta_pos.norm() < _param_delta_position) && (relative_velocity.norm() < _param_delta_velocity);
 }
@@ -510,20 +510,20 @@ bool PrecisionLand::positionReached(const Eigen::Vector3f& target) const
 std::string PrecisionLand::stateName(State state)
 {
 	switch (state) {
-	case State::Idle:
-		return "Idle";
+	case State::IDLE:
+		return "IDLE";
 
-	case State::Search:
-		return "Search";
+	case State::SEARCH:
+		return "SEARCH";
 
-	case State::Approach:
-		return "Approach";
+	case State::ALIGN:
+		return "ALIGN";
 
-	case State::Descend:
-		return "Descend";
+	case State::APPROACH:
+		return "APPROACH";
 
-	case State::Finished:
-		return "Finished";
+	case State::FINISHED:
+		return "FINISHED";
 
 	default:
 		return "Unknown";

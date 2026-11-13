@@ -60,9 +60,9 @@ def render(image, state):
     # Status colour is shared by the label and the frame border (OpenCV BGR).
     phase_color = (160, 160, 160)
     if c and c['active']:
-        if c['state'] == 'Finished':
+        if c['state'] == 'FINISHED':
             phase_color = (0, 220, 0)
-        elif c['state'] in ('Search', 'Approach', 'Descend'):
+        elif c['state'] in ('SEARCH', 'ALIGN', 'APPROACH', 'FINAL_APPROACH'):
             phase_color = yellow
     if c is None or (c['active'] and c['target_lost']):
         phase_color = (0, 0, 255)
