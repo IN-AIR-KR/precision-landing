@@ -197,12 +197,12 @@ sudo modprobe -r nv_imx219 && sudo modprobe nv_imx219
 
 ## 6. 도구
 
-### 6.1 미리보기 — `scripts/imx219_preview.py`
+### 6.1 미리보기 — `scripts/camera_preview/imx219_preview.py`
 
 ```bash
-python3 scripts/imx219_preview.py                 # auto: argus -> raw
-python3 scripts/imx219_preview.py --backend raw   # ISP 없이 raw 경로
-python3 scripts/imx219_preview.py --mode 4        # 1280x720 @60fps
+python3 scripts/camera_preview/imx219_preview.py                 # auto: argus -> raw
+python3 scripts/camera_preview/imx219_preview.py --backend raw   # ISP 없이 raw 경로
+python3 scripts/camera_preview/imx219_preview.py --mode 4        # 1280x720 @60fps
 ```
 
 - `argus` 백엔드는 ISP를, `raw` 백엔드는 V4L2 + 소프트웨어 디베이어를 씁니다.
@@ -213,7 +213,7 @@ python3 scripts/imx219_preview.py --mode 4        # 1280x720 @60fps
   headless 빌드라 창을 못 띄우는데, 스크립트가 그 경로를 `PYTHONPATH`에서 빼고
   자기 자신을 다시 실행합니다.
 
-OV5647용 뷰어는 `scripts/csi_view.py`입니다(BG10/BGGR, 모드표가 다름).
+OV5647용 뷰어는 `scripts/camera_preview/ov5647_preview.py`입니다(BG10/BGGR, 모드표가 다름).
 
 ### 6.2 ROS 2 노드 — `pl_camera/csi_camera`
 

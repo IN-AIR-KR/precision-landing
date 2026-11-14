@@ -20,7 +20,7 @@ Requires the Argus GStreamer plugin:
     gst-inspect-1.0 nvarguscamerasrc     # nvidia-l4t-gstreamer
 
 Only one Argus capture session may exist at a time, so stop any preview
-(`scripts/imx219_preview.py`) before starting this node.
+(`scripts/camera_preview/imx219_preview.py`) before starting this node.
 """
 from array import array
 import threading

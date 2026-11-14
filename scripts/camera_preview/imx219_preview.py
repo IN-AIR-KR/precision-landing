@@ -10,10 +10,10 @@ CAM0에 연결된 IMX219가 실제로 프레임을 내보내는지 눈으로 확
           소프트웨어 디베이어. ISP 없이도 동작하지만 노출을 직접 잡아야 한다.
 
 사용 예:
-    python3 scripts/imx219_preview.py                 # auto: argus -> raw
-    python3 scripts/imx219_preview.py --backend raw   # ISP 없이 raw 경로
-    python3 scripts/imx219_preview.py --mode 4        # 1280x720 @60fps
-    python3 scripts/imx219_preview.py --no-aruco
+    python3 scripts/camera_preview/imx219_preview.py                 # auto: argus -> raw
+    python3 scripts/camera_preview/imx219_preview.py --backend raw   # ISP 없이 raw 경로
+    python3 scripts/camera_preview/imx219_preview.py --mode 4        # 1280x720 @60fps
+    python3 scripts/camera_preview/imx219_preview.py --no-aruco
 
 키: q/ESC 종료, s 스냅샷 저장(.run/), g 흑백 전환,
     [ ] 노출 -/+, - = 게인 -/+ (raw 경로 전용)
@@ -25,7 +25,7 @@ Tegra VI 드라이버가 스트리밍 시작 시 노출·게인을 센서 모드
     override_enable=0 : exposure 4000/16000/33000us -> 평균 모두 12876 (변화 없음)
     override_enable=1 : exposure 4000/16000/33000us -> 평균 15536/39293/45711
 
-OV5647 용 뷰어는 scripts/csi_view.py 를 쓴다(BG10/BGGR, 모드표가 다름).
+OV5647 용 뷰어는 scripts/camera_preview/ov5647_preview.py 를 쓴다(BG10/BGGR, 모드표가 다름).
 배경은 docs/csi_camera_ov5647.md 참고.
 """
 import argparse

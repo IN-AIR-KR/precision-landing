@@ -10,10 +10,10 @@ cv2.VideoCapture로는 열리지 않습니다. 이 스크립트는 v4l2-ctl이 s
 
 사용법:
 
-    python3 scripts/csi_view.py                  # 1280x720 @60fps
-    python3 scripts/csi_view.py --mode 1         # 1920x1080 @30fps
-    python3 scripts/csi_view.py --auto-exposure  # 밝기 자동 조절
-    python3 scripts/csi_view.py --no-aruco       # 마커 검출 끄기
+    python3 scripts/camera_preview/ov5647_preview.py                  # 1280x720 @60fps
+    python3 scripts/camera_preview/ov5647_preview.py --mode 1         # 1920x1080 @30fps
+    python3 scripts/camera_preview/ov5647_preview.py --auto-exposure  # 밝기 자동 조절
+    python3 scripts/camera_preview/ov5647_preview.py --no-aruco       # 마커 검출 끄기
 
 프로젝트가 `.deps/python`에 쓰는 OpenCV는 `opencv-contrib-python-headless`라
 창을 띄울 수 없습니다(`cv2.error: The function is not implemented`). 이미
