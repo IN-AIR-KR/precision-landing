@@ -10,6 +10,7 @@ from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from pl_bringup.parameters import control_parameters
+from pl_bringup.recording import recorder, recording_arguments
 
 
 def setup(context):
@@ -41,11 +42,12 @@ def setup(context):
         on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))],
     )) for node in required]
     return [SetEnvironmentVariable('ROS_DOMAIN_ID', str(config['px4'].get('domain_id', 0))),
-            *handlers, monitor, *required]
+            *handlers, monitor, *required, recorder('real')]
 
 
 def generate_launch_description():
     return LaunchDescription([
+        *recording_arguments(),
         DeclareLaunchArgument('config', default_value=str(
             Path(get_package_share_directory('pl_bringup')) / 'config/real.yaml')),
         OpaqueFunction(function=setup),

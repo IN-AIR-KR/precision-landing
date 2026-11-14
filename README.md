@@ -420,3 +420,7 @@ PC에서 `ros2 multicast receive`, Jetson에서 `ros2 multicast send`로 검색�
 종료는 먼저 Jetson launch, 다음 PC launch에서 `Ctrl+C`입니다. PC launch는 자신이 시작한 시뮬과 Agent를 종료하며, 영상 창만 닫는 것은 비행 스택을 종료하지 않습니다.
 
 **검증 범위:** JPEG 변환·원본 header 보존·검출·뷰어 구독 해제 통합 테스트와 같은 PC에서 양쪽 launch를 함께 실행한 정지·이동 타겟 착륙 및 자동 disarm 시험을 통과했습니다. 실제 Jetson의 ARM 환경과 Wi-Fi 처리율·지연은 별도 장치 시험이 필요합니다.
+
+### 6.4 비행 로그 녹화 및 재생
+
+실기체(`./scripts/run_real.sh`)와 SITL(`./scripts/run.sh`)에서 녹화기는 기본으로 실행된다. 녹화를 끄려면 `record:=false`를 전달한다. 비행별 ARM부터 DISARM까지 기록하며 로그는 루트의 `flight_logs/`에 저장된다. [웹뷰어 실행과 기록 항목](scripts/flight_analyzer/README.md)을 참고한다.

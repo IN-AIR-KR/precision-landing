@@ -10,6 +10,7 @@ from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from pl_bringup.parameters import control_parameters
+from pl_bringup.recording import recorder, recording_arguments
 
 
 def setup(context):
@@ -33,11 +34,12 @@ def setup(context):
                    parameters=[dict(monitor_parameters, transport='raw')])
     handlers = [RegisterEventHandler(OnProcessExit(target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='Required Jetson process exited'))])) for node in (detector, control)]
-    return [*handlers, detector, control, monitor]
+    return [*handlers, detector, control, monitor, recorder('hitl')]
 
 
 def generate_launch_description():
     return LaunchDescription([
+        *recording_arguments(),
         SetEnvironmentVariable('ROS_DOMAIN_ID', os.environ.get('ROS_DOMAIN_ID', '42')),
         DeclareLaunchArgument('config', default_value=str(Path(get_package_share_directory('pl_bringup'))/'config/sim.yaml')),
         DeclareLaunchArgument('world', default_value='aruco_moving'),

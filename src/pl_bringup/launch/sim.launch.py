@@ -11,6 +11,7 @@ from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
 from pl_bringup.parameters import control_parameters
+from pl_bringup.recording import recorder, recording_arguments
 
 
 def setup(context):
@@ -44,14 +45,17 @@ def setup(context):
     }
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
                    parameters=[monitor_parameters])
-    return [*camera_actions, monitor] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
+    return [*camera_actions, monitor, recorder('sim')] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
 
 
 def generate_launch_description():
     default = str(Path(get_package_share_directory('pl_bringup'))/'config/sim.yaml')
-    return LaunchDescription([DeclareLaunchArgument('config', default_value=default),
-                              DeclareLaunchArgument('world', default_value=''),
-                              DeclareLaunchArgument('marker_size', default_value=''),
-                              DeclareLaunchArgument('start_agent', default_value='true', choices=['true', 'false']),
-                              DeclareLaunchArgument('enable_gazebo_viz', default_value='', choices=['', 'true', 'false']),
-                              OpaqueFunction(function=setup)])
+    return LaunchDescription([
+        *recording_arguments(),
+        DeclareLaunchArgument('config', default_value=default),
+        DeclareLaunchArgument('world', default_value=''),
+        DeclareLaunchArgument('marker_size', default_value=''),
+        DeclareLaunchArgument('start_agent', default_value='true', choices=['true', 'false']),
+        DeclareLaunchArgument('enable_gazebo_viz', default_value='', choices=['', 'true', 'false']),
+        OpaqueFunction(function=setup),
+    ])

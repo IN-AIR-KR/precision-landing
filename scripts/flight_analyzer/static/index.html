@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precision Landing Flight Analyzer</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.min.css">
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="side-head">
+      <div class="brand">Precision Landing Flight Analyzer</div>
+    </div>
+    <ul id="rec-list"></ul>
+  </aside>
+
+  <main id="main">
+    <header id="topbar">
+      <button id="btn-sidebar" class="btn small" title="기록 목록 접기/펼치기" aria-label="기록 목록 접기/펼치기" aria-expanded="true">☰</button>
+      <div class="title-block">
+        <h1 id="rec-title">기록을 선택하세요</h1>
+        <div id="rec-meta" class="muted"></div>
+      </div>
+      <div class="top-tools">
+        <div class="seg" id="layout" title="화면 구성">
+          <button data-l="graphs">Graphs</button>
+          <button data-l="split">Video + Graphs</button>
+        </div>
+      </div>
+    </header>
+    <div id="content">
+      <section id="video-pane" hidden>
+        <div class="vp-head">
+          <div class="seg" id="vmode" title="영상 보는 방식">
+            <button data-m="play" title="영상만 재생 (그래프 커서가 재생 위치를 따라감)">Play</button>
+            <button data-m="follow" title="그래프에 마우스를 올린 시각의 화면을 표시">Follow cursor</button>
+          </div>
+          <span id="v-info" class="mono muted"></span>
+        </div>
+        <div class="vp-frame">
+          <img id="v-img" alt="">
+          <div id="v-empty" class="muted"></div>
+        </div>
+        <div id="v-ctrl">
+          <button id="v-play" class="btn small" title="재생/일시정지 (Space)">▶</button>
+          <input type="range" id="v-seek" min="0" max="1" step="0.01" value="0">
+          <select id="v-speed" title="재생 속도">
+            <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+          </select>
+        </div>
+      </section>
+      <div id="graphs">
+        <div id="state-legend"></div>
+        <div id="errors"></div>
+        <div id="control-panels"></div>
+        <section id="custom-add" hidden>
+          <input id="custom-input" list="field-list" placeholder="필드 추가 → 새 패널 (예: /target_pose pose_position_x)">
+          <datalist id="field-list"></datalist>
+          <button id="btn-custom" class="btn">패널 추가</button>
+        </section>
+        <div id="empty" class="muted">왼쪽 목록에서 기록을 고르면 그래프가 나옵니다.<br>
+          차트 위 드래그 = 구간 확대 · 더블클릭 = 전체 보기 · 범례 클릭 = 시리즈 켜기/끄기</div>
+      </div>
+      <div id="content-loading" hidden role="status" aria-live="polite">
+        <div class="loading-status">
+          <span class="loading-spinner" aria-label="loading"></span>
+          <span class="loading-label">loading...</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
