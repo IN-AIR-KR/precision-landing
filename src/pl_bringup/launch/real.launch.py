@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, RegisterEventHandler, EmitEvent
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, RegisterEventHandler, EmitEvent, SetEnvironmentVariable
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
@@ -46,7 +46,8 @@ def setup(context):
         target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))],
     )) for node in required]
-    return [*handlers, monitor, *required]
+    return [SetEnvironmentVariable('ROS_DOMAIN_ID', str(config['px4'].get('domain_id', 42))),
+            *handlers, monitor, *required]
 
 
 def generate_launch_description():

@@ -13,13 +13,16 @@ env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
 기본값은 센서 0, 1920×1080 @ 30 FPS, flip 0입니다.
 `--sensor-id`, `--width`, `--height`, `--fps`, `--flip-method`를 비행용 카메라와 동일하게 설정합니다.
 
-- **Space**로 코너가 표시된 현재 프레임을 추가합니다. 화면 중앙, 가장자리,
+- **Space**로 현재 프레임에서 체커보드를 검출하고 성공한 경우 샘플을 추가합니다. 검출 결과는 화면과 터미널에 표시됩니다. 화면 중앙, 가장자리,
   여러 거리와 기울기에서 15~25장 정도 모읍니다.
-- **U**로 마지막 샘플을 취소합니다.
+- 검출에 성공한 사진은 즉시 `scripts/camera_calibration/samples/` 아래 PNG로 저장됩니다. 실행 시 터미널에 실제 경로가 표시됩니다.
+- **U**로 마지막 샘플을 계산 목록에서 취소합니다. 저장된 PNG는 유지됩니다.
 - **C**로 최소 10장에서 보정값을 계산하고 YAML에 저장합니다.
   터미널에 재투영 RMS 오차(px)가 표시됩니다.
 - **Q** 또는 **Esc**로 종료합니다.
 
-전체 실기체 스택에서는 보정 결과를 `real.yaml`의 `camera.calibration` 아래에 붙여 넣습니다. 카메라 단독 실행에서는 보정 파일의 경로를 `camera_info_url:=...`로 전달할 수 있습니다.
+생성한 YAML의 `camera.calibration`을 `src/pl_bringup/config/real.yaml`의 같은 위치에 붙여 넣습니다.
 이 도구가 구하는 값은 렌즈 내부 파라미터와 왜곡 계수입니다. 기체 기준 카메라
 장착 변환은 별도로 측정합니다.
+
+`--output`에 파일명만 지정하면 YAML이 `calibrate.py`와 같은 폴더에 저장됩니다.

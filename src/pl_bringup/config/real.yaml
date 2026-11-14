@@ -1,6 +1,11 @@
 camera:
-  # Paste the calibration tool's YAML output under calibration (1920x1080).
-  calibration: {}
+  calibration:
+    image_width: 1920
+    image_height: 1080
+    camera_matrix:
+      data: [2705.800903857404, 0.0, 1003.1406871062092, 0.0, 2713.593121196796, 571.5154935492, 0.0, 0.0, 1.0]
+    distortion_coefficients:
+      data: [0.32141601135157993, 0.5307061614945011, 0.012993343967254744, 0.003307600049441917, -12.89378647429946]
 detection:
   aruco_id: 0
   dictionary: 2
@@ -27,6 +32,7 @@ control:
     position: [0.0, 0.0, 0.10] # [x, y, z] in meters
     rotation: [0.7071067811865476, 0.0, 0.0, 0.7071067811865476] # [w, x, y, z], image top points forward
 px4:
+  domain_id: 42 # Match PX4 UXRCE_DDS_DOM_ID.
   uart:
     device: /dev/ttyTHS1
     baud: 921600 # Match PX4 SER_TEL2_BAUD.
