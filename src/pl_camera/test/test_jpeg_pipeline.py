@@ -1,7 +1,5 @@
 """ROS JPEG camera transport -> detector -> compressed debug viewer round trip."""
 from array import array
-import importlib.util
-from pathlib import Path
 import time
 
 import cv2
@@ -12,17 +10,15 @@ from rclpy.parameter import Parameter
 from rclpy.qos import qos_profile_sensor_data as qos
 from sensor_msgs.msg import Image, CameraInfo, CompressedImage
 from geometry_msgs.msg import PoseStamped
+from pl_camera.image_relay import ImageRelay
 from pl_detection.aruco_tracker import ArucoTracker
 
-spec = importlib.util.spec_from_file_location('image_relay', Path(__file__).parents[1]/'image_relay.py')
-relay = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(relay)
 
 
 def test_jpeg_header_detection_and_lazy_viewer():
     rclpy.init(args=['--ros-args', '-p', 'input_transport:=compressed', '-p', 'marker_size:=1.0'])
-    encoder = relay.ImageRelay('test_encoder')
-    decoder = relay.ImageRelay('test_decoder', parameter_overrides=[
+    encoder = ImageRelay('test_encoder')
+    decoder = ImageRelay('test_decoder', parameter_overrides=[
         Parameter('direction', value='decode'), Parameter('input_topic', value='/image_proc/compressed'),
         Parameter('output_topic', value='/test/decoded')])
     detector = ArucoTracker()
