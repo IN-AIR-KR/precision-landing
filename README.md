@@ -77,8 +77,7 @@ graph TD
 | `pl_camera` | `camera_bridge`, `debug_image_bridge`, `image_relay` | Gazebo 영상·보정값·시계를 ROS로 연결하고, 디버그 영상 역방향 브리지와 HITL JPEG 변환을 제공 |
 | `pl_detection` | `aruco_tracker` | ArUco 마커를 검출하고 카메라 기준 마커 자세, 디버그 영상, 검출 상태를 발행 |
 | `pl_control` | `precision_land` | PX4 외부 모드에서 타겟 위치·속도를 추정하고, 착륙 FSM에 따라 setpoint와 제어 상태를 발행 |
-| `pl_viz` | `landing_monitor` | 인식 영상과 제어·비행 상태를 오버레이 |
-| `pl_viz_gazebo` | `tag_pose_visualizer` | SITL에서 선택적으로 Gazebo에 타겟 위치를 표시 |
+| `pl_viz` | `landing_monitor`, `tag_pose_visualizer` | 영상 HUD와 선택적인 Gazebo 타겟 위치 표시 |
 | `pl_bringup` | SITL·실기체·HITL launch | 환경별 설정을 적용하고 ROS 노드와 DDS Agent의 실행을 구성 |
 | `ros_gz_bridge` | `parameter_bridge` | Gazebo Transport와 ROS 2 메시지를 변환 |
 | `px4_msgs` | 메시지 정의 | ROS 2와 PX4가 주고받는 메시지 타입을 제공 |

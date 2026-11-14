@@ -15,5 +15,8 @@ setup(
     maintainer_email='jake@arkelectron.com',
     description='Common precision landing camera and telemetry monitor',
     license='BSD-3-Clause',
-    entry_points={'console_scripts': ['monitor = pl_viz.monitor:main']},
+    entry_points={'console_scripts': [
+        'monitor = pl_viz.monitor:main',
+        'tag_pose_visualizer = pl_viz.tag_pose_visualizer:main',
+    ]},
 )

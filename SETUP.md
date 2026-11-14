@@ -213,9 +213,7 @@ git submodule update --init --recursive
 env CMAKE_BUILD_PARALLEL_LEVEL=2 ./scripts/build.sh hitl_jetson
 ```
 
-`build.sh`의 `hitl_jetson`/`hardware` 프로필은 `PL_VIZ_GAZEBO=OFF`로
-`pl_bringup pl_control pl_detection pl_viz`(+ `px4_msgs`, `px4_ros2_cpp`)만 빌드합니다.
-**두 프로필의 빌드 대상이 동일하므로 한 번의 빌드로 둘 다 커버됩니다.**
+`build.sh hitl_jetson`은 인식기·제어기·HUD를 빌드합니다. 실기체용 `build.sh real`에는 CSI 카메라 패키지 `pl_camera`도 포함됩니다.
 
 8GB RAM 환경이라 `CMAKE_BUILD_PARALLEL_LEVEL=2`로 낮췄습니다
 (`build.sh` 기본값은 4, colcon `--parallel-workers`는 스크립트에서 2로 고정).
@@ -239,15 +237,13 @@ ros2 pkg executables pl_detection pl_control pl_viz
 # pl_detection aruco_tracker / pl_control precision_land / pl_viz monitor
 ```
 
-### 빌드 중 나오는 무해한 경고 2종
+### AMENT_PREFIX_PATH 경고
 
 1. `WARNING: The path '.../.deps/apt/root/opt/ros/humble' in AMENT_PREFIX_PATH doesn't exist`
    — `env.sh`는 모든 프로필에서 이 경로를 추가하지만, `.deps/apt`는 `setup.sh sim`/`hitl_pc`가
    `gps_msgs`를 받을 때만 생성됩니다. 젯슨 프로필에는 `gps_msgs`가 필요 없습니다.
-2. `CMake Warning: Manually-specified variables were not used by the project: PL_VIZ_GAZEBO`
-   — `build.sh`가 모든 패키지에 넘기지만 이 변수를 쓰는 건 `pl_viz`뿐입니다.
 
-## 8. 실기체(`hardware`) 프로필 추가 구성
+## 8. 실기체(`real`) 프로필 추가 구성
 
 ### 8.1 카메라·뷰어 패키지
 
@@ -418,7 +414,7 @@ bash ~/PX4-Autopilot/Tools/setup/ubuntu.sh --no-nuttx
 sudo curl -fsSL https://packages.osrfoundation.org/gazebo.gpg -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list
 sudo apt-get update
-sudo apt-get install -y gz-harmonic
+sudo apt-get install -y gz-harmonic python3-gz-transport13 python3-gz-msgs10
 ```
 
 확인:
