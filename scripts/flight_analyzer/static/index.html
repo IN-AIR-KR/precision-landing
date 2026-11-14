@@ -29,20 +29,31 @@
         <div class="seg" id="layout" title="화면 구성">
           <button data-l="graphs">Graphs</button>
           <button data-l="split">Video + Graphs</button>
-          <button data-l="3d">3D + Graphs</button>
         </div>
       </div>
     </header>
     <div id="content">
       <section id="video-pane" hidden>
         <div class="vp-head">
-          <div class="seg" id="vmode" title="영상 보는 방식">
-            <button data-m="play" title="영상만 재생 (그래프 커서가 재생 위치를 따라감)">Play</button>
+          <div class="seg" id="vmode" title="재생 방식">
+            <button data-m="play" title="영상과 3D 재생 (그래프 커서가 재생 위치를 따라감)">Play</button>
             <button data-m="follow" title="그래프에 마우스를 올린 시각의 화면을 표시">Follow cursor</button>
           </div>
           <span id="v-info" class="mono muted"></span>
         </div>
-        <div id="scene-pane" hidden>
+        <div class="vp-frame">
+          <img id="v-img" alt="">
+          <div id="v-empty" class="muted"></div>
+        </div>
+        <div id="v-ctrl">
+          <button id="v-play" class="btn small" title="재생/일시정지 (Space)">▶</button>
+          <input type="range" id="v-seek" min="0" max="1" step="0.01" value="0">
+          <select id="v-speed" title="재생 속도">
+            <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+          </select>
+        </div>
+        <section id="scene-pane" aria-label="3D 비행 뷰">
           <div class="vp-head">
             <label>보기 중심
               <select id="scene-center">
@@ -58,19 +69,7 @@
             <span id="scene-truth" class="scene-truth" hidden>□ 실제 마커</span>
           </div>
           <div id="scene-status" class="muted" role="status"></div>
-        </div>
-        <div class="vp-frame" id="video-frame">
-          <img id="v-img" alt="">
-          <div id="v-empty" class="muted"></div>
-        </div>
-        <div id="v-ctrl">
-          <button id="v-play" class="btn small" title="재생/일시정지 (Space)">▶</button>
-          <input type="range" id="v-seek" min="0" max="1" step="0.01" value="0">
-          <select id="v-speed" title="재생 속도">
-            <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
-            <option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
-          </select>
-        </div>
+        </section>
       </section>
       <div id="graphs">
         <div id="state-legend"></div>

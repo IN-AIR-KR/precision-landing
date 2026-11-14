@@ -46,7 +46,7 @@ let syncing = false;       // 줌 전파 재진입 방지
 let records = [];
 let currentId = null;
 let customPanels = loadLS("pl_analyzer.custom", []);
-let layout = loadLS("pl_analyzer.layout", "split");
+let layout = loadLS("pl_analyzer.layout", "split") === "graphs" ? "graphs" : "split";
 let sceneCenter = loadLS("pl_analyzer.scene_center", "origin");
 let scene, sceneRecord, scenePromise;
 let sceneReady = false;
@@ -515,12 +515,12 @@ function addCustom() {
 const videoData = () => rec?.video;
 const hasVideo = () => !!(videoData() && videoData().t.length);
 const videoOn = () => layout === "split" && hasVideo();
-const timelineOn = () => videoOn() || (layout === "3d" && sceneReady);
+const timelineOn = () => layout === "split" && (hasVideo() || sceneReady);
 
 async function updateScene() {
   const record = rec;
   const status = $("scene-status");
-  if (layout !== "3d") return;
+  if (layout !== "split") return;
   if (!record) {
     status.textContent = "기록을 선택하세요.";
     return;
@@ -535,7 +535,7 @@ async function updateScene() {
     console.warn(error);
     return;
   }
-  if (record !== rec || layout !== "3d") return;
+  if (record !== rec || layout !== "split") return;
   if (sceneRecord !== record) {
     const data = scene.load(record.topics);
     sceneRecord = record;
@@ -549,18 +549,20 @@ async function updateScene() {
         ? "실제 마커를 표시할 수 없습니다. PX4와 Gazebo 위치를 맞출 공통 샘플이 필요합니다."
         : "";
   }
-  $("v-play").disabled = $("v-seek").disabled = !sceneReady;
-  showAt(displayTime);
+  $("v-play").disabled = $("v-seek").disabled = !timelineOn();
+  updateSceneTime();
 }
 
 function showAt(t) {
   displayTime = t;
-  if (videoOn()) {
-    showFrameAt(t);
-  } else if (layout === "3d" && scene && sceneRecord === rec) {
-    scene.setTime(t, sceneCenter);
-    $("v-info").textContent = `t = ${t.toFixed(2)} s`;
-  }
+  if (videoOn()) showFrameAt(t);
+  updateSceneTime();
+}
+
+function updateSceneTime() {
+  if (layout !== "split" || !scene || sceneRecord !== rec) return;
+  scene.setTime(displayTime, sceneCenter);
+  if (!hasVideo()) $("v-info").textContent = `t = ${displayTime.toFixed(2)} s`;
 }
 
 function frameIndexAt(t) {          // t 이하인 마지막 프레임
@@ -678,19 +680,19 @@ function resetTimeline() {
 }
 
 function applyLayout() {
-  const is3d = layout === "3d";
-  document.body.classList.toggle("split", layout !== "graphs");
+  const split = layout === "split";
+  document.body.classList.toggle("split", split);
   document.body.classList.toggle("follow", vmode === "follow");
-  $("video-pane").hidden = layout === "graphs";
-  $("scene-pane").hidden = !is3d;
-  $("video-frame").hidden = is3d;
+  $("video-pane").hidden = !split;
   $("v-play").disabled = $("v-seek").disabled = !timelineOn();
   document.querySelectorAll("#layout button").forEach((b) => b.classList.toggle("on", b.dataset.l === layout));
   document.querySelectorAll("#vmode button").forEach((b) => b.classList.toggle("on", b.dataset.m === vmode));
   if (!timelineOn() || vmode !== "play") setPlaying(false);
   if (vmode === "play") displayTime = V.t;
-  if (is3d) updateScene();
-  if (videoOn()) showAt(displayTime);
+  if (split) {
+    showAt(displayTime);
+    updateScene();
+  }
 }
 
 function applySidebar() {
@@ -715,7 +717,7 @@ function bind() {
   $("scene-center").onchange = () => {
     sceneCenter = $("scene-center").value;
     saveLS("pl_analyzer.scene_center", sceneCenter);
-    showAt(displayTime);
+    updateSceneTime();
   };
   $("v-play").onclick = () => setPlaying(!V.playing);
   $("v-seek").oninput = () => { setPlaying(false); seekTimeline(parseFloat($("v-seek").value)); };
