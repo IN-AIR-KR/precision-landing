@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, RegisterEventHandler, EmitEvent, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, RegisterEventHandler, EmitEvent, SetEnvironmentVariable
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
@@ -20,13 +20,7 @@ def setup(context):
     if not calibration:
         raise RuntimeError('Set camera.calibration in real.yaml to the measured camera calibration.')
 
-    uart = config['px4']['uart']
-    device = uart['device']
-    if not Path(device).exists():
-        raise RuntimeError(f'UART device does not exist: {device}')
     nodes = [
-        ExecuteProcess(cmd=['MicroXRCEAgent', 'serial', '-D', device, '-b', str(uart['baud'])],
-                       output='screen'),
         Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen',
              parameters=[dict(config['detection'], optical_frame='camera_optical_frame')]),
         Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
@@ -46,7 +40,7 @@ def setup(context):
         target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))],
     )) for node in required]
-    return [SetEnvironmentVariable('ROS_DOMAIN_ID', str(config['px4'].get('domain_id', 42))),
+    return [SetEnvironmentVariable('ROS_DOMAIN_ID', str(config['px4'].get('domain_id', 0))),
             *handlers, monitor, *required]
 
 

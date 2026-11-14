@@ -50,16 +50,17 @@ def render(image, state):
     thickness = max(1, round(2 * unit))
     white, yellow = (255, 255, 255), (0, 235, 255)
 
-    def text(value, x, y, size=.8, color=white, align='left', outline=True):
+    def text(value, x, y, size=.8, color=white, align='left', outline=True, bold=False):
+        weight = max(thickness + 1, round(4 * unit)) if bold else thickness
         scale = size * unit
-        width = cv2.getTextSize(value, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)[0][0]
+        width = cv2.getTextSize(value, cv2.FONT_HERSHEY_SIMPLEX, scale, weight)[0][0]
         if align == 'right':
             x -= width
         elif align == 'center':
             x -= width // 2
         # Black outline remains readable on both sky and the white landing pad.
-        strokes = [((0, 0, 0), thickness + max(2, round(3 * unit)))] if outline else []
-        for ink, stroke in strokes + [(color, thickness)]:
+        strokes = [((0, 0, 0), weight + max(2, round(3 * unit)))] if outline else []
+        for ink, stroke in strokes + [(color, weight)]:
             cv2.putText(canvas, value, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
                         scale, ink, stroke, cv2.LINE_AA)
 
@@ -84,12 +85,12 @@ def render(image, state):
     canvas[-border:, :] = phase_color
     canvas[:, :border] = phase_color
     canvas[:, -border:] = phase_color
-    text(phase, margin, margin + round(38 * unit), 1.35, phase_color, outline=False)
+    text(phase, margin, margin + round(38 * unit), 1.35, phase_color, outline=False, bold=True)
     if c and c['active'] and c['target_lost']:
-        text('TARGET LOST', margin, margin + round(77 * unit), .7, phase_color)
+        text('TARGET LOST', margin, margin + round(77 * unit), .7, phase_color, bold=True)
     if state['image']['health'] != 'ok':
         text('CAMERA: ' + state['image']['health'].upper(), margin,
-             margin + round(113 * unit), .7, yellow)
+             margin + round(113 * unit), .7, yellow, bold=True)
 
     g, v = current('gps'), current('velocity')
     fix = {0: 'NO FIX', 1: 'NO FIX', 2: '2D', 3: '3D', 4: 'DGPS',

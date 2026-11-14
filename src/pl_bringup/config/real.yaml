@@ -32,7 +32,7 @@ control:
     position: [0.0, 0.0, 0.10] # [x, y, z] in meters
     rotation: [0.7071067811865476, 0.0, 0.0, 0.7071067811865476] # [w, x, y, z], image top points forward
 px4:
-  domain_id: 42 # Match PX4 UXRCE_DDS_DOM_ID.
+  domain_id: 0 # Match PX4 UXRCE_DDS_DOM_ID.
   uart:
     device: /dev/ttyTHS1
     baud: 921600 # Match PX4 SER_TEL2_BAUD.

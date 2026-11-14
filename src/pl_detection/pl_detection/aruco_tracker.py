@@ -60,13 +60,20 @@ class Detector:
         if not math.isfinite(marker_size) or marker_size <= 0:
             raise ValueError('marker_size must be finite and positive')
         self.marker_id, self.marker_size = marker_id, marker_size
-        self.detector = cv2.aruco.ArucoDetector(
-            cv2.aruco.getPredefinedDictionary(dictionary), cv2.aruco.DetectorParameters())
+        aruco = cv2.aruco
+        marker_dictionary = aruco.getPredefinedDictionary(dictionary)
+        if hasattr(aruco, 'ArucoDetector'):
+            detector = aruco.ArucoDetector(marker_dictionary, aruco.DetectorParameters())
+            self.detect_markers = detector.detectMarkers
+        else:
+            parameters = aruco.DetectorParameters_create()
+            self.detect_markers = lambda image: aruco.detectMarkers(
+                image, marker_dictionary, parameters=parameters)
         h = np.float32(marker_size / 2)
         self.objects = np.array([[-h, h, 0], [h, h, 0], [h, -h, 0], [-h, -h, 0]], np.float32)
 
     def process(self, image, camera, distortion, draw=True):
-        corners, ids, _ = self.detector.detectMarkers(image)
+        corners, ids, _ = self.detect_markers(image)
         self.detected = ids is not None and self.marker_id in ids.flatten()
         if draw:
             if ids is not None:
