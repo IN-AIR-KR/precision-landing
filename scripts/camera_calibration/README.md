@@ -7,7 +7,7 @@ Jetson GUI 터미널에서 GStreamer 및 GUI를 지원하는 시스템 OpenCV로
 
 ```bash
 env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
-  --cols 9 --rows 6 --square-mm 25 --output /tmp/calibration.yaml
+  --cols 9 --rows 6 --square-mm 25
 ```
 
 기본값은 센서 0, 1920×1080 @ 30 FPS, flip 0입니다.
@@ -18,11 +18,11 @@ env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
 - 검출에 성공한 사진은 즉시 `scripts/camera_calibration/samples/` 아래 PNG로 저장됩니다. 실행 시 터미널에 실제 경로가 표시됩니다.
 - **U**로 마지막 샘플을 계산 목록에서 취소합니다. 저장된 PNG는 유지됩니다.
 - **C**로 최소 10장에서 보정값을 계산하고 YAML에 저장합니다.
-  터미널에 재투영 RMS 오차(px)가 표시됩니다.
+  스크립트 옆 `calibration.yaml`에 저장하며 기존 결과는 새 보정에 성공하면 교체합니다.
+  저장 직후 미리보기에 보정을 적용하고 터미널에 재투영 RMS 오차(px)를 표시합니다.
+- 창의 **Undistort**를 0 또는 1로 바꿔 원본과 보정 영상을 비교합니다. 샘플은 원본 프레임으로 저장합니다.
 - **Q** 또는 **Esc**로 종료합니다.
 
 생성한 YAML의 `camera.calibration`을 `src/pl_bringup/config/real.yaml`의 같은 위치에 붙여 넣습니다.
 이 도구가 구하는 값은 렌즈 내부 파라미터와 왜곡 계수입니다. 기체 기준 카메라
 장착 변환은 별도로 측정합니다.
-
-`--output`에 파일명만 지정하면 YAML이 `calibrate.py`와 같은 폴더에 저장됩니다.

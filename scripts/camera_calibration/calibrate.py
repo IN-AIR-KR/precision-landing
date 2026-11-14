@@ -5,10 +5,12 @@ import argparse
 import os
 from pathlib import Path
 from queue import SimpleQueue
+from tempfile import NamedTemporaryFile
 from threading import Event, Thread
 
 import cv2
 import numpy as np
+import yaml
 
 
 WINDOW = 'Camera calibration'
@@ -20,17 +22,25 @@ def save_calibration(path, size, board, samples):
         [board] * len(samples), samples, size, None, None)
     if not all(np.isfinite(value).all() for value in (rms, intrinsic, distortion)):
         raise ValueError('Calibration returned non-finite values. Capture more varied poses.')
-    with path.open('x', encoding='utf-8') as output:
-        output.write(
-            'camera:\n'
-            '  calibration:\n'
-            f'    image_width: {size[0]}\n'
-            f'    image_height: {size[1]}\n'
-            '    camera_matrix:\n'
-            f'      data: {intrinsic.ravel().tolist()}\n'
-            '    distortion_coefficients:\n'
-            f'      data: {distortion.ravel().tolist()}\n'
-        )
+    temp_path = None
+    try:
+        with NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent,
+                                delete=False) as output:
+            temp_path = Path(output.name)
+            output.write(
+                'camera:\n'
+                '  calibration:\n'
+                f'    image_width: {size[0]}\n'
+                f'    image_height: {size[1]}\n'
+                '    camera_matrix:\n'
+                f'      data: {intrinsic.ravel().tolist()}\n'
+                '    distortion_coefficients:\n'
+                f'      data: {distortion.ravel().tolist()}\n'
+            )
+        temp_path.replace(path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
     print(f'Saved {path.resolve()} | {size[0]}x{size[1]} | RMS {rms:.3f} px')
 
 
@@ -93,6 +103,19 @@ def calibrate_saved(args, sample_dir, captured=None, excluded=()):
     save_calibration(args.output, size, board, samples)
 
 
+def load_preview_maps(path, size):
+    with path.open(encoding='utf-8') as source:
+        calibration = yaml.safe_load(source)['camera']['calibration']
+    saved_size = (calibration['image_width'], calibration['image_height'])
+    if saved_size != size:
+        raise ValueError(f'Calibration is for {saved_size[0]}x{saved_size[1]}.')
+    intrinsic = np.asarray(calibration['camera_matrix']['data'], dtype=np.float64).reshape(3, 3)
+    distortion = np.asarray(calibration['distortion_coefficients']['data'], dtype=np.float64)
+    if not np.isfinite(intrinsic).all() or not np.isfinite(distortion).all():
+        raise ValueError('Calibration contains non-finite coefficients.')
+    return cv2.initUndistortRectifyMap(intrinsic, distortion, None, intrinsic, size, cv2.CV_16SC2)
+
+
 def preview(frames, errors, args, sample_dir):
     samples = {}
     excluded = set()
@@ -102,6 +125,9 @@ def preview(frames, errors, args, sample_dir):
     pattern = (args.cols, args.rows)
     display = np.zeros((540, 960, 3), dtype=np.uint8)
     message = 'Opening CSI camera...'
+    toggle = 'Undistort (0=off, 1=on)'
+    cv2.createTrackbar(toggle, WINDOW, 0, 1, lambda _: None)
+    maps = None
     while True:
         if not errors.empty():
             raise errors.get()
@@ -115,9 +141,19 @@ def preview(frames, errors, args, sample_dir):
                 excluded.update(samples)
                 samples.clear()
                 message = 'Image size changed. Samples cleared.'
+            if frame_size != size:
+                maps = None
             size = frame_size
 
         canvas = display.copy()
+        if size is not None and cv2.getTrackbarPos(toggle, WINDOW):
+            try:
+                if maps is None:
+                    maps = load_preview_maps(args.output, size)
+                canvas = cv2.remap(display, *maps, cv2.INTER_LINEAR)
+            except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError, cv2.error) as error:
+                message = f'Cannot apply calibration: {error}'
+                cv2.setTrackbarPos(toggle, WINDOW, 0)
         lines = [
             f'Samples: {len(samples)} this run (C also loads saved PNGs)',
             'SPACE capture   U undo   C calibrate and save   Q quit',
@@ -174,7 +210,10 @@ def preview(frames, errors, args, sample_dir):
                 cv2.setWindowTitle(WINDOW, WINDOW)
                 print(error, flush=True)
             else:
-                return
+                maps = None
+                message = 'Saved calibration.yaml. Preview corrected.'
+                cv2.setWindowTitle(WINDOW, WINDOW)
+                cv2.setTrackbarPos(toggle, WINDOW, 1)
 
 
 def main():
@@ -188,16 +227,11 @@ def main():
     parser.add_argument('--fps', type=int, default=30)
     parser.add_argument('--flip-method', type=int, choices=range(8), default=0)
     parser.add_argument('--from-saved', action='store_true', help='Calibrate from saved PNGs without opening the camera')
-    parser.add_argument('--output', type=Path, required=True, help='New YAML file (relative paths start beside this script)')
     args = parser.parse_args()
     if min(args.cols, args.rows) < 3 or not np.isfinite(args.square_mm) or args.square_mm <= 0:
         parser.error('Use at least 3x3 inner corners and a positive square size.')
     script_dir = Path(__file__).resolve().parent
-    args.output = script_dir / args.output.expanduser()
-    if args.output.exists():
-        parser.error(f'Output already exists: {args.output}. Choose a new YAML filename.')
-    if not args.output.parent.is_dir():
-        parser.error(f'Output directory does not exist: {args.output.parent}')
+    args.output = script_dir / 'calibration.yaml'
     sample_dir = script_dir / 'samples'
     if args.from_saved:
         try:
