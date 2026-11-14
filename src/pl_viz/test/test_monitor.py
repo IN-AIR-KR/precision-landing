@@ -1,6 +1,4 @@
 """Exercise real ROS discovery, independent outputs and stalled-camera HUD updates."""
-import importlib.util
-from pathlib import Path
 import time
 import json
 from array import array
@@ -16,10 +14,7 @@ from std_msgs.msg import String
 from px4_msgs.msg import BatteryStatus, SensorGps, VehicleLocalPosition
 from geometry_msgs.msg import PoseStamped
 from pl_detection.aruco_tracker import ArucoTracker
-
-spec = importlib.util.spec_from_file_location('landing_monitor', Path(__file__).parents[1] / 'monitor.py')
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
+from pl_viz import monitor as mod
 
 
 @pytest.mark.parametrize('transport', ['raw', 'compressed'])

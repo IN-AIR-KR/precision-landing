@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>pl_viz_gazebo</name>
+  <version>0.0.1</version>
+  <description>Gazebo marker visualization for precision landing</description>
+  <maintainer email="jake@arkelectron.com">Jacob Dahl</maintainer>
+  <license>BSD-3-Clause</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>gz-transport13</depend>
+  <depend>gz-msgs10</depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

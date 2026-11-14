@@ -7,15 +7,8 @@
   <maintainer email="jake@arkelectron.com">Jacob Dahl</maintainer>
   <license>BSD-3-Clause</license>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_python</buildtool_depend>
 
-  <build_depend>rclcpp</build_depend>
-
-  <!-- ROS2 Dependencies -->
-  <depend>geometry_msgs</depend>
-
-  <!-- Gazebo Dependencies (simulation only) -->
-  <!-- Optional PL_VIZ_GAZEBO build uses system gz-transport13 / gz-msgs10. -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
@@ -23,10 +16,9 @@
   <exec_depend>pl_detection</exec_depend>
 
   <test_depend>python3-pytest</test_depend>
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <test_depend>geometry_msgs</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_python</build_type>
   </export>
 </package>

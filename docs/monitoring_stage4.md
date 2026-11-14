@@ -88,7 +88,7 @@ Gazebo 영상 소비자가 없을 때 ROS 영상을 구독하지 않습니다.
 `detection.debug_fps`, `detection.jpeg_quality`로 상류 디버그 영상 설정을 바꿉니다.
 
 `./scripts/build.sh real`는 공통 모니터를 빌드하지만 Gazebo 마커 실행 파일은 제외합니다.
-기존 `tag_pose_visualizer`는 `PL_VIZ_GAZEBO=ON`인 sim 빌드에만 포함됩니다. 이 선택 기능에는
+`tag_pose_visualizer`는 sim 빌드에서 선택하는 `pl_viz_gazebo` 패키지에 있습니다. 이 선택 기능에는
 시스템 `gz-transport13`/`gz-msgs10` 개발 라이브러리가 필요하며 공통 모니터는 Gazebo를 import/link하지 않습니다.
 실기체 프로파일의 카메라 교정·장착 확인 가드는 유지합니다. CSI·실기체 화면 검증은 보류입니다.
 
