@@ -191,3 +191,18 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .split #content { grid-template-columns: 1fr; }
   #video-pane { position: static; max-height: none; }
 }
+
+#scene-pane { display: grid; gap: 8px; min-height: 0; }
+#scene-host {
+  height: clamp(235px, 48vh, 520px); overflow: hidden;
+  background: #101722; border-radius: 6px;
+}
+#scene-host canvas { display: block; width: 100%; height: 100%; }
+#scene-center {
+  font: inherit; color: var(--fg); background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px;
+}
+#scene-legend, #scene-status { font-size: 12px; }
+.scene-drone { color: #67b7ff; }
+.scene-estimate { color: #ffb45e; }
+.scene-truth { color: #53e6af; }

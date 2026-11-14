@@ -14,13 +14,23 @@ def setup(context):
     def arg(name):
         return LaunchConfiguration(name).perform(context)
     prefix = f"/world/{arg('world')}/model/{arg('model')}/link/{arg('link')}/sensor/{arg('sensor')}/"
+    world = arg('world')
+    pose_topic = f'/world/{world}/pose/info'
     bridge = Node(
         package='ros_gz_bridge', executable='parameter_bridge', name='camera_bridge', output='screen',
         arguments=[prefix+'image@sensor_msgs/msg/Image[gz.msgs.Image',
                    prefix+'camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-                   '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+                   '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'] +
+                  ([pose_topic + '@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V']
+                   if world in ('aruco', 'aruco_moving') else []),
         remappings=[(prefix+'image', arg('image_topic')),
-                    (prefix+'camera_info', arg('camera_info_topic'))])
+                    (prefix+'camera_info', arg('camera_info_topic')),
+                    (pose_topic, '/pl/sim/model_poses')])
+    ground_truth = []
+    if world in ('aruco', 'aruco_moving'):
+        ground_truth.append(Node(
+            package='pl_camera', executable='sim_ground_truth', output='screen',
+            parameters=[{'world': world, 'vehicle_model': arg('model')}]))
     # This ros_gz revision ignores the global CLI lazy flag. A separate YAML
     # bridge is necessary: config_file is read only when there are no CLI bridges.
     debug_bridge = Node(package='ros_gz_bridge', executable='parameter_bridge',
@@ -28,7 +38,7 @@ def setup(context):
             'config_file': str(Path(get_package_share_directory('pl_camera')) / 'config/debug_bridge.yaml'),
             'subscription_heartbeat': 200,
             'qos_overrides./image_proc.subscription.reliability': 'best_effort'}])
-    return [debug_bridge, RegisterEventHandler(OnProcessExit(target_action=bridge,
+    return [debug_bridge, *ground_truth, RegisterEventHandler(OnProcessExit(target_action=bridge,
                 on_exit=[EmitEvent(event=Shutdown(reason='Camera bridge exited'))])), bridge]
 
 

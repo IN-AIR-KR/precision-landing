@@ -29,6 +29,7 @@
         <div class="seg" id="layout" title="화면 구성">
           <button data-l="graphs">Graphs</button>
           <button data-l="split">Video + Graphs</button>
+          <button data-l="3d">3D + Graphs</button>
         </div>
       </div>
     </header>
@@ -41,7 +42,24 @@
           </div>
           <span id="v-info" class="mono muted"></span>
         </div>
-        <div class="vp-frame">
+        <div id="scene-pane" hidden>
+          <div class="vp-head">
+            <label>보기 중심
+              <select id="scene-center">
+                <option value="origin">원점</option>
+                <option value="drone">드론 따라가기</option>
+              </select>
+            </label>
+          </div>
+          <div id="scene-host"></div>
+          <div id="scene-legend" class="vp-head">
+            <span class="scene-drone">◆ 드론</span>
+            <span class="scene-estimate">● 추정 마커</span>
+            <span id="scene-truth" class="scene-truth" hidden>□ 실제 마커</span>
+          </div>
+          <div id="scene-status" class="muted" role="status"></div>
+        </div>
+        <div class="vp-frame" id="video-frame">
           <img id="v-img" alt="">
           <div id="v-empty" class="muted"></div>
         </div>

@@ -46,10 +46,14 @@ let syncing = false;       // 줌 전파 재진입 방지
 let records = [];
 let currentId = null;
 let customPanels = loadLS("pl_analyzer.custom", []);
-let layout = loadLS("pl_analyzer.layout", "split");  // "graphs" | "split"(영상 + 그래프)
+let layout = loadLS("pl_analyzer.layout", "split");
+let sceneCenter = loadLS("pl_analyzer.scene_center", "origin");
+let scene, sceneRecord, scenePromise;
+let sceneReady = false;
+let displayTime = 0;
 let vmode = loadLS("pl_analyzer.vmode", "play");      // "play"(영상 재생) | "follow"(그래프 커서 따라감)
 let sidebarCollapsed = loadLS("pl_analyzer.sidebar_collapsed", false);
-// 영상 재생 상태
+// 영상과 3D가 공유하는 재생 상태
 const V = { t: 0, playing: false, speed: 1, shown: -1, want: -1, loading: false, lastTs: 0, lastCursor: 0, request: null, raf: 0 };
 
 const $ = (id) => document.getElementById(id);
@@ -177,7 +181,8 @@ async function openRecord(id) {
   renderStateLegend();
   fillFieldList();
   renderPanels();
-  resetVideo();
+  resetTimeline();
+  updateScene();
 }
 
 function buildStateSegs() {
@@ -425,7 +430,7 @@ function makeChart(p, { data, specs, multiTopic }, el) {
         if (left == null || left < 0 || idx == null) return;
         const t = u.posToVal(left, "x");
         if (vmode === "follow") {
-          if (videoOn()) showFrameAt(t);
+          if (timelineOn()) showAt(t);
         }
       }],
     },
@@ -441,7 +446,7 @@ function makeChart(p, { data, specs, multiTopic }, el) {
   u.over.addEventListener("mousedown", (e) => { downX = e.clientX; });
   u.over.addEventListener("mouseup", (e) => {
     if (downX == null || Math.abs(e.clientX - downX) > 3) return;
-    if (videoOn() && vmode === "play" && u.cursor.left >= 0) seekVideo(u.posToVal(u.cursor.left, "x"));
+    if (timelineOn() && vmode === "play" && u.cursor.left >= 0) seekTimeline(u.posToVal(u.cursor.left, "x"));
   });
   u.setScale("x", { min: 0, max: dur });
   // 방금 만든 차트를 다른 차트들의 현재 줌에 맞춘다
@@ -510,6 +515,53 @@ function addCustom() {
 const videoData = () => rec?.video;
 const hasVideo = () => !!(videoData() && videoData().t.length);
 const videoOn = () => layout === "split" && hasVideo();
+const timelineOn = () => videoOn() || (layout === "3d" && sceneReady);
+
+async function updateScene() {
+  const record = rec;
+  const status = $("scene-status");
+  if (layout !== "3d") return;
+  if (!record) {
+    status.textContent = "기록을 선택하세요.";
+    return;
+  }
+  if (!scene) status.textContent = "3D 화면을 여는 중…";
+  try {
+    scenePromise ??= import("./scene.mjs").then(({ LandingScene }) =>
+      new LandingScene($("scene-host")));
+    scene = await scenePromise;
+  } catch (error) {
+    status.textContent = "3D 화면을 열 수 없습니다. 브라우저의 WebGL 지원을 확인하세요.";
+    console.warn(error);
+    return;
+  }
+  if (record !== rec || layout !== "3d") return;
+  if (sceneRecord !== record) {
+    const data = scene.load(record.topics);
+    sceneRecord = record;
+    const hasDrone = data.drone.some((row) => row.length > 1);
+    const hasEstimate = data.estimate.some((row) => row.length > 1);
+    $("scene-center").options[1].disabled = !hasDrone;
+    $("scene-truth").hidden = !data.truth.some((row) => row.length > 1);
+    sceneReady = hasDrone || hasEstimate || !$("scene-truth").hidden;
+    status.textContent = !sceneReady ? "이 기록에는 표시할 위치 데이터가 없습니다."
+      : data.hasTruth && $("scene-truth").hidden
+        ? "실제 마커를 표시할 수 없습니다. PX4와 Gazebo 위치를 맞출 공통 샘플이 필요합니다."
+        : "";
+  }
+  $("v-play").disabled = $("v-seek").disabled = !sceneReady;
+  showAt(displayTime);
+}
+
+function showAt(t) {
+  displayTime = t;
+  if (videoOn()) {
+    showFrameAt(t);
+  } else if (layout === "3d" && scene && sceneRecord === rec) {
+    scene.setTime(t, sceneCenter);
+    $("v-info").textContent = `t = ${t.toFixed(2)} s`;
+  }
+}
 
 function frameIndexAt(t) {          // t 이하인 마지막 프레임
   const ts = videoData().t;
@@ -579,16 +631,16 @@ function cursorToTime(t) {
   }
 }
 
-function seekVideo(t) {
-  if (!hasVideo()) return;
+function seekTimeline(t) {
+  if (!timelineOn()) return;
   V.t = Math.min(Math.max(t, 0), rec.duration);
   $("v-seek").value = V.t;
-  showFrameAt(V.t);
+  showAt(V.t);
   cursorToTime(V.t);
 }
 function setPlaying(on) {
   cancelAnimationFrame(V.raf);
-  V.playing = on && hasVideo();
+  V.playing = on && timelineOn();
   $("v-play").textContent = V.playing ? "❚❚" : "▶";
   if (V.playing) {
     if (V.t >= rec.duration - 1e-3) V.t = 0;
@@ -597,18 +649,21 @@ function setPlaying(on) {
   }
 }
 function tick(now) {
-  if (!V.playing || !videoOn() || vmode !== "play") { setPlaying(false); return; }
+  if (!V.playing || !timelineOn() || vmode !== "play") { setPlaying(false); return; }
   V.t += (now - V.lastTs) / 1000 * V.speed;
   V.lastTs = now;
   if (V.t >= rec.duration) { V.t = rec.duration; setPlaying(false); }
   $("v-seek").value = V.t;
-  showFrameAt(V.t);
+  showAt(V.t);
   if (now - V.lastCursor > 50) { cursorToTime(V.t); V.lastCursor = now; }   // 그래프 커서는 20Hz
   if (V.playing) V.raf = requestAnimationFrame(tick);
 }
 
-function resetVideo() {
+function resetTimeline() {
   setPlaying(false);
+  displayTime = 0;
+  sceneReady = false;
+  $("scene-truth").hidden = true;
   V.t = 0; V.shown = -1; V.want = -1;
   V.loading = false; V.request = null;
   $("v-img").removeAttribute("src");
@@ -618,18 +673,24 @@ function resetVideo() {
   $("v-seek").value = 0;
   $("v-empty").textContent = !rec ? "기록을 선택하세요"
     : ok ? "" : "이 기록에는 compressed 영상이 없습니다";
-  $("v-play").disabled = $("v-seek").disabled = !ok;
+  $("v-play").disabled = $("v-seek").disabled = !videoOn();
   if (ok && layout === "split") showFrameAt(0);
 }
 
 function applyLayout() {
-  document.body.classList.toggle("split", layout === "split");
+  const is3d = layout === "3d";
+  document.body.classList.toggle("split", layout !== "graphs");
   document.body.classList.toggle("follow", vmode === "follow");
-  $("video-pane").hidden = layout !== "split";
+  $("video-pane").hidden = layout === "graphs";
+  $("scene-pane").hidden = !is3d;
+  $("video-frame").hidden = is3d;
+  $("v-play").disabled = $("v-seek").disabled = !timelineOn();
   document.querySelectorAll("#layout button").forEach((b) => b.classList.toggle("on", b.dataset.l === layout));
   document.querySelectorAll("#vmode button").forEach((b) => b.classList.toggle("on", b.dataset.m === vmode));
-  if (layout !== "split" || vmode !== "play") setPlaying(false);
-  if (videoOn() && V.shown < 0) showFrameAt(V.t);
+  if (!timelineOn() || vmode !== "play") setPlaying(false);
+  if (vmode === "play") displayTime = V.t;
+  if (is3d) updateScene();
+  if (videoOn()) showAt(displayTime);
 }
 
 function applySidebar() {
@@ -649,21 +710,24 @@ function bind() {
   });
   document.querySelectorAll("#vmode button").forEach((b) => b.onclick = () => {
     vmode = b.dataset.m; saveLS("pl_analyzer.vmode", vmode); applyLayout();
-    if (vmode === "play") {
-      if (videoOn()) showFrameAt(V.t);
-    }
   });
+  $("scene-center").value = sceneCenter;
+  $("scene-center").onchange = () => {
+    sceneCenter = $("scene-center").value;
+    saveLS("pl_analyzer.scene_center", sceneCenter);
+    showAt(displayTime);
+  };
   $("v-play").onclick = () => setPlaying(!V.playing);
-  $("v-seek").oninput = () => { setPlaying(false); seekVideo(parseFloat($("v-seek").value)); };
+  $("v-seek").oninput = () => { setPlaying(false); seekTimeline(parseFloat($("v-seek").value)); };
   $("v-speed").onchange = () => { V.speed = parseFloat($("v-speed").value); };
   document.addEventListener("keydown", (e) => {   // Space = 재생/일시정지 (입력창 밖에서만)
-    if (e.code !== "Space" || !videoOn() || vmode !== "play") return;
+    if (e.code !== "Space" || !timelineOn() || vmode !== "play") return;
     if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(document.activeElement?.tagName)) return;
     e.preventDefault();
     setPlaying(!V.playing);
   });
   applyLayout();
-  resetVideo();
+  resetTimeline();
   applySidebar();
   $("btn-custom").onclick = addCustom;
   $("custom-input").onkeydown = (e) => { if (e.key === "Enter") addCustom(); };
