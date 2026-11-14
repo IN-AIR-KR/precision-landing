@@ -165,18 +165,21 @@ H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
 
 ### 5.3 수평 추종·하강 제어
 
-- 위치 오차: $`\mathbf{e}_{xy}=\mathbf{p}_{vehicle,xy}-\hat{\mathbf{p}}_{target,xy}`$.
-- **타겟 속도 feedforward + PI 보정**, 축별 속도 제한:
+- 위치 오차: $`\mathbf{e}_{xy}=\hat{\mathbf{p}}_{target,xy}-\mathbf{p}_{vehicle,xy}`$.
+- **타겟 속도 feedforward + PID 보정**, 축별 속도 제한:
 
 ```math
-\mathbf{I}_k=\mathrm{clip}(\mathbf{I}_{k-1}+\mathbf{e}_{xy,k},-v_{max},v_{max})
+\mathbf{u}_{I,k}=\mathbf{u}_{I,k-1}+K_i\mathbf{e}_{xy,k}\Delta t_k
 ```
 
 ```math
-\mathbf{v}_{cmd,xy}=\mathrm{clip}(\hat{\mathbf{v}}_{target,xy}-K_p\mathbf{e}_{xy}-K_i\mathbf{I}_k,-v_{max},v_{max})
+\mathbf{v}_{cmd,xy}=\mathrm{clip}\left(
+\hat{\mathbf{v}}_{target,xy}+K_p\mathbf{e}_{xy}+\mathbf{u}_{I,k}
++K_d(\hat{\mathbf{v}}_{target,xy}-\mathbf{v}_{vehicle,xy}),-v_{max},v_{max}\right)
 ```
 
-- 현재 적분 구현은 오차 누적이며 $`\Delta t`$를 곱하지 않음. 기본 $`K_i=0`$이므로 **P + feedforward**로 동작.
+- 적분 출력과 최종 속도 명령을 축별로 제한한다. 출력 포화를 키우는 방향의 적분은 보류하고, 포화를 줄이는 방향의 적분은 허용한다.
+- 프로필의 `velocity_i_gain` 단위는 s⁻², `velocity_d_gain`은 무차원이다. 둘 다 기본값은 0이다.
 - 기본 설정: $`K_p=1.7`$, $`v_{max}=10\;\mathrm{m/s}`$, 하강 속도 $`v_z=+0.6\;\mathrm{m/s}`$.
 - `ALIGN`: XY 속도 + 진입 시 Z 위치 유지. `APPROACH`: XYZ 속도 + 마커 yaw.
 - 하강 진입 판정(3차원 norm, 목표 Z는 유지 고도):

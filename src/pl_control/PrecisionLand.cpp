@@ -6,6 +6,7 @@
 #include <px4_ros2/utils/geometry.hpp>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <algorithm>
 
 static const std::string kModeName = "PrecisionLandCustom";
 static const bool kEnableDebugOutput = true;
@@ -124,6 +125,7 @@ void PrecisionLand::loadParameters()
 	_node.declare_parameter<float>("descent_vel", 1.0);
 	_node.declare_parameter<float>("vel_p_gain", 1.5);
 	_node.declare_parameter<float>("vel_i_gain", 0.0);
+	_node.declare_parameter<float>("vel_d_gain", 0.0);
 	_node.declare_parameter<float>("max_velocity", 3.0);
 	_node.declare_parameter<float>("target_timeout", 3.0);
 	_node.declare_parameter<float>("delta_position", 0.25);
@@ -134,6 +136,7 @@ void PrecisionLand::loadParameters()
 	_node.get_parameter("descent_vel", _param_descent_vel);
 	_node.get_parameter("vel_p_gain", _param_vel_p_gain);
 	_node.get_parameter("vel_i_gain", _param_vel_i_gain);
+	_node.get_parameter("vel_d_gain", _param_vel_d_gain);
 	_node.get_parameter("max_velocity", _param_max_velocity);
 	_node.get_parameter("target_timeout", _param_target_timeout);
 	_node.get_parameter("delta_position", _param_delta_position);
@@ -142,7 +145,7 @@ void PrecisionLand::loadParameters()
 	_node.get_parameter("target_pos_noise", _param_target_pos_noise);
 
 	RCLCPP_INFO(_node.get_logger(), "descent_vel: %f", _param_descent_vel);
-	RCLCPP_INFO(_node.get_logger(), "vel_i_gain: %f", _param_vel_i_gain);
+	RCLCPP_INFO(_node.get_logger(), "vel_i_gain: %f, vel_d_gain: %f", _param_vel_i_gain, _param_vel_d_gain);
 }
 
 void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg)
@@ -271,6 +274,7 @@ void PrecisionLand::correctTarget(const Eigen::Vector3d& measured_position_world
 
 void PrecisionLand::onActivate()
 {
+	_xy_integral_velocity.setZero();
 	generateSearchWaypoints();
 	_search_started = true;
 	switchToState(State::SEARCH);
@@ -344,7 +348,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		// structurally lags a moving target (PX4's internal position controller has no
 		// feedforward for a moving setpoint), so delta_pos would never shrink below the
 		// ALIGN->APPROACH threshold once the target moves fast enough.
-		Eigen::Vector2f vel = calculateVelocitySetpointXY();
+		Eigen::Vector2f vel = calculateVelocitySetpointXY(dt_s);
 		px4_ros2::TrajectorySetpoint setpoint;
 		setpoint.withHorizontalVelocity(vel).withPositionZ(_approach_altitude);
 		_trajectory_setpoint->update(setpoint);
@@ -367,8 +371,8 @@ void PrecisionLand::updateSetpoint(float dt_s)
 			return;
 		}
 
-		// Descend using velocity setpoints and P velocity controller for XY
-		Eigen::Vector2f vel = calculateVelocitySetpointXY();
+		// Descend at the configured rate while tracking the target with the XY PID.
+		Eigen::Vector2f vel = calculateVelocitySetpointXY(dt_s);
 		_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt,
 					     px4_ros2::quaternionToYaw(_tag.orientation));
 
@@ -386,37 +390,42 @@ void PrecisionLand::updateSetpoint(float dt_s)
 	} // end switch/case
 }
 
-Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
+Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY(float dt_s)
 {
-	float p_gain = _param_vel_p_gain;
-	float i_gain = _param_vel_i_gain;
+	const Eigen::Vector2f vehicle_position = _vehicle_local_position->positionNed().head<2>();
+	const Eigen::Vector2f position_error = (_target_position.head<2>() - vehicle_position.cast<double>()).cast<float>();
+	const Eigen::Vector2f target_velocity = _target_velocity.head<2>().cast<float>();
+	const Eigen::Vector2f p_term = _param_vel_p_gain * position_error;
 
-	// P component
-	float delta_pos_x = _vehicle_local_position->positionNed().x() - _target_position.x();
-	float delta_pos_y = _vehicle_local_position->positionNed().y() - _target_position.y();
+	// Relative velocity is the derivative of relative position error.
+	Eigen::Vector2f d_term = Eigen::Vector2f::Zero();
+	if (_param_vel_d_gain != 0.0f) {
+		const Eigen::Vector2f vehicle_velocity = _vehicle_local_position->velocityNed().head<2>();
+		const Eigen::Vector2f velocity_error = target_velocity - vehicle_velocity;
+		if (velocity_error.allFinite()) {
+			d_term = _param_vel_d_gain * velocity_error;
+		}
+	}
 
-	// I component
-	_vel_x_integral += delta_pos_x;
-	_vel_y_integral += delta_pos_y;
-	float max_integral = _param_max_velocity;
-	_vel_x_integral = std::clamp(_vel_x_integral, -1.f * max_integral, max_integral);
-	_vel_y_integral = std::clamp(_vel_y_integral, -1.f * max_integral, max_integral);
+	const Eigen::Vector2f pd_with_feedforward = target_velocity + p_term + d_term;
+	const float limit = _param_max_velocity;
+	if (std::isfinite(dt_s) && dt_s > 0.0f && _param_vel_i_gain != 0.0f) {
+		const Eigen::Vector2f integral_step = _param_vel_i_gain * position_error * dt_s;
+		for (int axis = 0; axis < 2; ++axis) {
+			const float candidate = std::clamp(
+				_xy_integral_velocity(axis) + integral_step(axis), -limit, limit);
+			const float candidate_command = pd_with_feedforward(axis) + candidate;
+			const bool winds_up = (candidate_command > limit && integral_step(axis) > 0.0f)
+				|| (candidate_command < -limit && integral_step(axis) < 0.0f);
+			if (!winds_up) {
+				_xy_integral_velocity(axis) = candidate;
+			}
+		}
+	}
 
-	float Xp = delta_pos_x * p_gain;
-	float Xi = _vel_x_integral * i_gain;
-	float Yp = delta_pos_y * p_gain;
-	float Yi = _vel_y_integral * i_gain;
-
-	// Sum P and I gains, plus a feedforward term for the target's own velocity so the
-	// drone doesn't lag behind a moving target (pure PI tracking has steady-state error ~ v_target / p_gain)
-	float vx = -1.f * (Xp + Xi) + static_cast<float>(_target_velocity.x());
-	float vy = -1.f * (Yp + Yi) + static_cast<float>(_target_velocity.y());
-
-	// 0.1m/s min vel and 3m/s max vel
-	vx = std::clamp(vx, -1.f * _param_max_velocity, _param_max_velocity);
-	vy = std::clamp(vy, -1.f * _param_max_velocity, _param_max_velocity);
-
-	return Eigen::Vector2f(vx, vy);
+	const Eigen::Vector2f i_term = _xy_integral_velocity;
+	const Eigen::Vector2f command = pd_with_feedforward + i_term;
+	return command.cwiseMax(-limit).cwiseMin(limit);
 }
 
 bool PrecisionLand::checkTargetTimeout()

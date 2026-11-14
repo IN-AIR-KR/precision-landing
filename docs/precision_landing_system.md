@@ -285,57 +285,20 @@ $$
 
 마커를 추적하며 천천히 하강합니다. 가장 중요한 단계입니다.
 
-#### 제어 알고리즘: PI 제어기
+#### 제어 알고리즘: PID 제어기
 
-수평 방향(X, Y)에 대해 PI 제어기를 사용하여 속도 명령을 생성합니다.
-
-##### 위치 오차 (Position Error)
+`ALIGN`과 `APPROACH`에서 수평 위치 오차를 보정해 속도 명령을 생성합니다.
 
 $$
-\begin{align}
-e_x &= x_{\text{vehicle}} - x_{\text{tag}} \\
-e_y &= y_{\text{vehicle}} - y_{\text{tag}}
-\end{align}
+\begin{aligned}
+\mathbf{e}_{xy} &= \hat{\mathbf{p}}_{target,xy}-\mathbf{p}_{vehicle,xy} \\
+\mathbf{u}_{I,k} &= \mathbf{u}_{I,k-1}+K_i\mathbf{e}_{xy,k}\Delta t_k \\
+\mathbf{v}_{cmd,xy} &= \hat{\mathbf{v}}_{target,xy}+K_p\mathbf{e}_{xy}+\mathbf{u}_{I,k}
++K_d(\hat{\mathbf{v}}_{target,xy}-\mathbf{v}_{vehicle,xy})
+\end{aligned}
 $$
 
-##### 적분항 (Integral Term)
-
-$$
-\begin{align}
-I_x(t) &= I_x(t-1) + e_x \\
-I_y(t) &= I_y(t-1) + e_y
-\end{align}
-$$
-
-적분 와인드업 방지 (Anti-windup):
-
-$$
-I_x, I_y \in [-v_{\max}, v_{\max}]
-$$
-
-##### 속도 명령 계산
-
-$$
-\begin{align}
-v_x &= -(K_p \cdot e_x + K_i \cdot I_x) \\
-v_y &= -(K_p \cdot e_y + K_i \cdot I_y) \\
-v_z &= v_{\text{descent}}
-\end{align}
-$$
-
-파라미터:
-
-- $K_p$: 비례 게인 (기본값: 1.5)
-- $K_i$: 적분 게인 (기본값: 0.0)
-- $v_{\text{descent}}$: 하강 속도 (기본값: 1.0 m/s, 양수 = 하강)
-
-##### 속도 제한 (Saturation)
-
-$$
-v_x, v_y \in [-v_{\max}, v_{\max}]
-$$
-
-여기서 $v_{\max} = 3.0$ m/s (기본값)
+수평 명령과 적분 출력은 축별로 $[-v_{\max},v_{\max}]$로 제한합니다. 출력 포화를 키우는 방향의 적분은 보류하고, 포화를 줄이는 방향의 적분은 허용합니다. 모드에 진입할 때 적분 출력을 초기화합니다. 하강 중 Z축은 설정한 하강 속도를 사용합니다.
 
 #### Yaw 제어
 
@@ -346,28 +309,6 @@ $$
 $$
 
 여기서 $q_{\text{tag}}$는 마커의 쿼터니언
-
-#### 제어 블록 다이어그램
-
-```
-                                  ┌──────────────────┐
-Target Position ────┐             │                  │
-(x_tag, y_tag)      │             │   PI Controller  │
-                    ├─► (-) ─────▶│   Kp = 1.5       │───► Velocity
-Vehicle Position ───┘             │   Ki = 0.0       │     Command
-(x_vehicle, y_vehicle)            │                  │     (vx, vy)
-                                  └──────────────────┘
-                                           │
-                                           ▼
-                                  ┌──────────────────┐
-                                  │   Saturation     │
-                                  │  [-3.0, 3.0] m/s │
-                                  └──────────────────┘
-                                           │
-                                           ▼
-Descent Velocity ──────────────────────────┴─────────────► (vx, vy, vz)
-(vz = 1.0 m/s)                                              to PX4
-```
 
 #### 전환 조건
 
@@ -521,7 +462,8 @@ Eigen::Affine3d tag_world_transform =
 | ---------------- | ----- | ------ | --------------------------- |
 | `descent_vel`    | float | 1.0    | 하강 속도 (m/s)             |
 | `vel_p_gain`     | float | 1.5    | 속도 제어 비례 게인         |
-| `vel_i_gain`     | float | 0.0    | 속도 제어 적분 게인         |
+| `vel_i_gain`     | float | 0.0    | 속도 제어 적분 게인 (s⁻²)   |
+| `vel_d_gain`     | float | 0.0    | 상대 속도에 적용하는 미분 게인 |
 | `max_velocity`   | float | 3.0    | 최대 수평 속도 (m/s)        |
 | `target_timeout` | float | 3.0    | 마커 추적 타임아웃 (s)      |
 | `delta_position` | float | 0.25   | 위치 도달 판정 임계값 (m)   |

@@ -70,7 +70,7 @@ private:
 	void predictTarget(float dt_s);
 	void correctTarget(const Eigen::Vector3d& measured_position_world);
 
-	Eigen::Vector2f calculateVelocitySetpointXY();
+	Eigen::Vector2f calculateVelocitySetpointXY(float dt_s);
 	bool checkTargetTimeout();
 	bool positionReached(const Eigen::Vector3f& target) const;
 
@@ -126,6 +126,7 @@ private:
 	float _param_descent_vel = {};
 	float _param_vel_p_gain = {};
 	float _param_vel_i_gain = {};
+	float _param_vel_d_gain = {};
 	float _param_max_velocity = {};
 	float _param_target_timeout = {};
 	float _param_delta_position = {};
@@ -133,6 +134,5 @@ private:
 	float _param_target_accel_noise = {};
 	float _param_target_pos_noise = {};
 
-	float _vel_x_integral {};
-	float _vel_y_integral {};
+	Eigen::Vector2f _xy_integral_velocity = Eigen::Vector2f::Zero();
 };

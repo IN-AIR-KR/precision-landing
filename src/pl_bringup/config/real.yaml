@@ -21,6 +21,7 @@ control:
   horizontal_tracking:
     velocity_p_gain: 1.7
     velocity_i_gain: 0.0
+    velocity_d_gain: 0.0
     max_speed_mps: 10.0
   target_estimation:
     timeout_s: 5.0

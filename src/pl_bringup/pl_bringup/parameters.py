@@ -14,6 +14,7 @@ def control_parameters(control):
         'descent_vel': approach['descent_speed_mps'],
         'vel_p_gain': tracking['velocity_p_gain'],
         'vel_i_gain': tracking['velocity_i_gain'],
+        'vel_d_gain': float(tracking.get('velocity_d_gain', 0.0)),
         'max_velocity': tracking['max_speed_mps'],
         'target_timeout': target['timeout_s'],
         'target_accel_noise': target['acceleration_noise_mps2'],
