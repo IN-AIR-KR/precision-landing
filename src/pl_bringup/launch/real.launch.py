@@ -32,8 +32,13 @@ def setup(context):
         Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
              parameters=[controller]),
     ]
+    monitor_parameters = {
+        **{k: v for k, v in config['viz'].items() if k != 'gazebo'},
+        'camera_position_body': controller['camera_position_body'],
+        'camera_orientation_body': controller['camera_orientation_body'],
+    }
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
-                   parameters=[{k: v for k, v in config['viz'].items() if k != 'gazebo'}])
+                   parameters=[monitor_parameters])
     camera = Node(package='pl_camera', executable='csi_camera', name='csi_camera',
                   output='screen', parameters=[{'calibration_json': json.dumps(calibration)}])
     required = [camera, *nodes]

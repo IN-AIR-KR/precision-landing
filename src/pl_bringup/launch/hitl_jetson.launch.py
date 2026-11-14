@@ -24,8 +24,13 @@ def setup(context):
     control = Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
                    parameters=[controller])
     # Raw stays on Jetson. Only the final overlay is encoded for the PC viewer.
+    monitor_parameters = {
+        **{k: v for k, v in config['viz'].items() if k != 'gazebo'},
+        'camera_position_body': controller['camera_position_body'],
+        'camera_orientation_body': controller['camera_orientation_body'],
+    }
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
-                   parameters=[dict({k: v for k, v in config['viz'].items() if k != 'gazebo'}, transport='raw')])
+                   parameters=[dict(monitor_parameters, transport='raw')])
     handlers = [RegisterEventHandler(OnProcessExit(target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='Required Jetson process exited'))])) for node in (detector, control)]
     return [*handlers, detector, control, monitor]

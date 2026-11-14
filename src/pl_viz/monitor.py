@@ -29,6 +29,18 @@ def finite(value):
     return float(value) if math.isfinite(value) else None
 
 
+def body_relative_position(detection, extrinsic):
+    if not detection.get('pose_valid') or detection.get('position_m') is None:
+        return None
+    position = np.asarray(detection['position_m'], dtype=float)
+    if position.shape != (3,) or not np.isfinite(position).all():
+        return None
+    translation, rotation = extrinsic
+    w, xyz = rotation[0], rotation[1:]
+    cross = 2 * np.cross(xyz, position)
+    return (translation + position + w * cross + np.cross(xyz, cross)).tolist()
+
+
 def render(image, state):
     """Overlay telemetry directly on the camera frame at its original resolution."""
     canvas = image.copy() if image is not None else np.full((960, 1280, 3), 28, np.uint8)
@@ -101,6 +113,16 @@ def render(image, state):
     percent = f'{b["remaining_pct"]:.0f} %' if b and b['connected'] and b['remaining_pct'] is not None else '-- %'
     text(voltage + '     ' + percent, w//2, h-margin, .95, align='center')
 
+    detection = current('detection')
+    relative = detection.get('body_position_m') if detection else None
+    if relative is None:
+        text('TARGET FRD: --', w-margin, h-margin, .8, align='right')
+    else:
+        text('TARGET RELATIVE (m)', w-margin, h-margin-round(114*unit), .8, align='right')
+        for index, (axis, value) in enumerate(zip(('FWD', 'RIGHT', 'DOWN'), relative)):
+            text(f'{axis}  {value:+.2f}', w-margin, h-margin-round((76-38*index)*unit),
+                 .8, align='right')
+
     center, length = (w//2, h//2), max(8, round(18*unit))
     for color, stroke in [((0, 0, 0), thickness+3), (white, thickness)]:
         cv2.line(canvas, (center[0]-length, center[1]), (center[0]+length, center[1]), color, stroke, cv2.LINE_AA)
@@ -112,6 +134,14 @@ class Monitor(Node):
         super().__init__('landing_monitor')
         defaults = {'transport': 'raw', 'fps': 10.0, 'jpeg_quality': 80, 'stale_after': 2.0}
         config = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
+        translation = np.asarray(self.declare_parameter('camera_position_body', [0., 0., -.1]).value)
+        rotation = np.asarray(self.declare_parameter(
+            'camera_orientation_body', [math.sqrt(.5), 0., 0., math.sqrt(.5)]).value)
+        norm = np.linalg.norm(rotation)
+        if (translation.shape != (3,) or rotation.shape != (4,) or
+                not np.isfinite(translation).all() or not math.isfinite(norm) or norm < 1e-9):
+            raise ValueError('Invalid camera mounting transform')
+        self.camera_extrinsic = (translation, rotation / norm)
         self.transport = config['transport']
         self.fps, self.quality, self.stale = float(config['fps']), int(config['jpeg_quality']), float(config['stale_after'])
         if self.transport not in ('raw', 'compressed') or self.fps <= 0 or self.stale <= 0 or not 1 <= self.quality <= 100:
@@ -131,7 +161,10 @@ class Monitor(Node):
 
     def json_input(self, key, msg):
         try:
-            self.receive(key, json.loads(msg.data))
+            value = json.loads(msg.data)
+            if key == 'detection':
+                value['body_position_m'] = body_relative_position(value, self.camera_extrinsic)
+            self.receive(key, value)
         except (ValueError, TypeError) as exc:
             self.get_logger().warning(str(exc), throttle_duration_sec=5)
 

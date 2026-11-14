@@ -86,6 +86,10 @@ def test_demand_and_camera_loss(transport, monkeypatch, tmp_path):
         assert state['gps']['value']=={'fix_type':3, 'satellites':14}
         assert state['battery']['value']['remaining_pct']==75
         assert state['velocity']['value']=={'horizontal_m_s':5., 'vertical_m_s':-.5}
+        detection = state['detection']['value']
+        assert detection['pose_valid']
+        x, y, z = detection['position_m']
+        np.testing.assert_allclose(detection['body_position_m'], [-y, x, z - .1], atol=1e-8)
         assert states and 'control' in monitor.inputs and 'image' not in monitor.inputs
         assert not any(drawings) and not encoded
         pose_count=len(poses)
