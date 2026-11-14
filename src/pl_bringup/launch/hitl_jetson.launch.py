@@ -9,18 +9,20 @@ from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from pl_bringup.parameters import control_parameters
 
 
 def setup(context):
     config = yaml.safe_load(Path(LaunchConfiguration('config').perform(context)).read_text())
+    controller = control_parameters(config['control'])
     world = LaunchConfiguration('world').perform(context)
     if world not in ('aruco', 'aruco_moving'):
         raise ValueError('world must be aruco or aruco_moving')
     detector = Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen',
-        parameters=[dict(config['detection'], optical_frame=config['camera']['optical_frame'],
+        parameters=[dict(config['detection'], optical_frame='camera_frame',
                          input_transport='compressed', marker_size=.5 if world == 'aruco' else 1.0)])
     control = Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
-                   parameters=[config['control']])
+                   parameters=[controller])
     # Raw stays on Jetson. Only the final overlay is encoded for the PC viewer.
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
                    parameters=[dict({k: v for k, v in config['viz'].items() if k != 'gazebo'}, transport='raw')])

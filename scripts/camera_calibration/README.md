@@ -7,7 +7,7 @@ Jetson GUI 터미널에서 GStreamer 및 GUI를 지원하는 시스템 OpenCV로
 
 ```bash
 env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
-  --cols 9 --rows 6 --square-mm 25 --output csi_1920x1080.yaml
+  --cols 9 --rows 6 --square-mm 25 --output /tmp/calibration.yaml
 ```
 
 기본값은 센서 0, 1920×1080 @ 30 FPS, flip 0입니다.
@@ -20,6 +20,6 @@ env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
   터미널에 재투영 RMS 오차(px)가 표시됩니다.
 - **Q** 또는 **Esc**로 종료합니다.
 
-카메라 실행 시 저장한 YAML의 절대 경로를 `camera_info_url:=...`로 전달합니다.
+전체 실기체 스택에서는 보정 결과를 `real.yaml`의 `camera.calibration` 아래에 붙여 넣습니다. 카메라 단독 실행에서는 보정 파일의 경로를 `camera_info_url:=...`로 전달할 수 있습니다.
 이 도구가 구하는 값은 렌즈 내부 파라미터와 왜곡 계수입니다. 기체 기준 카메라
 장착 변환은 별도로 측정합니다.

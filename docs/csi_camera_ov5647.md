@@ -366,15 +366,15 @@ sudo reboot
 
 아직 `/camera/image_raw`를 발행하지 않습니다.
 
-- `src/pl_bringup/launch/hardware.launch.py`는 **CSI 캡처 노드를 실행하지 않습니다**
+- `src/pl_bringup/launch/real.launch.py`는 **CSI 캡처 노드를 실행하지 않습니다**
   (파일 첫 줄: "External camera hardware profile. CSI capture and commissioning are deferred").
   외부에서 토픽을 발행해 준다고 가정합니다.
 - `BG10`(10비트 Bayer, 16비트 컨테이너)은 `ros-humble-v4l2-camera`나 `usb_cam` 같은
   기성 노드가 다루지 못합니다.
 - 따라서 **V4L2를 직접 읽어 디베이어 후 발행하는 노드**가 필요합니다.
   `pl_camera`에 이미 `image_relay`가 있으므로 그 옆에 추가하는 것이 자연스럽습니다.
-- `src/pl_bringup/config/hardware.yaml`의 `camera.calibration_verified`와
-  `camera.extrinsics_verified`가 둘 다 `true`가 아니면 `hardware.launch.py`는
+- `src/pl_bringup/config/real.yaml`의 `camera.calibration_verified`와
+  `camera.extrinsics_verified`가 둘 다 `true`가 아니면 `real.launch.py`는
   의도적으로 실행을 거부합니다. 카메라 보정과 장착 변환을 먼저 끝내야 합니다.
 
 관련 문서: [hardware_setting.md](hardware_setting.md), [camera_inputs_stage1.md](camera_inputs_stage1.md)

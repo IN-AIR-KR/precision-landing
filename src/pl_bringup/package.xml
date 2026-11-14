@@ -5,10 +5,11 @@
   <maintainer email="jake@arkelectron.com">Precision Landing Maintainers</maintainer>
   <license>BSD-3-Clause</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
   <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend><exec_depend>python3-yaml</exec_depend>
   <exec_depend>pl_detection</exec_depend><exec_depend>pl_control</exec_depend>
   <exec_depend>pl_viz</exec_depend>
-  <!-- Optional camera launch dependency selected by scripts/build.sh for sim and hardware. -->
+  <!-- Optional camera launch dependency selected by scripts/build.sh for sim and real. -->
   <export><build_type>ament_cmake</build_type></export>
 </package>

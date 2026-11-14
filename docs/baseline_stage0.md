@@ -16,11 +16,11 @@
 | pl_camera | camera_sim.launch.py에서 Gazebo 브리지 소유. CSI는 보류 |
 | pl_detection | 기존 C++ ArUco 구현 이동. Python 전환은 2번 |
 | pl_control | 기존 PX4 모드·KF·착륙 FSM 이동. Delayed KF는 5번 |
-| pl_bringup | sim/hardware launch, YAML 설정, Agent 실행 |
+| pl_bringup | sim/real launch, YAML 설정, Agent 실행 |
 | pl_viz | 기존 Gazebo 마커 표시 이동. 공통 모니터는 4번 |
 
 하드웨어 설정에는 UART 장치/baud, 외부 Image/CameraInfo 토픽과 보정 확인 플래그를 둡니다.
-CSI 캡처·보정값·카메라 장착 변환의 실제 구현/검증은 1번입니다. 기본 hardware 프로필은
+CSI 캡처·보정값·카메라 장착 변환의 실제 구현/검증은 1번입니다. 기본 real 프로필은
 `calibration_verified: false`로 명확히 실패하며 실기체 검증 완료를 의미하지 않습니다.
 기존 Jetson 서비스는 수정/중지하지 않았습니다. 실기체 launch 검증 후 정리합니다.
 
@@ -29,16 +29,16 @@ CSI 캡처·보정값·카메라 장착 변환의 실제 구현/검증은 1번�
 | 대상 | 설치/빌드 | 실행 | 검증 범위 |
 |---|---|---|---|
 | 시뮬 | `./scripts/setup.sh sim`, `./scripts/build.sh sim` | `./scripts/run.sh` | 정적·이동 SITL 비행 |
-| 실기체 | `./scripts/setup.sh hardware`, `./scripts/build.sh hardware` | `./scripts/run_hardware.sh` | 현재 PC에서 미보정 설정 거부 확인. 실기체 비행 미검증 |
+| 실기체 | `./scripts/setup.sh real`, `./scripts/build.sh real` | `./scripts/run_real.sh` | 현재 PC에서 미보정 설정 거부 확인. 실기체 비행 미검증 |
 
 setup은 기존 시스템 ROS Humble, Gazebo(시뮬), MicroXRCEAgent 및 C++ 빌드 도구 설치를 전제로 합니다.
-hardware 빌드 대상은 `pl_bringup`, `pl_control`, `pl_detection` 및 그 의존성입니다.
+real 빌드 대상은 `pl_bringup`, `pl_control`, `pl_detection` 및 그 의존성입니다.
 Gazebo 브리지/시각화와 PX4 SITL은 제외합니다. 하드웨어 프로필의 외부 카메라 입력은
 현재 인식기의 공통 카메라 토픽에 launch remap으로 연결합니다. 코드 내부 Gazebo 경로는 1번에서 제거했습니다.
 
-`pl_bringup/sim.launch.py`가 UDP Agent 하나를 소유하고 `hardware.launch.py`가 UART Agent 하나를
+`pl_bringup/sim.launch.py`가 UDP Agent 하나를 소유하고 `real.launch.py`가 UART Agent 하나를
 소유합니다. `run.sh`는 PX4를 먼저 부팅하고 sim launch를 실행하며 Agent를 따로 띄우지 않습니다.
-설정 파일은 `src/pl_bringup/config/{sim,hardware}.yaml`이며 수정 뒤 `colcon build --packages-select pl_bringup`으로 설치합니다.
+설정 파일은 `src/pl_bringup/config/{sim,real}.yaml`이며 수정 뒤 `colcon build --packages-select pl_bringup`으로 설치합니다.
 
 ## 현재 검증 방법
 
@@ -59,7 +59,7 @@ Gazebo 브리지/시각화와 PX4 SITL은 제외합니다. 하드웨어 프로�
 검증했습니다. 위 차이는 각각 새 시뮬레이션에서 수행한 결과이며 개선 효과로 해석하지 않습니다.
 변경 전후 인식·제어 C++ 소스 해시와 두 노드의 실제 런타임 파라미터는 일치합니다.
 
-소스 구조 검증: pl_bringup 빌드, sim launch 인자 확인, hardware 미보정 설정 거부,
+소스 구조 검증: pl_bringup 빌드, sim launch 인자 확인, real 미보정 설정 거부,
 셸/Python 문법, SDF 구문, Git 공백 오류 검사를 통과했습니다.
 실기체 빌드 선택 목록에 Gazebo 패키지와 PX4 SITL이 들어가지 않는 것도 확인했습니다.
 실제 Jetson CSI·UART·비행은 이 PC에서 검증하지 않았습니다.

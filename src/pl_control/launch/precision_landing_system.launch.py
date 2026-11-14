@@ -1,68 +1,25 @@
+"""Compatibility entry point for a running SITL and DDS Agent."""
 from launch import LaunchDescription
-from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
+
 
 def generate_launch_description():
-    # Declare launch argument for enabling visualization
-    enable_viz_arg = DeclareLaunchArgument(
-        'enable_gazebo_viz',
-        default_value='true',
-        description='Enable Gazebo marker visualization (simulation only)'
-    )
-
-    # Gazebo includes the world name in sensor topic paths (/world/<world>/model/...), so it
-    # must match whatever world is actually running. Default "aruco" is the static-marker world;
-    # pass world:=aruco_moving for the moving-target world.
-    world_arg = DeclareLaunchArgument(
-        'world',
-        default_value='aruco',
-        description='Gazebo world name (must match PX4_GZ_WORLD used to launch the sim)'
-    )
-    world = LaunchConfiguration('world')
-    marker_size_arg = DeclareLaunchArgument(
-        'marker_size', default_value='0.5',
-        description='Physical marker width in meters (PX4 aruco world: 0.5)'
-    )
-
     return LaunchDescription([
-        enable_viz_arg,
-        world_arg,
-        marker_size_arg,
+        DeclareLaunchArgument('world', default_value='aruco'),
+        DeclareLaunchArgument('marker_size', default_value='0.5'),
+        DeclareLaunchArgument('enable_gazebo_viz', default_value='true'),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(PathJoinSubstitution([
-                FindPackageShare('pl_camera'), 'launch', 'camera_sim.launch.py'])),
-            launch_arguments={'world': world}.items()),
-        # Aruco tracker node
-        Node(
-            package='pl_detection',
-            executable='aruco_tracker',
-            name='aruco_tracker',
-            output='screen',
-            parameters=[
-                PathJoinSubstitution([FindPackageShare('pl_detection'), 'config', 'params.yaml']),
-                {'marker_size': LaunchConfiguration('marker_size')},
-            ]
-        ),
-        # Precision landing node
-        Node(
-            package='pl_control',
-            executable='precision_land',
-            name='precision_land',
-            output='screen',
-            parameters=[
-                PathJoinSubstitution([FindPackageShare('pl_control'), 'config', 'params.yaml'])
-            ]
-        ),
-        # Gazebo visualization node (simulation only)
-        Node(
-            package='pl_viz',
-            executable='tag_pose_visualizer',
-            name='tag_pose_visualizer',
-            output='screen',
-            condition=IfCondition(LaunchConfiguration('enable_gazebo_viz'))
+                FindPackageShare('pl_bringup'), 'launch', 'sim.launch.py',
+            ])),
+            launch_arguments={
+                'world': LaunchConfiguration('world'),
+                'marker_size': LaunchConfiguration('marker_size'),
+                'enable_gazebo_viz': LaunchConfiguration('enable_gazebo_viz'),
+                'start_agent': 'false',
+            }.items(),
         ),
     ])

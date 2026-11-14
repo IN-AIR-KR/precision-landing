@@ -6,9 +6,9 @@ profile="${1:-sim}"
 export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
 case "$profile" in
   sim|hitl_pc) packages=(pl_camera pl_bringup pl_control pl_viz pl_detection ros_gz_bridge); gazebo=ON ;;
-  hardware) packages=(pl_camera pl_bringup pl_control pl_detection pl_viz); gazebo=OFF ;;
+  real) packages=(pl_camera pl_bringup pl_control pl_detection pl_viz); gazebo=OFF ;;
   hitl_jetson) packages=(pl_bringup pl_control pl_detection pl_viz); gazebo=OFF ;;
-  *) echo 'Usage: ./scripts/build.sh [sim|hardware|hitl_pc|hitl_jetson]' >&2; exit 1 ;;
+  *) echo 'Usage: ./scripts/build.sh [sim|real|hitl_pc|hitl_jetson]' >&2; exit 1 ;;
 esac
 colcon build --base-paths src --packages-up-to "${packages[@]}" \
   --parallel-workers 2 --allow-overriding ros_gz_bridge \

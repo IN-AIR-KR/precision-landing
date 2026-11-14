@@ -231,7 +231,7 @@ ros2 launch pl_camera camera_csi.launch.py
 | 기본 토픽 | `/camera/image_raw`, `/camera/camera_info` |
 | 기본 모드 | 1920x1080 @30fps, bgr8 |
 | 실측 발행률 | **24.8 fps** |
-| 설정 파일 | `src/pl_camera/config/csi_camera.yaml` |
+| 기본값 및 변경 | `csi_camera` 노드 기본값, 필요 시 launch 인자로 변경 |
 
 주요 파라미터: `sensor_id`, `width`, `height`, `fps`, `flip_method`(장착 방향),
 `encoding`(`bgr8`/`mono8`), `camera_info_url`, `wbmode`, `exposure_time_range`, `gain_range`.
@@ -258,11 +258,9 @@ ros2 run rqt_image_view rqt_image_view /image_proc
 ```
 
 `/pl/detection/status`에 `detected`와 `pose_valid`가 나옵니다.
-보정 후 `camera_info_url`에 결과 파일을 넣으면 `pose_valid`가 `true`로 바뀝니다.
-
-`src/pl_bringup/config/hardware.yaml`의 `camera.calibration_verified`와
-`camera.extrinsics_verified`가 둘 다 `true`가 아니면 `hardware.launch.py`는
-의도적으로 실행을 거부합니다.
+카메라를 단독 실행할 때는 `camera_info_url` 인자로 보정 파일을 지정할 수 있습니다.
+전체 실기체 스택은 `real.yaml`의 `camera.calibration`에서 보정값을 읽습니다. 보정 도구의 YAML 내용을 이 항목 아래에 붙여 넣습니다.
+`real.yaml`의 `control.camera_extrinsic.position`과 `rotation`에는 실측 장착 변환을 입력합니다.
 
 ## 7. 아직 검증되지 않은 것
 

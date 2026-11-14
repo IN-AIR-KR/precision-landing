@@ -64,9 +64,8 @@ PC SITL 및 bag 결과만으로 실기체 단계 완료를 주장하지 않습�
 
 인식기 구현은 `src/pl_detection/pl_detection/aruco_tracker.py` 하나에 통합했습니다.
 `__init__.py`는 Python 패키지 표시용이며 비어 있습니다.
-현재 sim/hardware 실행은 `pl_bringup/config/{sim,hardware}.yaml`을 읽습니다.
-`pl_detection/config/params.yaml`, `pl_control/config/params.yaml`은 기존
-`pl_control/launch/precision_landing_system.launch.py`에서 사용하므로 유지합니다.
-읽는 코드가 없는 `camera.source`, `agent.transport`, hardware의 `viz`는 삭제했습니다.
+현재 sim/real 실행은 `pl_bringup/config/{sim,real}.yaml`을 읽습니다.
+운용 설정은 `pl_bringup/config/sim.yaml`과 `real.yaml`에서 관리합니다. 기존 시뮬 launch도 bringup의 시뮬 설정을 사용합니다.
+읽는 코드가 없는 `camera.source`, `agent.transport`, real의 `viz`는 삭제했습니다.
 
 통합 후 재빌드·테스트 19개 통과. 이동 bag 1,004프레임 재생에서도 검출 193/193과 포즈 비교가 통과했습니다. 결과는 `.run/stage2-single-file-moving/`에 보존합니다.

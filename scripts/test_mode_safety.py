@@ -7,7 +7,7 @@ root=Path(__file__).resolve().parents[1]
 os.chdir(root)
 out=root/'.run'/('mode-safety-'+time.strftime('%Y%m%d-%H%M%S'));out.mkdir(exist_ok=False)
 config=yaml.safe_load((root/'src/pl_bringup/config/sim.yaml').read_text())
-config['control']['descent_vel']=0.1
+config['control']['approach']['descent_speed_mps']=0.1
 (out/'sim.yaml').write_text(yaml.safe_dump(config))
 env=dict(os.environ,HEADLESS='1',RUN_LOG_DIR=str(out),BRINGUP_CONFIG=str(out/'sim.yaml'))
 with (out/'runner.log').open('w') as log:

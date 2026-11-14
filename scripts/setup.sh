@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 root="$PWD"
 export PX4_DIR="${PX4_DIR:-$HOME/PX4-Autopilot}"
 profile="${1:-sim}"
-case "$profile" in sim|hardware|hitl_pc|hitl_jetson) ;; *) echo "Usage: $0 [sim|hardware|hitl_pc|hitl_jetson]" >&2; exit 1 ;; esac
+case "$profile" in sim|real|hitl_pc|hitl_jetson) ;; *) echo "Usage: $0 [sim|real|hitl_pc|hitl_jetson]" >&2; exit 1 ;; esac
 git submodule update --init --recursive
 if [[ ( "$profile" == sim || "$profile" == hitl_pc ) && ! -f "$PX4_DIR/Makefile" ]]; then
   echo "PX4 checkout not found: $PX4_DIR. Set PX4_DIR to your existing checkout." >&2

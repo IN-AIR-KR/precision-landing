@@ -53,8 +53,8 @@ def video_info(caps):
     return info
 
 
-def load_camera_info(path, width, height, frame_id, logger):
-    """Read a camera_calibration YAML file into a CameraInfo message.
+def load_camera_info(path, width, height, frame_id, logger, *, calibration_json=''):
+    """Read calibration from a file or the real flight profile into a CameraInfo message.
 
     Returns an uncalibrated message (k and d zeroed) when no path is given or
     the file cannot be read. aruco_tracker keeps its camera_info subscription
@@ -63,21 +63,31 @@ def load_camera_info(path, width, height, frame_id, logger):
     """
     info = CameraInfo(width=width, height=height, distortion_model='plumb_bob')
     info.header.frame_id = frame_id
-    if not path:
+    if not path and not calibration_json:
         logger.warn('No camera_info_url set: publishing uncalibrated CameraInfo. '
                     'Run camera_calibration and point camera_info_url at the result '
                     'before trusting target poses.')
         return info
     try:
-        import yaml
-        with open(path) as handle:
-            data = yaml.safe_load(handle) or {}
+        if calibration_json:
+            import json
+            data = json.loads(calibration_json)
+        else:
+            import yaml
+            with open(path) as handle:
+                data = yaml.safe_load(handle) or {}
         k = list(data['camera_matrix']['data'])
         d = list(data['distortion_coefficients']['data'])
         if len(k) != 9:
             raise ValueError('camera_matrix must hold 9 values')
         file_w = int(data.get('image_width', width))
         file_h = int(data.get('image_height', height))
+        if calibration_json:
+            from math import isfinite
+            if (file_w, file_h) != (width, height):
+                raise ValueError(f'Expected {width}x{height} calibration, got {file_w}x{file_h}')
+            if not all(isfinite(float(v)) for v in k + d) or float(k[0]) <= 0 or float(k[4]) <= 0:
+                raise ValueError('Calibration must have finite coefficients and positive focal lengths')
         if (file_w, file_h) != (width, height):
             # Intrinsics scale linearly with resolution for the same field of view.
             sx, sy = width / file_w, height / file_h
@@ -98,8 +108,10 @@ def load_camera_info(path, width, height, frame_id, logger):
                   [info.k[0], info.k[1], info.k[2], 0.,
                    info.k[3], info.k[4], info.k[5], 0.,
                    info.k[6], info.k[7], info.k[8], 0.])
-        logger.info(f'Loaded camera intrinsics from {path}')
+        logger.info(f'Loaded camera intrinsics from {path or "real flight profile"}')
     except Exception as exc:                      # noqa: BLE001 - report and degrade
+        if calibration_json:
+            raise ValueError(f'Invalid real flight camera calibration: {exc}') from exc
         logger.error(f'Could not read camera_info_url {path}: {exc}. '
                      'Publishing uncalibrated CameraInfo.')
         info.k = [0.] * 9
@@ -118,6 +130,7 @@ class CsiCamera(Node):
             'camera_info_topic': '/camera/camera_info',
             'frame_id': 'camera_optical_frame',
             'camera_info_url': '',
+            'calibration_json': '',
             'wbmode': 1,                 # Argus auto white balance
             'exposure_time_range': '',   # e.g. '5000000 20000000' (ns), '' = Argus auto
             'gain_range': '',            # e.g. '1 10'
@@ -142,7 +155,8 @@ class CsiCamera(Node):
         self.info_pub = self.create_publisher(CameraInfo, str(cfg['camera_info_topic']), qos)
         self.frame_id = str(cfg['frame_id'])
         self.info = load_camera_info(str(cfg['camera_info_url']), self.width,
-                                     self.height, self.frame_id, self.get_logger())
+                                     self.height, self.frame_id, self.get_logger(),
+                                     calibration_json=cfg['calibration_json'])
 
         Gst.init(None)
         self.pipeline = Gst.parse_launch(self.build_pipeline(cfg))

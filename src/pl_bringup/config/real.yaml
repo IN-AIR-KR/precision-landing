@@ -1,0 +1,37 @@
+camera:
+  # Paste the calibration tool's YAML output under calibration (1920x1080).
+  calibration: {}
+detection:
+  aruco_id: 0
+  dictionary: 2
+  marker_size: 0.15
+  debug_fps: 15.0
+  jpeg_quality: 80
+control:
+  align:
+    position_tolerance_m: 0.2
+    relative_speed_tolerance_mps: 0.2
+  approach:
+    descent_speed_mps: 0.6
+  horizontal_tracking:
+    velocity_p_gain: 1.7
+    velocity_i_gain: 0.0
+    max_speed_mps: 10.0
+  target_estimation:
+    timeout_s: 5.0
+    acceleration_noise_mps2: 1.0
+    position_noise_m: 0.1
+  camera_extrinsic:
+    # Optical frame -> body FRD. Positive z points down.
+    # 기체 중심에서 아래로 10 cm, 영상 위쪽이 기체 앞을 향하는 하방 카메라
+    position: [0.0, 0.0, 0.10] # [x, y, z] in meters
+    rotation: [0.7071067811865476, 0.0, 0.0, 0.7071067811865476] # [w, x, y, z], image top points forward
+px4:
+  uart:
+    device: /dev/ttyTHS1
+    baud: 921600 # Match PX4 SER_TEL2_BAUD.
+viz:
+  transport: compressed
+  fps: 10.0
+  jpeg_quality: 80
+  stale_after: 2.0

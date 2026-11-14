@@ -563,7 +563,7 @@ enum PredefinedDictionaryType {
 
 ### 파라미터 파일
 
-**위치**: `src/pl_detection/config/params.yaml`
+**위치**: `src/pl_bringup/config/sim.yaml`
 
 ```yaml
 aruco_tracker:
@@ -818,7 +818,7 @@ ArUco Tracker가 자동으로 실행됩니다.
 ```bash
 # 파라미터 파일과 함께 실행
 ros2 run pl_detection aruco_tracker --ros-args \
-    --params-file src/pl_detection/config/params.yaml
+    -p marker_size:=0.5
 
 # 파라미터 오버라이드
 ros2 run pl_detection aruco_tracker --ros-args \

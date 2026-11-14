@@ -83,7 +83,7 @@ graph TD
 | `px4_msgs` | 메시지 정의 | ROS 2와 PX4가 주고받는 메시지 타입을 제공 |
 | `px4_ros2_cpp` | PX4 인터페이스 라이브러리 | 외부 모드 등록, 기체 상태 수신, setpoint 발행을 지원 |
 
-실기체에서는 외부 카메라 노드가 보정된 영상과 카메라 정보를 발행합니다. CSI 드라이버 구현은 보류 중입니다.
+실기체에서는 Jetson CSI 카메라 노드가 영상과 카메라 보정 정보를 발행합니다.
 
 ## 4. 착륙 FSM
 
@@ -187,7 +187,7 @@ H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
 ```
 
 - 마지막 관측 수신 후 기본 **5초** 초과 시 타겟 유실. 접근·하강 중이면 실패 보고 후 `IDLE`.
-- 기본값은 [sim.yaml](src/pl_bringup/config/sim.yaml), 실기체 설정은 [hardware.yaml](src/pl_bringup/config/hardware.yaml).
+- 기본값은 [sim.yaml](src/pl_bringup/config/sim.yaml), 실기체 설정은 [real.yaml](src/pl_bringup/config/real.yaml).
 
 ## 6. 실행방법
 
@@ -301,7 +301,7 @@ ros2 run rqt_image_view rqt_image_view /pl/monitor/image
 
 비행 시험은 별도 터미널에서 6.1의 `test_flight.py`를 실행하거나 [QGC 수동 착륙 절차](#qgc에서-수동-착륙-시험)를 따릅니다. 종료할 때는 각 실행 터미널에서 `Ctrl+C`를 누릅니다.
 
-실기체는 `./scripts/setup.sh hardware` 후 `ros2 launch pl_bringup hardware.launch.py`를 사용합니다. 카메라 보정·장착 확인 플래그와 UART 경로를 먼저 설정해야 하며, 실기체 검증은 보류 상태입니다. Jetson CSI 카메라를 함께 실행하려면 `use_csi:=true camera_info_url:=/absolute/path/to/calibration.yaml`을 launch 인자에 추가합니다. 카메라 캡처 모드와 보정 파일이 일치해야 합니다.
+실기체는 `./scripts/setup.sh real`로 빌드한 뒤 `./scripts/run_real.sh`로 CSI 카메라와 착륙 스택을 실행합니다. `real.yaml`의 `control.camera_extrinsic`에 실측 위치·회전을 입력하고, `px4.uart`를 기체 설정에 맞춥니다. 기본 CSI 모드(1920×1080)에서 측정한 보정값은 `real.yaml`의 `camera.calibration`에 넣습니다. 기체별 설정 파일은 `./scripts/run_real.sh config:=/absolute/path/to/real.yaml`로 선택합니다. 저장소의 기본 설정 디렉터리를 사용한다면 빌드해서 설치 경로에 반영합니다.
 
 세부 안내: [실행 환경](docs/run_local.md) · [카메라 입력](docs/camera_inputs_stage1.md) · [CSI 카메라(IMX219)](docs/csi_camera_imx219.md) · [CSI 카메라(OV5647)](docs/csi_camera_ov5647.md) · [Pixhawk UART 연결](docs/pixhawk_uart_link.md) · [PX4 호환](docs/px4_compatibility_stage3.md) · [모니터링](docs/monitoring_stage4.md) · [리팩터링 계획](docs/refactor_plan.md)
 

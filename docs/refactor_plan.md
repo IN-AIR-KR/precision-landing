@@ -16,29 +16,27 @@
 | `pl_camera` | `camera_sim.launch.py`의 Gazebo 브리지, 실기체 CSI 캡처, 촬영 시각 기록, `Image`·`CameraInfo` 발행 |
 | `pl_detection` | Python ArUco 검출 및 카메라 기준 `/target_pose` 발행 |
 | `pl_control` | Delayed KF, 착륙 상태 머신, PX4 상태 수신·모드 등록·명령 전송 |
-| `pl_bringup` | `sim.launch.py`와 `hardware.launch.py`, 환경별 설정과 토픽 연결 |
+| `pl_bringup` | `sim.launch.py`와 `real.launch.py`, 환경별 설정과 토픽 연결 |
 | `pl_viz` | 실기체와 시뮬 공통 모니터링 화면 및 모니터링용 출력 |
 
 PX4 연동 코드는 `pl_control` 내부의 어댑터로 둔다. Micro XRCE-DDS Agent는 별도 프로세스로 실행하고, 연결마다 실행 주체를 하나로 둔다. [PX4 uXRCE-DDS 문서](https://docs.px4.io/v1.17/en/middleware/uxrce_dds)
 
 - **시뮬** — `pl_bringup`의 `sim.launch.py`가 `ExecuteProcess`로 `MicroXRCEAgent udp4 -p 8888`을 실행한다. `pl_camera/camera_sim.launch.py`를 include하여 `ros_gz_bridge`로 Gazebo 카메라 데이터를 전달한다.
-- **실기체** — `hardware.launch.py`가 `ExecuteProcess`로 UART Agent를 띄우고, CSI 캡처·인식·제어 노드도 함께 실행한다. UART 장치와 보드레이트는 실제 배선과 PX4의 `uxrce_dds_client` 설정에 맞춘다. 제어기는 PX4 연결과 유효한 기체 상태를 확인한 뒤 착륙 제어를 시작한다.
-- **기존 서비스 정리** — 저장소의 기존 개별 서비스와 실행 스크립트는 삭제했다. Jetson에 별도로 설치된 기존 USB 카메라·인식기·Agent 서비스의 확인 및 비활성화는 실기체 작업 시 진행한다. 기존 Agent는 UART 중복 점유를 피하도록 새 launch를 시험하기 전에 중지한다. 부팅 자동 실행이 필요할 때는 `hardware.launch.py` 전체를 실행하는 `systemd` 서비스 하나를 둔다.
+- **실기체** — `real.launch.py`가 `ExecuteProcess`로 UART Agent를 띄우고, CSI 캡처·인식·제어 노드도 함께 실행한다. UART 장치와 보드레이트는 실제 배선과 PX4의 `uxrce_dds_client` 설정에 맞춘다. 제어기는 PX4 연결과 유효한 기체 상태를 확인한 뒤 착륙 제어를 시작한다.
+- **기존 서비스 정리** — 저장소의 기존 개별 서비스와 실행 스크립트는 삭제했다. Jetson에 별도로 설치된 기존 USB 카메라·인식기·Agent 서비스의 확인 및 비활성화는 실기체 작업 시 진행한다. 기존 Agent는 UART 중복 점유를 피하도록 새 launch를 시험하기 전에 중지한다. 부팅 자동 실행이 필요할 때는 `real.launch.py` 전체를 실행하는 `systemd` 서비스 하나를 둔다.
 
 ### 설정 파일 위치
 
-`pl_bringup/config/`에 `hardware.yaml`과 `sim.yaml` 두 파일을 둔다. 각 launch는 해당 파일을 읽고, 파일 안의 섹션을 노드 파라미터와 프로세스 실행 인자로 전달한다.
+`pl_bringup/config/`에 `real.yaml`과 `sim.yaml` 두 파일을 둔다. 각 launch는 해당 파일을 읽고, 파일 안의 섹션을 노드 파라미터와 프로세스 실행 인자로 전달한다.
 
 | 섹션 | 관리할 값 |
 |---|---|
-| `camera` | 실기체 CSI 센서 ID·모드, 해상도·FPS, optical frame, 내부 보정값·왜곡 계수 |
 | `detection` | ArUco 딕셔너리·ID, 마커 크기, 디버그 영상 설정 |
-| `control` | 기체 기준 카메라 장착 위치·방향, 제어 게인, 유실 타임아웃, Delayed KF 설정 |
-| `agent` | 실기체 UART 장치·보드레이트 또는 SITL UDP 포트 |
+| `control` | `align`, `approach`, `horizontal_tracking`, `target_estimation`, `camera_extrinsic` |
+| `px4` | 실기체 `uart` 장치·보드레이트 또는 SITL `udp` 포트 |
 | `viz` | 상태 표시 갱신 주기, 데이터 유효 시간, 모니터링 영상의 전송 방식·최대 FPS·JPEG 품질 |
-| `bridge` | 시뮬 전용 Gazebo 영상·`CameraInfo` 토픽 연결 |
 
-`hardware.yaml`의 `camera` 섹션에 실제 출력 해상도에 맞는 보정값을 함께 둔다. `sim.yaml`은 `bridge` 섹션을 통해 Gazebo가 제공하는 `CameraInfo`를 전달한다.
+실기체는 `real.yaml`의 `camera.calibration`에서 보정값을 읽는다. 시뮬은 `camera_sim.launch.py`의 기본 토픽으로 Gazebo가 제공하는 영상과 `CameraInfo`를 전달한다.
 
 ## 1. 실기체와 시뮬 영상 입력 분리
 
@@ -82,7 +80,7 @@ ros2 service call /pl/start_landing std_srvs/srv/Trigger '{}'
 상태: **공통 HUD·구독 기반 처리·영상 유실 표시 구현, ROS 통합 테스트 통과**. 새 구성의 SITL 비행은 다른 실행 중인 PX4 종료 대기, 실기체 화면 검증은 보류. [구현과 검증](monitoring_stage4.md).
 
 - 원본 영상 위에 직접 오버레이한다. 좌상단은 대문자 상태, 우상단은 GPS·위성 수·수평/수직 속도, 하단 가운데는 배터리 전압·잔량을 배치한다.
-- `hardware.launch.py`와 `sim.launch.py`에서 `pl_viz`의 모니터링 출력을 기본으로 제공한다. 운영자가 화면을 열면 아래 항목을 같은 화면에서 확인할 수 있게 한다.
+- `real.launch.py`와 `sim.launch.py`에서 `pl_viz`의 모니터링 출력을 기본으로 제공한다. 운영자가 화면을 열면 아래 항목을 같은 화면에서 확인할 수 있게 한다.
 
 | 표시 항목 | 내용 |
 |---|---|

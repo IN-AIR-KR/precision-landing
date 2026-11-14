@@ -24,7 +24,7 @@
 
 ## 정밀착륙 연동
 
-1. `src/pl_bringup/config/hardware.yaml`의 `camera.image_topic`과 `camera.camera_info_topic` 설정
+1. `src/pl_bringup/config/real.yaml`의 `camera.image_topic`과 `camera.camera_info_topic` 설정
 
    ```c++
        _image_sub = create_subscription<sensor_msgs::msg::Image>(

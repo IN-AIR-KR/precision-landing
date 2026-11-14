@@ -36,7 +36,7 @@ def setup(context):
         raise RuntimeError('Another PX4 is running. Stop it before starting hitl_pc.')
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         try:
-            sock.bind(('0.0.0.0', int(config['agent']['port'])))
+            sock.bind(('0.0.0.0', int(config['px4']['udp']['port'])))
         except OSError as exc:
             raise RuntimeError('DDS Agent UDP port is already in use; run only one Agent on the PC') from exc
     runtime = Path(arg('run_dir')).expanduser().resolve()/'px4-rootfs'
@@ -56,12 +56,11 @@ def setup(context):
     flight = ExecuteProcess(cmd=gz_command(str(binary), '-d', str(px4/'build/px4_sitl_default/etc'), '-w', str(runtime)),
         additional_env=dict(env, PX4_GZ_STANDALONE='1', PX4_SYS_AUTOSTART='4014',
                             PX4_SIM_MODEL='gz_x500_mono_cam_down', PX4_GZ_WORLD=world, GZ_IP='127.0.0.1'), output='screen')
-    agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(config['agent']['port'])], output='screen')
+    agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(config['px4']['udp']['port'])], output='screen')
     camera = IncludeLaunchDescription(PythonLaunchDescriptionSource(str(
         Path(get_package_share_directory('pl_camera'))/'launch/camera_sim.launch.py')),
-        launch_arguments={'world': world, 'model': config['bridge']['model'], 'link': config['bridge']['link'],
-            'sensor': config['bridge']['sensor'], 'image_topic': '/hitl/pc/camera/image_raw',
-            'camera_info_topic': '/camera/camera_info', 'debug_bridge': 'false'}.items())
+        launch_arguments={'world': world, 'image_topic': '/hitl/pc/camera/image_raw',
+                          'debug_bridge': 'false'}.items())
     encoder = Node(package='pl_camera', executable='image_relay', name='hitl_camera_encoder', output='screen',
         parameters=[{'direction': 'encode', 'input_topic': '/hitl/pc/camera/image_raw',
             'output_topic': '/camera/image_raw/compressed', 'fps': float(arg('camera_fps')),

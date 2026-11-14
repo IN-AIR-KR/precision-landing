@@ -115,7 +115,7 @@ ArUco 마커를 감지하고 위치를 추정하는 노드입니다.
 
 #### 설정 파일
 
-- `src/pl_detection/config/params.yaml`
+- `src/pl_bringup/config/sim.yaml`
 
 ### 3. **precision_land**
 
@@ -150,7 +150,7 @@ ArUco 마커를 감지하고 위치를 추정하는 노드입니다.
 
 #### 설정 파일
 
-- `src/pl_control/config/params.yaml`
+- `src/pl_bringup/config/sim.yaml`
 
 ### 4. **tag_pose_visualizer** (선택적)
 
@@ -530,8 +530,7 @@ Eigen::Affine3d tag_world_transform =
 ### 파라미터 파일 위치
 
 ```
-src/pl_control/config/params.yaml
-src/pl_detection/config/params.yaml
+src/pl_bringup/config/sim.yaml
 ```
 
 ### 파라미터 튜닝 가이드
@@ -630,10 +629,10 @@ ros2 launch pl_control precision_landing_system.launch.py enable_gazebo_viz:=fal
 
 ```bash
 # ArUco Tracker
-ros2 run pl_detection aruco_tracker --ros-args --params-file src/pl_detection/config/params.yaml
+ros2 run pl_detection aruco_tracker --ros-args -p marker_size:=0.5
 
 # Precision Land
-ros2 run pl_control precision_land --ros-args --params-file src/pl_control/config/params.yaml
+ros2 run pl_control precision_land
 ```
 
 ### 3. 모드 활성화 (PX4)

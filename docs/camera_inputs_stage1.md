@@ -9,7 +9,7 @@
 - C++ 인식기는 `/camera/image_raw`와 `/camera/camera_info`만 구독합니다.
   `world_name` 파라미터와 Gazebo 월드·모델 경로를 제거했습니다.
 - 시뮬 launch가 Gazebo 센서 토픽을 공통 토픽으로 연결합니다. 외부 카메라는
-  `hardware.yaml`의 `camera.image_topic`, `camera.camera_info_topic`을 remap합니다.
+  `real.yaml`의 `camera.image_topic`, `camera.camera_info_topic`을 remap합니다.
   인식기 바이너리는 동일합니다.
 - 기존 `precision_landing_system.launch.py` 경로도 공통 입력에 맞춰 유지했습니다.
 - `/target_pose`의 위치·자세 계산과 best-effort QoS는 유지합니다. timestamp는 입력 이미지의
@@ -17,7 +17,7 @@
 - 카메라 장착 위치·방향을 환경별 control 파라미터로 분리했습니다. 기본값은 기존 코드를 재현합니다.
 ## 설정과 좌표계
 
-설정 파일은 `src/pl_bringup/config/sim.yaml`과 `hardware.yaml`입니다.
+설정 파일은 `src/pl_bringup/config/sim.yaml`과 `real.yaml`입니다.
 
 | 설정 | 의미 |
 |---|---|
@@ -41,7 +41,7 @@
 
 사용자 요청으로 CSI 드라이버/캡처 노드, Jetson 센서 모드, 실제 CameraInfo 보정값,
 촬영 시각 출처·ROS 시간 변환, 실기체 방향·거리 검증은 보류했습니다.
-현재 hardware 프로필은 외부 Image/CameraInfo 공급자를 전제로 하며 CSI를 실행하지 않습니다.
+현재 real 프로필은 외부 Image/CameraInfo 공급자를 전제로 하며 CSI를 실행하지 않습니다.
 `calibration_verified`와 `extrinsics_verified`는 모두 false입니다. 실제 검증 전에는
 이 값을 바꾸지 않으며, 실기체 서비스도 이번 작업에서 변경하지 않았습니다.
 따라서 계획 1번은 **소프트웨어 입력 분리 완료 / CSI 완료 조건 보류** 상태입니다.
@@ -89,7 +89,7 @@ colcon test-result --test-result-base build/precision_land/test_results --verbos
 - 새 공통 토픽 정적 bag도 재생 성공: 비교 가능한 202/202 포즈 일치, 최대 성분 차이 0.
   원본 영상이 함께 기록되지 않은 포즈는 기존 bag 각각 1개, 새 정적 bag 4개이며 별도 집계.
 - 매칭은 원본 촬영 timestamp 기준으로 수행했고 출력 프레임 `camera_frame`도 확인.
-- hardware 기본 설정은 보정/장착 검증 미완료로 실행 거부. Gazebo 경로·프로세스는 포함하지 않음.
+- real 기본 설정은 보정/장착 검증 미완료로 실행 거부. Gazebo 경로·프로세스는 포함하지 않음.
 
 위 비행 오차는 각 실행의 결과이며
 제어 알고리즘 개선 효과를 의미하지 않습니다. 기존 KF·FSM·게인은 바꾸지 않았습니다.

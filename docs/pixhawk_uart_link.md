@@ -55,7 +55,7 @@ Pixhawk TELEM2 (JST-GH 1.25mm 6핀)      Jetson 40핀 헤더 (J12)
 | --- | --- | --- |
 | `UXRCE_DDS_CFG` | **102** | TELEM2에서 uXRCE-DDS 클라이언트 기동 |
 | `UXRCE_DDS_DOM_ID` | **42** | 젯슨 `ROS_DOMAIN_ID`와 일치시켜야 함 |
-| `SER_TEL2_BAUD` | 921600 | `hardware.yaml`의 `agent.baud`와 맞출 것 |
+| `SER_TEL2_BAUD` | 921600 | `real.yaml`의 `px4.uart.baud`와 맞출 것 |
 
 세 개 모두 **재부팅 후 적용**됩니다.
 
@@ -247,7 +247,7 @@ ros2 topic hz /fmu/out/vehicle_attitude
 q: [-0.37101441, 0.01138760, 0.01187376, 0.92848140]
 ```
 
-`hardware.launch.py`는 이 Agent를 자동으로 띄우므로 평소에는 직접 실행할 필요가 없습니다.
+`real.launch.py`는 이 Agent를 자동으로 띄우므로 평소에는 직접 실행할 필요가 없습니다.
 
 ## 6. 문제 해결 순서
 
@@ -331,7 +331,7 @@ sudo reboot
 ## 8. 아직 검증되지 않은 것
 
 - **3,000,000 baud** — 프로젝트 기본값이었으나 점퍼선 환경에서 검증하지 않았습니다.
-  현재 `hardware.yaml`은 921600입니다. 올리려면 FC의 `SER_TEL2_BAUD`와 함께 바꾸세요.
+  현재 `real.yaml`은 921600입니다. 올리려면 FC의 `SER_TEL2_BAUD`와 함께 바꾸세요.
 - **PIO 모드의 처리량** — DMA를 껐으므로 CPU 부하가 늘어납니다. 100Hz 자세 수신은
   문제없이 동작하지만, 고주파 토픽을 추가로 켤 때 여유를 확인해야 합니다.
 - **실제 비행 중 진동·전자기 간섭** — 점퍼선이 아닌 고정 케이블로 바꿔야 합니다.
