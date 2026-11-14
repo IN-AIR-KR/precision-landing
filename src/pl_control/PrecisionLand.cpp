@@ -6,6 +6,7 @@
 #include <px4_ros2/utils/geometry.hpp>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <stdexcept>
 
 static const std::string kModeName = "PrecisionLandCustom";
 static const bool kEnableDebugOutput = true;
@@ -32,6 +33,22 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 	_target_pose_world_pub = _node.create_publisher<geometry_msgs::msg::PoseStamped>("/target_pose_world", rclcpp::QoS(1).best_effort());
 
 	loadParameters();
+	if (_pampc_enabled) {
+		_camera_info_sub = _node.create_subscription<sensor_msgs::msg::CameraInfo>(
+			"/camera/camera_info", rclcpp::QoS(1).best_effort(),
+			[this](const sensor_msgs::msg::CameraInfo& info) {
+				if (info.width == 0 || info.height == 0 ||
+				    !std::all_of(info.k.begin(), info.k.end(), [](double v) { return std::isfinite(v); }) ||
+				    info.k[0] <= 0 || info.k[4] <= 0 ||
+				    info.k[2] <= 0.08 * info.width || info.k[2] >= 0.92 * info.width ||
+				    info.k[5] <= 0.08 * info.height || info.k[5] >= 0.92 * info.height) {
+					return;
+				}
+				_view = pampc::View{_camera_transform, Eigen::Quaterniond::Identity(),
+					{info.k[0], info.k[4]}, {info.k[2], info.k[5]},
+					{static_cast<double>(info.width), static_cast<double>(info.height)}, _marker_size, 0.};
+			});
+	}
 
 	modeRequirements().manual_control = false;
 	setupStartService();
@@ -141,6 +158,14 @@ void PrecisionLand::loadParameters()
 	_node.get_parameter("target_accel_noise", _param_target_accel_noise);
 	_node.get_parameter("target_pos_noise", _param_target_pos_noise);
 
+	_pampc_enabled = _node.declare_parameter<bool>("pampc_enabled", false);
+	_marker_size = _node.declare_parameter<double>("marker_size", 1.0);
+	if (_pampc_enabled && (!std::isfinite(_marker_size) || _marker_size <= 0 ||
+	    !std::isfinite(_param_max_velocity) || _param_max_velocity <= 0 ||
+	    !std::isfinite(_param_descent_vel) || _param_descent_vel <= 0)) {
+		throw std::invalid_argument("PAMPC requires positive finite marker size and velocity limits");
+	}
+
 	RCLCPP_INFO(_node.get_logger(), "descent_vel: %f", _param_descent_vel);
 	RCLCPP_INFO(_node.get_logger(), "vel_i_gain: %f", _param_vel_i_gain);
 }
@@ -153,15 +178,24 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 
 void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
-	if (_search_started) {
+	if (_search_started && _state != State::FINAL_APPROACH && _state != State::FINISHED) {
 		auto tag = ArucoTag {
 			.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
 			.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
 			.timestamp = _node.now(),
 		};
 
+		if (!tag.position.allFinite() || !tag.orientation.coeffs().allFinite() ||
+		    tag.orientation.norm() < 1e-6 || tag.position.z() <= 0.) {
+			return;
+		}
+		tag.orientation.normalize();
 		// Save tag position/orientation in NED world frame
-		_tag = getTagWorld(tag);
+		const auto world_tag = getTagWorld(tag);
+		if (!world_tag.position.allFinite() || !world_tag.orientation.coeffs().allFinite()) {
+			return;
+		}
+		_tag = world_tag;
 
 		// Correct the target Kalman filter with this new position measurement. The filter keeps
 		// predicting every control tick regardless (see predictTarget(), called from
@@ -271,6 +305,15 @@ void PrecisionLand::correctTarget(const Eigen::Vector3d& measured_position_world
 
 void PrecisionLand::onActivate()
 {
+	_tag.timestamp = rclcpp::Time(0, 0, _node.get_clock()->get_clock_type());
+	_target_initialized = false;
+	_target_velocity.setZero();
+	_target_lost_prev = true;
+	_vel_x_integral = _vel_y_integral = 0.f;
+	_search_waypoint_index = 0;
+	_alignment_time = 0.;
+	_pampc_solver.reset();
+	_final_trajectory.reset();
 	generateSearchWaypoints();
 	_search_started = true;
 	switchToState(State::SEARCH);
@@ -278,7 +321,9 @@ void PrecisionLand::onActivate()
 
 void PrecisionLand::onDeactivate()
 {
-	// No-op
+	_search_started = false;
+	_final_trajectory.reset();
+	switchToState(State::IDLE);
 }
 
 void PrecisionLand::updateSetpoint(float dt_s)
@@ -308,7 +353,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 
 	case State::SEARCH: {
 
-		if (_target_initialized) {
+		if (_target_initialized && !target_lost && (!_pampc_enabled || _view)) {
 			_approach_altitude = _vehicle_local_position->positionNed().z();
 			switchToState(State::ALIGN);
 			break;
@@ -331,6 +376,10 @@ void PrecisionLand::updateSetpoint(float dt_s)
 	}
 
 	case State::ALIGN: {
+		if (_pampc_enabled) {
+			updatePampc(dt_s);
+			break;
+		}
 
 		if (target_lost) {
 			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
@@ -359,6 +408,10 @@ void PrecisionLand::updateSetpoint(float dt_s)
 	}
 
 	case State::APPROACH: {
+		if (_pampc_enabled) {
+			updatePampc(dt_s);
+			break;
+		}
 
 		if (target_lost) {
 			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
@@ -379,11 +432,148 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		break;
 	}
 
+	case State::FINAL_APPROACH:
+		updatePampc(dt_s);
+		break;
+
 	case State::FINISHED: {
 		ModeBase::completed(px4_ros2::Result::Success);
 		break;
 	}
 	} // end switch/case
+}
+
+void PrecisionLand::failLanding(const char* reason)
+{
+	RCLCPP_WARN(_node.get_logger(), "PAMPC landing stopped: %s", reason);
+	_search_started = false;
+	_final_trajectory.reset();
+	ModeBase::completed(px4_ros2::Result::ModeFailureOther);
+	switchToState(State::IDLE);
+}
+
+void PrecisionLand::updatePampc(float dt_s)
+{
+	using namespace pampc;
+	const Motion vehicle{_vehicle_local_position->positionNed().cast<double>(),
+	                     _vehicle_local_position->velocityNed().cast<double>()};
+	if (!_vehicle_local_position->positionXYValid() || !_vehicle_local_position->positionZValid() ||
+	    !vehicle.position.allFinite() || !vehicle.velocity.allFinite()) {
+		failLanding("invalid local state");
+		return;
+	}
+
+	if (_state == State::FINAL_APPROACH) {
+		if (_land_detected && SteadyClock::now() - _land_received < std::chrono::seconds(2)) {
+			switchToState(State::FINISHED);
+			return;
+		}
+		_final_elapsed += std::max(0.f, dt_s);
+		const auto& trajectory = *_final_trajectory;
+		auto sample = trajectory.sample(_final_elapsed);
+		// Allow a short, bounded contact window below the marker plane.
+		const double overrun = std::max(0., _final_elapsed - trajectory.duration);
+		sample.position += overrun * sample.velocity;
+		if (overrun > 0.5 || (vehicle.position - sample.position).head<2>().norm() > 0.35 ||
+		    std::abs(vehicle.position.z() - sample.position.z()) > 0.35) {
+			failLanding("final trajectory tracking or contact timeout");
+			return;
+		}
+		px4_ros2::TrajectorySetpoint setpoint;
+		setpoint.withPosition(sample.position.cast<float>()).withVelocity(sample.velocity.cast<float>())
+		        .withYaw(_landing_yaw);
+		_trajectory_setpoint->update(setpoint);
+		return;
+	}
+
+	if (checkTargetTimeout() || !_target_position.allFinite() || !_target_velocity.allFinite()) {
+		failLanding("target estimate unavailable");
+		return;
+	}
+	const double age = (_node.now() - _tag.timestamp).seconds();
+	if (age < 0. || age > 0.35) {
+		_alignment_time = 0.;
+		px4_ros2::TrajectorySetpoint hold;
+		hold.withHorizontalVelocity(Eigen::Vector2f::Zero())
+		    .withPositionZ(_state == State::ALIGN ? _approach_altitude : static_cast<float>(vehicle.position.z()));
+		_trajectory_setpoint->update(hold);
+		return;
+	}
+
+	const Motion target{_target_position, {_target_velocity.x(), _target_velocity.y(), 0.}};
+	const double horizontal_error = (vehicle.position - target.position).head<2>().norm();
+	const double relative_speed = (vehicle.velocity - target.velocity).head<2>().norm();
+	const double clearance = target.position.z() - vehicle.position.z();
+	const bool aligned = horizontal_error <= _param_delta_position && relative_speed <= _param_delta_velocity;
+	const bool align = _state == State::ALIGN;
+	const double vertical_speed = std::min(0.6, static_cast<double>(_param_descent_vel));
+	Limits limits{std::min(2., static_cast<double>(_param_max_velocity)), vertical_speed, 1.5, 0.};
+	auto view = *_view;
+	view.marker_orientation = _tag.orientation.normalized();
+	const Eigen::Quaterniond attitude = _vehicle_attitude->attitude().cast<double>();
+	view.yaw = px4_ros2::quaternionToYaw(_vehicle_attitude->attitude());
+	if (!attitude.coeffs().allFinite() || attitude.norm() < 1e-6 ||
+	    !std::isfinite(view.yaw) || clearance <= 0.) {
+		failLanding("invalid camera heading or target clearance");
+		return;
+	}
+	const Eigen::Vector2d edge_room =
+		view.principal_point.cwiseMin(view.image_size - view.principal_point) -
+		view.margin * view.image_size;
+	const double final_height = std::max(0.45, _marker_size / std::sqrt(2.) *
+		view.focal_length.cwiseQuotient(edge_room).maxCoeff() + _camera_transform.translation().z());
+	if (align) {
+		_alignment_time = aligned ? _alignment_time + std::max(0.f, dt_s) : 0.;
+		if (_alignment_time >= 0.35) {
+			switchToState(State::APPROACH);
+		}
+	} else if (aligned && clearance <= final_height + 0.10 && clearance >= 0.15 &&
+	           std::abs(vehicle.velocity.z()) <= limits.vertical_speed) {
+		const double touchdown_speed = std::min(0.25, 0.5 * limits.vertical_speed);
+		const double duration = std::max(1., 1.3 * clearance / touchdown_speed);
+		Motion end{target.position + duration * target.velocity, target.velocity};
+		end.velocity.z() = touchdown_speed;
+		const MinimumJerk trajectory(vehicle, end, duration);
+		if (duration <= 6. && target.velocity.norm() <= limits.horizontal_speed &&
+		    view.containsMarker(vehicle.position, attitude.normalized(), _tag.position) &&
+		    trajectory.feasible(limits.horizontal_speed, limits.vertical_speed, limits.acceleration)) {
+			_final_trajectory = trajectory;
+			_final_elapsed = 0.;
+			_landing_yaw = static_cast<float>(view.yaw);
+			switchToState(State::FINAL_APPROACH);
+			return;
+		}
+	}
+
+	constexpr double horizon = 2.;
+	Motion reference_start = vehicle;
+	Motion reference_end{target.position + horizon * target.velocity, target.velocity};
+	if (align) {
+		reference_start.position.z() = _approach_altitude;
+		reference_start.velocity.z() = 0.;
+		reference_end.position.z() = _approach_altitude;
+	} else {
+		const double descent = aligned ?
+			std::clamp(clearance - final_height + 0.05, 0., 0.5 * limits.vertical_speed * horizon) : 0.;
+		reference_end.position.z() = vehicle.position.z() + descent;
+		limits.downward_speed = aligned ? std::clamp((clearance - final_height + 0.05) / horizon,
+		                                              0., limits.vertical_speed) : 0.;
+	}
+	const MinimumJerk reference(reference_start, reference_end, horizon);
+	const auto command = _pampc_solver.solve(vehicle, attitude, reference, target, view, limits, dt_s);
+	if (!command) {
+		failLanding("RPG MPC solver failed");
+		return;
+	}
+	px4_ros2::TrajectorySetpoint setpoint;
+	setpoint.withHorizontalVelocity(command->head<2>().cast<float>())
+	        .withYaw(static_cast<float>(view.yaw));
+	if (align) {
+		setpoint.withPositionZ(_approach_altitude);
+	} else {
+		setpoint.withVelocityZ(static_cast<float>(command->z()));
+	}
+	_trajectory_setpoint->update(setpoint);
 }
 
 Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
@@ -421,7 +611,7 @@ Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY()
 
 bool PrecisionLand::checkTargetTimeout()
 {
-	if (!_tag.valid()) {
+	if (!_search_started || !_tag.valid()) {
 		return true;
 	}
 
@@ -521,6 +711,9 @@ std::string PrecisionLand::stateName(State state)
 
 	case State::APPROACH:
 		return "APPROACH";
+
+	case State::FINAL_APPROACH:
+		return "FINAL_APPROACH";
 
 	case State::FINISHED:
 		return "FINISHED";

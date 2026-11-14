@@ -1,5 +1,7 @@
 #pragma once
-#include <Eigen/Geometry>
+#include "Pampc.hpp"
+#include <optional>
+#include <sensor_msgs/msg/camera_info.hpp>
 #include <chrono>
 #include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/trigger.hpp>
@@ -71,6 +73,17 @@ private:
 	void correctTarget(const Eigen::Vector3d& measured_position_world);
 
 	Eigen::Vector2f calculateVelocitySetpointXY();
+	void updatePampc(float dt_s);
+	void failLanding(const char* reason);
+	rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr _camera_info_sub;
+	std::optional<pampc::View> _view;
+	pampc::RpgSolver _pampc_solver;
+	std::optional<pampc::MinimumJerk> _final_trajectory;
+	bool _pampc_enabled = false;
+	double _marker_size = 1.0;
+	double _alignment_time = 0.;
+	double _final_elapsed = 0.;
+	float _landing_yaw = 0.f;
 	bool checkTargetTimeout();
 	bool positionReached(const Eigen::Vector3f& target) const;
 
@@ -79,6 +92,7 @@ private:
 		SEARCH, 	// Searches for target using a search pattern
 		ALIGN, 	// Positioning over landing target while maintaining altitude
 		APPROACH, 	// Stay over landing target while descending
+		FINAL_APPROACH,
 		FINISHED
 	};
 

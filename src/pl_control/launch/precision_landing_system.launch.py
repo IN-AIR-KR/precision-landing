@@ -54,7 +54,8 @@ def generate_launch_description():
             name='precision_land',
             output='screen',
             parameters=[
-                PathJoinSubstitution([FindPackageShare('pl_control'), 'config', 'params.yaml'])
+                PathJoinSubstitution([FindPackageShare('pl_control'), 'config', 'params.yaml']),
+                {'marker_size': LaunchConfiguration('marker_size')},
             ]
         ),
         # Gazebo visualization node (simulation only)

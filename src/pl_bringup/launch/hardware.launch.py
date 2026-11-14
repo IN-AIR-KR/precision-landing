@@ -22,7 +22,8 @@ def setup(context):
         Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen',
              parameters=[dict(config['detection'], optical_frame=config['camera']['optical_frame'])],
              remappings=[('/camera/image_raw',config['camera']['image_topic']), ('/camera/camera_info',config['camera']['camera_info_topic'])]),
-        Node(package='pl_control', executable='precision_land', name='precision_land', output='screen', parameters=[config['control']])]
+        Node(package='pl_control', executable='precision_land', name='precision_land', output='screen', parameters=[dict(config['control'], marker_size=config['detection']['marker_size'])],
+             remappings=[('/camera/camera_info', config['camera']['camera_info_topic'])])]
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
                    parameters=[{k: v for k, v in config['viz'].items() if k != 'gazebo'}])
     cameras = []

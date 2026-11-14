@@ -20,7 +20,8 @@ def setup(context):
         parameters=[dict(config['detection'], optical_frame=config['camera']['optical_frame'],
                          input_transport='compressed', marker_size=.5 if world == 'aruco' else 1.0)])
     control = Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
-                   parameters=[config['control']])
+                   parameters=[dict(config['control'], marker_size=0.5 if world == 'aruco' else 1.0)],
+             remappings=[('/camera/camera_info', config['camera']['camera_info_topic'])])
     # Raw stays on Jetson. Only the final overlay is encoded for the PC viewer.
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
                    parameters=[dict({k: v for k, v in config['viz'].items() if k != 'gazebo'}, transport='raw')])

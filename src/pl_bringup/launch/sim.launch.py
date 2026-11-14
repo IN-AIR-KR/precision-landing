@@ -29,7 +29,8 @@ def setup(context):
         Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen', parameters=[detection],
              remappings=[('/camera/image_raw', config['camera']['image_topic']),
                          ('/camera/camera_info', config['camera']['camera_info_topic'])]),
-        Node(package='pl_control', executable='precision_land', name='precision_land', output='screen', parameters=[config['control']])]
+        Node(package='pl_control', executable='precision_land', name='precision_land', output='screen', parameters=[dict(config['control'], marker_size=detection['marker_size'])],
+             remappings=[('/camera/camera_info', config['camera']['camera_info_topic'])])]
     if config['viz']['gazebo']:
         nodes.append(Node(package='pl_viz', executable='tag_pose_visualizer', name='tag_pose_visualizer', output='screen'))
     # A dead Agent, bridge or flight node must be visible as a failed bringup.

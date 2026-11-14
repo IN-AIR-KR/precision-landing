@@ -224,6 +224,8 @@ python3 scripts/test_flight.py             # 이동 타겟 0.3 m/s
 # python3 scripts/test_flight.py --speed 0  # 정지 타겟
 ```
 
+이 브랜치의 `sim.yaml`은 [RPG PAMPC 원본 ACADO 솔버](third_party/rpg_mpc/README.md)를 기본으로 사용합니다. `pl_control` 어댑터는 2초 동안 0.1초 간격으로 참조를 샘플링하고, 솔버가 예측한 첫 구간의 속도를 PX4에 전달합니다. `ALIGN`에서 고도를 유지하며 수평 정렬하고, `APPROACH`에서 마커 가시성을 평가하며 하강합니다. `FINAL_APPROACH`에서는 진입 시점에 확정한 minimum-jerk 궤적을 PX4가 추종합니다. 정지 패드부터 확인하려면 위 명령에 `--speed 0`을 사용합니다. 기존 제어기로 비교하려면 `control.pampc_enabled: false`로 설정합니다. 실기체 프로필의 기본값은 기존 제어기입니다.
+
 각 시험 전 시뮬을 새로 실행합니다. 시험은 이륙·모드 전환·타겟 이동·착륙·자동 disarm을 확인합니다.
 
 #### QGC에서 수동 착륙 시험
