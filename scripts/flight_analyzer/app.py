@@ -163,6 +163,14 @@ def record():
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     payload = {k: v for k, v in data.items() if not k.startswith("_")}
+    config = p / "real.yaml"
+    if p.name == "bag" and p.parent.is_relative_to(_root()):
+        config = p.parent / "real.yaml"
+    if config.resolve().parent == config.parent and config.is_file():
+        try:
+            payload["real_yaml"] = config.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            pass
     return jsonify(payload)
 
 

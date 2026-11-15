@@ -42,7 +42,8 @@ def streaming_actions(stream_url):
 
 def setup(context):
     config_path = Path(LaunchConfiguration('config').perform(context)).expanduser().resolve()
-    config = yaml.safe_load(config_path.read_text())
+    config_yaml = config_path.read_text(encoding='utf-8')
+    config = yaml.safe_load(config_yaml)
     controller = control_parameters(config['control'])
     camera, detection, monitor = vision_nodes(config, controller)
     control_node = Node(package='pl_control', executable='precision_land', name='precision_land',
@@ -54,7 +55,7 @@ def setup(context):
         on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))],
     )) for node in required]
     return [SetEnvironmentVariable('ROS_DOMAIN_ID', str(config['px4'].get('domain_id', 0))),
-            *handlers, monitor, *required, recorder('real'), *streaming_actions(stream_url)]
+            *handlers, monitor, *required, recorder('real', config_yaml=config_yaml), *streaming_actions(stream_url)]
 
 
 def generate_launch_description():

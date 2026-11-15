@@ -38,10 +38,11 @@ def default_log_root():
 
 
 class FlightRecorder(Node):
-    def __init__(self, root, profile):
+    def __init__(self, root, profile, config_yaml=None):
         super().__init__('flight_recorder')
         self.root = root
         self.profile = profile
+        self.config_yaml = config_yaml
         self.armed = False
         self.process = None
         self.output = None
@@ -66,6 +67,8 @@ class FlightRecorder(Node):
         try:
             stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             self.output = Path(tempfile.mkdtemp(prefix=f'{stamp}_{self.profile}_', dir=self.root)) / 'bag'
+            if self.config_yaml is not None:
+                (self.output.parent / 'real.yaml').write_text(self.config_yaml, encoding='utf-8')
             self.process = subprocess.Popen(
                 ['ros2', 'bag', 'record', '--storage', 'sqlite3',
                  '--regex', TOPIC_FILTER, '-o', str(self.output)],
@@ -114,7 +117,7 @@ def main():
 
     rclpy.init()
     try:
-        node = FlightRecorder(root, args.profile)
+        node = FlightRecorder(root, args.profile, os.environ.pop('PL_FLIGHT_REAL_YAML', None))
         try:
             rclpy.spin(node)
         except (KeyboardInterrupt, ExternalShutdownException):

@@ -83,7 +83,7 @@ def generate_launch_description():
     return LaunchDescription([
         SetEnvironmentVariable('ROS_DOMAIN_ID', os.environ.get('ROS_DOMAIN_ID', '42')),
         DeclareLaunchArgument('workspace', default_value=root),
-        DeclareLaunchArgument('px4_dir', default_value=os.environ.get('PX4_DIR', str(Path.home()/'PX4-Autopilot'))),
+        DeclareLaunchArgument('px4_dir', default_value=os.environ.get('PX4_DIR', str(Path.home()/'PX4-Autopilot-6ea3539'))),
         DeclareLaunchArgument('run_dir', default_value=str(Path(root)/'.run/hitl_pc')),
         DeclareLaunchArgument('config', default_value=str(Path(get_package_share_directory('pl_bringup'))/'config/sim.yaml')),
         DeclareLaunchArgument('world', default_value='aruco_moving'),
