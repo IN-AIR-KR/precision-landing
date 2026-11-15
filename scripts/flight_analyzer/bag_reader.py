@@ -14,6 +14,30 @@ MSG_DIR = Path(__file__).resolve().parents[2] / "src/px4_msgs/msg"
 SKIP_TYPES = {"sensor_msgs/msg/CompressedImage", "sensor_msgs/msg/Image"}
 VIDEO_TYPE = "sensor_msgs/msg/CompressedImage"
 VIDEO_TOPIC = "/pl/monitor/image/compressed"
+RATE_TOPICS = {
+    "/camera/camera_info": "camera",
+    "/pl/detection/status": "detection",
+}
+CONTROL_SETPOINT = "/fmu/in/trajectory_setpoint"
+
+
+def rate_series(timestamps, start, end):
+    """Count arrivals in one-second bins on the bag timeline."""
+    duration = (end - start) / 1e9
+    widths = [min(1.0, duration - i) for i in range(math.ceil(duration))]
+    fields = {}
+    if not widths:
+        return {"t": [], "fields": fields}
+    for stream, times in timestamps.items():
+        counts = [0] * len(widths)
+        for stamp in times:
+            index = min((stamp - start) // 1_000_000_000, len(counts) - 1)
+            counts[index] += 1
+        fields[stream] = [count / width for count, width in zip(counts, widths)]
+    return {"t": [i + width / 2 for i, width in enumerate(widths)], "fields": fields}
+
+
+
 # 평탄화에서 버릴 필드 (시각은 bag 수신시각으로 통일, MultiArray layout 은 잡음).
 SKIP_FIELDS = {"header", "layout"}
 MAX_ARRAY = 16
@@ -141,6 +165,7 @@ def load_record(record: Path) -> dict:
     types = {}
     errors = {}
     frames = []    # (t_ns, db path, message id), indexed without loading the frame
+    timestamps = {}
     t0 = t_end = None
     for db in dbs:
         with closing(_connect(db)) as con:
@@ -162,6 +187,11 @@ def load_record(record: Path) -> dict:
                  "ORDER BY timestamp" % ",".join("?" * len(want)))
             for tid, t_ns, data in con.execute(q, want):
                 name, ty = topics[tid]
+                stream = RATE_TOPICS.get(name)
+                if name == CONTROL_SETPOINT or name.startswith(CONTROL_SETPOINT + "_v"):
+                    stream = "control"
+                if stream:
+                    timestamps.setdefault(stream, []).append(t_ns)
                 if name in errors:
                     continue
                 try:
@@ -204,7 +234,10 @@ def load_record(record: Path) -> dict:
             "strings": strs,
         }
     hud_frames = sorted(frames)
+    if hud_frames:
+        timestamps["viz"] = [t for t, _, _ in hud_frames]
     return {
+        "output_rates": rate_series(timestamps, t0, t_end),
         "duration": (t_end - t0) / 1e9,
         "topics": out_topics,
         "video": {"topic": VIDEO_TOPIC, "t": [(t - t0) / 1e9 for t, _, _ in hud_frames]},

@@ -4,6 +4,7 @@
 const T = "/pl/control/status";
 const D = "/pl/detection/status";
 const M = "/pl/monitor/status";
+const OUTPUT_RATES = "viewer/output_rates";
 
 function panel(title, topic, fields, note) {
   return { title, note, series: fields.map((field) => {
@@ -15,6 +16,9 @@ function panel(title, topic, fields, note) {
 const PALETTE = ["#60a5fa", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#22d3ee", "#f472b6", "#a3e635"];
 
 const PANELS = [
+  panel("Output rates", OUTPUT_RATES,
+    [["camera", "Camera"], ["detection", "Detection"], ["control", "Control"], ["viz", "Viz"]],
+    "Hz in 1 s bins · CameraInfo / detection status / PX4 trajectory setpoint / HUD JPEG"),
   panel("Landing state", T, [["active", "Mode active"], ["target_lost", "Target lost"]], "0 / 1"),
   panel("ArUco detection", D, [["detected", "Marker detected"], ["pose_valid", "Pose valid"]], "0 / 1"),
   {
@@ -192,6 +196,7 @@ async function openRecord(id) {
     d.textContent = "역직렬화 실패(건너뜀): " + e;
     $("errors").appendChild(d);
   }
+  if (rec.output_rates) rec.topics[OUTPUT_RATES] = rec.output_rates;
   stateSegs = buildStateSegs();
   renderStateLegend();
   fillFieldList();
