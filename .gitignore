@@ -9,3 +9,5 @@ __pycache__/
 /scripts/camera_calibration/samples/
 
 /flight_logs/
+
+.DS_Store
