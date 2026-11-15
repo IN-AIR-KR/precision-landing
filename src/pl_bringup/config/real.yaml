@@ -1,4 +1,8 @@
 camera:
+  # Use 1280x720 @ 60 fps with a calibration taken in that sensor mode.
+  width: 1920
+  height: 1080
+  fps: 30.0
   output_width: 640
   output_height: 360
   calibration:

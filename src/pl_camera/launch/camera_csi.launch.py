@@ -3,6 +3,7 @@
 The camera node owns the defaults. Launch arguments override them when supplied.
 
     ros2 launch pl_camera camera_csi.launch.py
+    ros2 launch pl_camera camera_csi.launch.py width:=640 height:=480 fps:=60
     ros2 launch pl_camera camera_csi.launch.py width:=1280 height:=720 fps:=60
     ros2 launch pl_camera camera_csi.launch.py camera_info_url:=/path/to/imx219.yaml
 """
@@ -13,7 +14,7 @@ from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-INT_PARAMS = ('sensor_id', 'width', 'height', 'flip_method', 'wbmode')
+INT_PARAMS = ('sensor_id', 'sensor_mode', 'width', 'height', 'flip_method', 'wbmode')
 FLOAT_PARAMS = ('fps',)
 STRING_PARAMS = ('encoding', 'image_topic', 'camera_info_topic', 'frame_id',
                  'camera_info_url', 'exposure_time_range', 'gain_range')

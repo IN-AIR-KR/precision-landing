@@ -128,6 +128,7 @@ class CsiCamera(Node):
         super().__init__(name, **kwargs)
         defaults = {
             'sensor_id': 0, 'width': 1920, 'height': 1080, 'fps': 30.0,
+            'sensor_mode': -1,          # -1 lets Argus choose from the requested caps
             'output_width': 0, 'output_height': 0,  # 0 keeps the capture dimension
             'flip_method': 0,            # nvvidconv: 0 none, 2 180deg, 4 horiz, 6 vert
             'encoding': 'bgr8',          # bgr8 or mono8 (mono8 is cheaper for ArUco)
@@ -152,11 +153,13 @@ class CsiCamera(Node):
             raise ValueError('Camera output must preserve the capture aspect ratio and fit its dimensions')
         if self.encoding not in ('bgr8', 'mono8'):
             raise ValueError("encoding must be 'bgr8' or 'mono8'")
-        if self.width <= 0 or self.height <= 0 or not 0 < self.fps <= 120:
+        if self.width <= 0 or self.height <= 0 or not 0 < self.fps < float("inf"):
             raise ValueError('Invalid width, height or fps')
+        if cfg['sensor_mode'] < -1:
+            raise ValueError('sensor_mode must be -1 (auto) or a nonnegative Argus mode index')
         if (self.width, self.height, round(self.fps)) not in SENSOR_MODES:
             self.get_logger().warn(
-                f'{self.width}x{self.height}@{self.fps:g} is not an IMX219 sensor mode '
+                f'{self.width}x{self.height}@{self.fps:g} is outside the built-in IMX219 mode list '
                 f'{SENSOR_MODES}. Argus will scale or renegotiate, which costs '
                 'frame rate and may change the field of view.')
 
@@ -189,6 +192,8 @@ class CsiCamera(Node):
 
     def build_pipeline(self, cfg):
         src = f'nvarguscamerasrc sensor-id={int(cfg["sensor_id"])} wbmode={int(cfg["wbmode"])}'
+        if cfg['sensor_mode'] >= 0:
+            src += f' sensor-mode={cfg["sensor_mode"]}'
         if cfg['exposure_time_range']:
             src += f' exposuretimerange="{cfg["exposure_time_range"]}"'
         if cfg['gain_range']:

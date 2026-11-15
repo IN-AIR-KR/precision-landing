@@ -26,3 +26,22 @@ env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
 생성한 YAML의 `camera.calibration`을 `src/pl_bringup/config/real.yaml`의 같은 위치에 붙여 넣습니다.
 이 도구가 구하는 값은 렌즈 내부 파라미터와 왜곡 계수입니다. 기체 기준 카메라
 장착 변환은 별도로 측정합니다.
+
+## IMX219 60 FPS
+
+Jetson GUI에서 비행 스택을 종료하고 미리보기로 움직임과 실제 FPS를 확인합니다.
+
+```bash
+env -u PYTHONPATH /usr/bin/python3 scripts/camera_preview/imx219_preview.py --backend argus --mode 4 --no-aruco
+```
+
+같은 센서 모드로 보정합니다. 체커보드에 맞춰 내부 교차점 수와 칸 길이를 지정합니다.
+
+```bash
+env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
+  --cols 9 --rows 6 --square-mm 25 --width 1280 --height 720 --fps 60
+```
+
+`real.yaml`의 `camera.width`, `camera.height`, `camera.fps`를 각각
+`1280`, `720`, `60.0`으로 바꾸고 생성한 `camera.calibration`을 붙여 넣습니다.
+`output_width: 640`과 `output_height: 360`은 그대로 사용해 검출기 입력 크기를 유지합니다.
