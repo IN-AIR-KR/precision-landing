@@ -1,12 +1,16 @@
 """Browse recorded precision landings in a web browser."""
 import argparse
 import os
+import shutil
+import subprocess
+import tempfile
 import threading
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
+from statistics import median
 
-from flask import Flask, Response, abort, jsonify, request
+from flask import Flask, Response, abort, jsonify, request, send_file
 
 import bag_reader
 
@@ -153,6 +157,63 @@ def frame():
     except (ValueError, IndexError, KeyError, FileNotFoundError):
         abort(404)
     return Response(img, mimetype=mime, headers={"Cache-Control": "no-cache"})
+
+
+def _encode_hud(ffmpeg: str, data: dict, directory: Path) -> Path:
+    """Encode HUD frames with variable timing relative to the first frame."""
+    times = data["video"]["t"]
+    ticks = [round((t - times[0]) * 1000) for t in times]
+    gaps = [b - a for a, b in zip(ticks, ticks[1:]) if b > a]
+    tail = max(1, round(median(gaps))) if gaps else 33
+    lines = ["ffconcat version 1.0"]
+    for i, ((db, mid), tick) in enumerate(zip(data["_frames"], ticks)):
+        end = ticks[i + 1] if i + 1 < len(ticks) else tick + tail
+        if end == tick:
+            continue
+        image, mime = bag_reader.read_frame(db, mid)
+        name = f"{i}.{'png' if mime == 'image/png' else 'jpg'}"
+        (directory / name).write_bytes(image)
+        lines.extend((f"file {name}", "option framerate 1000", f"duration {(end - tick) / 1000:.3f}"))
+    # concat uses the following frame timestamp to establish the last hold.
+    lines.extend((f"file {name}", "option framerate 1000"))
+    (directory / "frames.ffconcat").write_text("\n".join(lines) + "\n")
+    output = directory / "hud.mp4"
+    subprocess.run([
+        ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "error",
+        "-f", "concat", "-safe", "0", "-i", "frames.ffconcat",
+        "-an", "-vsync", "vfr", "-enc_time_base", "1:1000",
+        "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart", output.name,
+    ], cwd=directory, check=True, capture_output=True)
+    return output
+
+
+@app.get("/api/video.mp4")
+def download_video():
+    p = _record_path(request.args.get("id", ""))
+    try:
+        data = _load_cached(p)
+    except FileNotFoundError as error:
+        abort(404, str(error))
+    if not data["_frames"]:
+        abort(404, "이 기록에는 저장할 HUD 영상이 없습니다.")
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        abort(503, "MP4 저장을 사용하려면 뷰어를 실행하는 컴퓨터에 FFmpeg를 설치하세요.")
+    with tempfile.TemporaryDirectory(prefix="pl-hud-") as temp:
+        try:
+            output = _encode_hud(ffmpeg, data, Path(temp))
+        except (OSError, subprocess.CalledProcessError, KeyError) as error:
+            app.logger.error("HUD export failed for %s: %s", p.name, getattr(error, "stderr", None) or error)
+            abort(500, "HUD 영상을 MP4로 변환하지 못했습니다.")
+        # The open file remains readable after cleanup on macOS and Linux.
+        size = output.stat().st_size
+        video = output.open("rb")
+    response = send_file(video, mimetype="video/mp4", as_attachment=True,
+                         download_name=f"{p.name}-hud.mp4", conditional=False)
+    response.content_length = size
+    return response
 
 
 @app.get("/api/record")

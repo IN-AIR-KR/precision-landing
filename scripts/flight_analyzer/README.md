@@ -33,6 +33,10 @@ python scripts/flight_analyzer/app.py
 
 별도 로그 폴더나 단일 bag 디렉터리는 `--log-dir`로 열 수 있다. PX4 메시지 필드를 볼 때는 기록과 같은 `px4_msgs` 서브모듈을 초기화하거나 `--px4-msg-dir /path/to/px4_msgs/msg`를 지정한다. HUD와 모니터 상태 그래프는 표준 ROS 메시지를 사용한다.
 
+영상 옆 **MP4 저장**을 누르면 선택한 기록의 전체 HUD 영상을 다운로드한다.
+기록된 프레임 간격을 유지하며, 뷰어 실행 컴퓨터에 FFmpeg(libx264)가 필요하다.
+macOS에서는 `brew install ffmpeg`, Ubuntu에서는 `sudo apt install ffmpeg`로 설치할 수 있다.
+
 `Video + Graphs`의 영상 아래 3D 뷰에서 드론 궤적, 드론이 추정한 마커, 시뮬레이터의 실제 마커를 같은 시간축으로 볼 수 있다.
 마우스 드래그로 회전하고 휠로 확대한다. **보기 중심**의 **원점**은 ARM 위치를 (0, 0, 0)으로 표시하고,
 **드론 따라가기**는 드론 위치를 따라간다. 영상이 없는 기록도 3D 재생과 탐색이 가능하다.

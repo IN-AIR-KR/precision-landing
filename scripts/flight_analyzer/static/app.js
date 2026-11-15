@@ -158,6 +158,7 @@ function renderRecords() {
 // ---------------------------------------------------------------- 기록 열기
 async function openRecord(id) {
   setPlaying(false);
+  $("v-export").disabled = true;
   const config = $("record-config");
   config.open = false;
   config.hidden = true;
@@ -698,6 +699,8 @@ function resetTimeline() {
   $("v-img").removeAttribute("src");
   $("v-info").textContent = "";
   const ok = hasVideo();
+  $("v-export").disabled = !ok;
+  $("v-export-id").value = ok ? currentId : "";
   $("v-seek").max = rec ? (rec.duration || 1) : 1;
   $("v-seek").value = 0;
   $("v-empty").textContent = !rec ? "기록을 선택하세요"

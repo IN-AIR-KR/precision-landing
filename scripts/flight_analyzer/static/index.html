@@ -40,6 +40,10 @@
             <button data-m="follow" title="그래프에 마우스를 올린 시각의 화면을 표시">Follow cursor</button>
           </div>
           <span id="v-info" class="mono muted"></span>
+          <form action="/api/video.mp4" method="get">
+            <input type="hidden" name="id" id="v-export-id">
+            <button class="btn small" id="v-export" type="submit" disabled>MP4 저장</button>
+          </form>
         </div>
         <div class="vp-frame">
           <img id="v-img" alt="">
