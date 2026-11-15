@@ -17,7 +17,8 @@ def setup(context):
     config_path = Path(LaunchConfiguration('config').perform(context)).expanduser().resolve()
     config = yaml.safe_load(config_path.read_text())
     controller = control_parameters(config['control'])
-    calibration = config['camera']['calibration']
+    camera_config = config['camera']
+    calibration = camera_config['calibration']
     if not calibration:
         raise RuntimeError('Set camera.calibration in real.yaml to the measured camera calibration.')
 
@@ -34,8 +35,12 @@ def setup(context):
     }
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
                    parameters=[monitor_parameters])
+    camera_parameters = {'calibration_json': json.dumps(calibration)}
+    for name in ('output_width', 'output_height'):
+        if name in camera_config:
+            camera_parameters[name] = camera_config[name]
     camera = Node(package='pl_camera', executable='csi_camera', name='csi_camera',
-                  output='screen', parameters=[{'calibration_json': json.dumps(calibration)}])
+                  output='screen', parameters=[camera_parameters])
     required = [camera, *nodes]
     handlers = [RegisterEventHandler(OnProcessExit(
         target_action=node,

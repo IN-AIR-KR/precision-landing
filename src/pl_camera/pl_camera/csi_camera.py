@@ -53,7 +53,7 @@ def video_info(caps):
     return info
 
 
-def load_camera_info(path, width, height, frame_id, logger, *, calibration_json=''):
+def load_camera_info(path, width, height, frame_id, logger, *, calibration_json='', capture_size=None):
     """Read calibration from a file or the real flight profile into a CameraInfo message.
 
     Returns an uncalibrated message (k and d zeroed) when no path is given or
@@ -84,10 +84,13 @@ def load_camera_info(path, width, height, frame_id, logger, *, calibration_json=
         file_h = int(data.get('image_height', height))
         if calibration_json:
             from math import isfinite
-            if (file_w, file_h) != (width, height):
-                raise ValueError(f'Expected {width}x{height} calibration, got {file_w}x{file_h}')
+            capture_width, capture_height = capture_size or (width, height)
+            if (file_w, file_h) != (capture_width, capture_height):
+                raise ValueError(f'Expected {capture_width}x{capture_height} calibration, '
+                                 f'got {file_w}x{file_h}')
             if not all(isfinite(float(v)) for v in k + d) or float(k[0]) <= 0 or float(k[4]) <= 0:
                 raise ValueError('Calibration must have finite coefficients and positive focal lengths')
+        sx, sy = 1.0, 1.0
         if (file_w, file_h) != (width, height):
             # Intrinsics scale linearly with resolution for the same field of view.
             sx, sy = width / file_w, height / file_h
@@ -104,7 +107,8 @@ def load_camera_info(path, width, height, frame_id, logger, *, calibration_json=
         info.r = [float(v) for v in data.get('rectification_matrix', {}).get(
             'data', [1., 0., 0., 0., 1., 0., 0., 0., 1.])]
         projection = data.get('projection_matrix', {}).get('data')
-        info.p = ([float(v) for v in projection] if projection else
+        info.p = ([float(v) * (sx if i < 4 else sy if i < 8 else 1.0)
+                   for i, v in enumerate(projection)] if projection else
                   [info.k[0], info.k[1], info.k[2], 0.,
                    info.k[3], info.k[4], info.k[5], 0.,
                    info.k[6], info.k[7], info.k[8], 0.])
@@ -124,6 +128,7 @@ class CsiCamera(Node):
         super().__init__(name, **kwargs)
         defaults = {
             'sensor_id': 0, 'width': 1920, 'height': 1080, 'fps': 30.0,
+            'output_width': 0, 'output_height': 0,  # 0 keeps the capture dimension
             'flip_method': 0,            # nvvidconv: 0 none, 2 180deg, 4 horiz, 6 vert
             'encoding': 'bgr8',          # bgr8 or mono8 (mono8 is cheaper for ArUco)
             'image_topic': '/camera/image_raw',
@@ -140,6 +145,11 @@ class CsiCamera(Node):
         self.width, self.height = int(cfg['width']), int(cfg['height'])
         self.fps = float(cfg['fps'])
         self.encoding = str(cfg['encoding'])
+        self.output_width = cfg['output_width'] or self.width
+        self.output_height = cfg['output_height'] or self.height
+        if (not 0 < self.output_width <= self.width or not 0 < self.output_height <= self.height
+                or self.output_width * self.height != self.output_height * self.width):
+            raise ValueError('Camera output must preserve the capture aspect ratio and fit its dimensions')
         if self.encoding not in ('bgr8', 'mono8'):
             raise ValueError("encoding must be 'bgr8' or 'mono8'")
         if self.width <= 0 or self.height <= 0 or not 0 < self.fps <= 120:
@@ -154,9 +164,10 @@ class CsiCamera(Node):
         self.image_pub = self.create_publisher(Image, str(cfg['image_topic']), qos)
         self.info_pub = self.create_publisher(CameraInfo, str(cfg['camera_info_topic']), qos)
         self.frame_id = str(cfg['frame_id'])
-        self.info = load_camera_info(str(cfg['camera_info_url']), self.width,
-                                     self.height, self.frame_id, self.get_logger(),
-                                     calibration_json=cfg['calibration_json'])
+        self.info = load_camera_info(
+            str(cfg['camera_info_url']), self.output_width, self.output_height,
+            self.frame_id, self.get_logger(), calibration_json=cfg['calibration_json'],
+            capture_size=(self.width, self.height))
 
         Gst.init(None)
         self.pipeline = Gst.parse_launch(self.build_pipeline(cfg))
@@ -172,7 +183,8 @@ class CsiCamera(Node):
         self.thread.start()
         self.create_timer(5.0, self.report)
         self.get_logger().info(
-            f'Capturing {self.width}x{self.height}@{self.fps:g} as {self.encoding} '
+            f'Capturing {self.width}x{self.height}@{self.fps:g}, '
+            f'publishing {self.output_width}x{self.output_height} {self.encoding} '
             f'-> {cfg["image_topic"]}')
 
     def build_pipeline(self, cfg):
@@ -187,7 +199,7 @@ class CsiCamera(Node):
             f'video/x-raw(memory:NVMM),width={self.width},height={self.height},'
             f'framerate={round(self.fps)}/1,format=NV12 ! '
             f'nvvidconv flip-method={int(cfg["flip_method"])} ! '
-            'video/x-raw,format=BGRx ! '
+            f'video/x-raw,width={self.output_width},height={self.output_height},format=BGRx ! '
             'videoconvert ! '
             f'video/x-raw,format={out} ! '
             'appsink name=sink emit-signals=false max-buffers=1 drop=true sync=false')
@@ -209,6 +221,8 @@ class CsiCamera(Node):
     def publish(self, sample, channels):
         info = video_info(sample.get_caps())
         width, height, stride = info.width, info.height, info.stride[0]
+        if (width, height) != (self.info.width, self.info.height):
+            raise RuntimeError(f'Unexpected frame size {width}x{height}')
         row = width * channels
 
         buffer = sample.get_buffer()

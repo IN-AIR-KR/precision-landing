@@ -1,4 +1,6 @@
 camera:
+  output_width: 640
+  output_height: 360
   calibration:
     image_width: 1920
     image_height: 1080
