@@ -18,36 +18,40 @@ sudo apt install python3-gi gir1.2-gstreamer-1.0 gstreamer1.0-tools \
 ./scripts/build.sh real
 ```
 
-On the ground-station PC, install MediaMTX and run it on your test LAN with
-the supplied configuration. From the repository root:
+Install MediaMTX on the Jetson. The real launch looks for `mediamtx` on
+`PATH` or at `.deps/hud/mediamtx` in this checkout. From the repository root:
 
 ```bash
-mediamtx src/pl_streaming/mediamtx.yml
+./scripts/run_real.sh
 ```
 
-On the Jetson, start the real profile with the ground station's LAN IP.
+The launch starts MediaMTX with the packaged configuration and publishes
+HUD video to it at `rtsp://127.0.0.1:8554/hud`. Both processes stop with
+the launch. To disable streaming for a run, pass `stream_url:=`.
+If a MediaMTX server is already running, supply its RTSP publish URL:
 
 ```bash
-./scripts/run_real.sh stream_url:=rtsp://GROUND_STATION_IP:8554/hud
+./scripts/run_real.sh stream_url:=rtsp://127.0.0.1:8554/hud
 ```
 
-Open `http://localhost:8889/hud` in a browser on the ground station.
-The publisher uses RTSP over UDP by default. MediaMTX must accept RTSP on TCP
-8554 and RTP/RTCP on its configured UDP ports (defaults 8000/8001).
-Browser playback uses WebRTC and its configured ICE listener.
+On the ground station, open `http://JETSON_LAN_IP:8889/hud` in a browser
+for WebRTC playback, or open `rtsp://JETSON_LAN_IP:8554/hud` in an RTSP player.
+With the default MediaMTX ports, browser playback needs TCP 8889 and UDP 8189
+reachable on the Jetson. For RTSP playback over TCP, allow TCP 8554.
+The Jetson publisher uses RTSP over UDP on loopback by default.
 
 The defaults are 640×360, up to 30 fps, 700 kbps, x264 ultrafast/zerolatency,
 no B-frames, an IDR at most every 0.5 s at full frame rate, and one queued
 raw frame in GStreamer. Keep the raw HUD subscriber on Jetson to avoid
 sending the raw feed over DDS. The stream can also be started separately to
-adjust bitrate, frame rate, size or try TCP when UDP is unavailable. In this
-case start the real launch without `stream_url`.
+adjust bitrate, frame rate, size or try TCP when UDP is unavailable. For
+this setup, start MediaMTX separately and pass `stream_url:=` to the real launch.
 
 ```bash
 source scripts/env.sh
 export ROS_DOMAIN_ID=0  # Match real.yaml if customized.
 ros2 run pl_streaming hud_streamer --ros-args \
-  -p url:=rtsp://GROUND_STATION_IP:8554/hud -p rtsp_transport:=tcp
+  -p url:=rtsp://127.0.0.1:8554/hud -p rtsp_transport:=tcp
 ```
 
 Start by comparing the video delay and detection throughput with live

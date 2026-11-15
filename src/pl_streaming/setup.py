@@ -6,7 +6,7 @@ setup(
     packages=['pl_streaming'],
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/pl_streaming']),
-        ('share/pl_streaming', ['package.xml']),
+        ('share/pl_streaming', ['package.xml', 'mediamtx.yml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
