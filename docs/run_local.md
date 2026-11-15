@@ -1,10 +1,10 @@
-현재 기본 PX4는 `~/PX4-Autopilot`입니다. 기존 터미널에서는 `export PX4_DIR="$HOME/PX4-Autopilot"`으로 갱신하세요. [3번 호환 검증과 실행 구성](px4_compatibility_stage3.md).
+현재 기본 PX4는 `~/PX4-Autopilot-6ea3539`입니다. 기존 터미널에서는 `export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"`으로 갱신하세요. [3번 호환 검증과 실행 구성](px4_compatibility_stage3.md).
 
 Python 인식기 설치·검증: [2번 진행 결과](python_detection_stage2.md). 현재 `setup.sh`는 OpenCV 소스를 빌드하지 않고 고정된 wheel을 설치합니다.
 
 # 로컬 실행 (Ubuntu 22.04 / ROS 2 Humble / Gazebo Harmonic)
 
-기존 `~/PX4-Autopilot`의 `ee99864808`에서 실행하며 사용자 수정사항은 보존합니다.
+기존 `~/PX4-Autopilot-6ea3539`의 `6ea3539157`에서 실행하며 사용자 수정사항은 보존합니다.
 이전 비교용 `~/PX4-precision-landing` worktree는 보관만 하며 기본 실행에는 사용하지 않습니다.
 Python OpenCV 4.10.0 wheel은 `.deps/python`, 추가 gps_msgs는 `.deps/apt`에 설치합니다. OpenCV 소스 빌드는 사용하지 않습니다.
 
@@ -12,7 +12,7 @@ Python OpenCV 4.10.0 wheel은 `.deps/python`, 추가 gps_msgs는 `.deps/apt`에 
 
 ```bash
 cd ~/precision-landing
-export PX4_DIR="$HOME/PX4-Autopilot"
+export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"
 ./scripts/run.sh
 ```
 
@@ -49,7 +49,7 @@ cd ~/precision-landing
 - `simulation/gz/worlds/aruco_moving.sdf`: 누락된 월드를 기존 문서의 배치 조건으로 추가했습니다.
   PX4 기본 `aruco.sdf`의 지면·조명·시뮬레이션 플러그인을 사용합니다.
 - `simulation/gz/models/aruco_moving_target`: 저장소에 있던 움직이는 패드 모델을 그대로 사용합니다.
-- `run.sh`가 프로젝트 월드를 직접 읽어 Gazebo를 실행합니다. 기존 `~/PX4-Autopilot`은 수정하지 않습니다.
+- `run.sh`가 프로젝트 월드를 직접 읽어 Gazebo를 실행합니다. 기존 `~/PX4-Autopilot-6ea3539`은 수정하지 않습니다.
 
 ## 명령 환경과 재빌드
 

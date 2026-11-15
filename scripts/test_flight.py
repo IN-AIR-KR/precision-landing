@@ -29,7 +29,7 @@ parser.add_argument('--speed', type=float, default=0.3)
 parser.add_argument('--output', type=Path, default=Path('.run/moving-flight.jsonl'))
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
-px4 = Path(os.environ.get('PX4_DIR', str(Path.home() / 'PX4-Autopilot')))
+px4 = Path(os.environ.get('PX4_DIR', str(Path.home() / 'PX4-Autopilot-6ea3539')))
 binary = px4 / 'build/px4_sitl_default/bin/px4'
 pids = subprocess.check_output(['pgrep', '-x', 'px4'], text=True).split()
 assert len(pids) == 1 and Path(f'/proc/{pids[0]}/exe').resolve() == binary.resolve(), 'Expected configured local SITL process'
@@ -59,10 +59,14 @@ def status(m): state.update(nav=m.nav_state, armed=m.arming_state == 2)
 def landed(m): state.update(landed=m.landed)
 def tag(m): state['tags'] += 1
 def image(m): state['images'] += 1
+def px4_topic(name, message_type):
+    version = getattr(message_type, 'MESSAGE_VERSION', 0)
+    return '/fmu/out/' + name + (f'_v{version}' if version else '')
+
 subs = [node.create_subscription(t, topic, cb, qos_profile_sensor_data) for t, topic, cb in [
-    (VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', position),
-    (VehicleStatus, '/fmu/out/vehicle_status_v4', status),
-    (VehicleLandDetected, '/fmu/out/vehicle_land_detected', landed),
+    (VehicleLocalPosition, px4_topic('vehicle_local_position', VehicleLocalPosition), position),
+    (VehicleStatus, px4_topic('vehicle_status', VehicleStatus), status),
+    (VehicleLandDetected, px4_topic('vehicle_land_detected', VehicleLandDetected), landed),
     (PoseStamped, '/target_pose', tag),
     (CompressedImage if args.image_transport == 'compressed' else Image,
      '/image_proc/compressed' if args.image_transport == 'compressed' else '/image_proc', image)]]

@@ -3,7 +3,7 @@
 set -eo pipefail
 cd "$(dirname "$0")/.."
 root="$PWD"
-export PX4_DIR="${PX4_DIR:-$HOME/PX4-Autopilot}"
+export PX4_DIR="${PX4_DIR:-$HOME/PX4-Autopilot-6ea3539}"
 profile="${1:-sim}"
 case "$profile" in sim|real|hitl_pc|hitl_jetson) ;; *) echo "Usage: $0 [sim|real|hitl_pc|hitl_jetson]" >&2; exit 1 ;; esac
 git submodule update --init --recursive

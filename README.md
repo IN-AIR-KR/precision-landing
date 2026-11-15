@@ -11,7 +11,7 @@
 | OS         | Ubuntu 22.04                                         |
 | ROS        | ROS 2 Humble                                         |
 | 시뮬레이터 | Gazebo Harmonic                                      |
-| PX4        | 검증 커밋 `ee99864808e03c164975fc38c450fa22179fe0cb` |
+| PX4        | 검증 커밋 `6ea3539157ca358c70a515878b77077af7d4611d` |
 
 ## 3. 노드 구조
 
@@ -196,11 +196,23 @@ H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
 
 ### 6.1 간단 실행 — sh 사용
 
+실기체와 같은 PX4 `v1.16.0` 커밋을 별도 폴더에 준비합니다(최초 1회).
+
+```bash
+git clone --branch v1.16.0 https://github.com/PX4/PX4-Autopilot.git ~/PX4-Autopilot-6ea3539
+git -C ~/PX4-Autopilot-6ea3539 checkout --detach 6ea3539157ca358c70a515878b77077af7d4611d
+git -C ~/PX4-Autopilot-6ea3539 submodule update --init --recursive
+```
+
+`px4_msgs`는 `392e831c1f`, 인터페이스 라이브러리는 `a5b9f3cb7c`를 사용합니다.
+Git에 고정된 서브모듈을 그대로 사용하며, 별도 SITL 호환 오버레이는 필요하지 않습니다.
+기존 터미널에 `PX4_DIR`가 설정되어 있다면 아래 경로로 갱신하세요.
+
 **최초 의존성 준비·빌드:** 요구사항의 ROS/Gazebo/PX4 도구와 Agent가 설치된 환경에서 실행합니다.
 
 ```bash
 cd ~/precision-landing
-export PX4_DIR="$HOME/PX4-Autopilot"
+export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"
 ./scripts/setup.sh sim
 ```
 
@@ -263,7 +275,7 @@ Gazebo와 PX4 SITL은 각각 실행하고, ROS 스택은 `pl_bringup`으로 함�
 
 ```bash
 cd ~/precision-landing
-export PX4_DIR="$HOME/PX4-Autopilot"
+export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"
 source scripts/env.sh
 export ROS_DOMAIN_ID=42
 export GZ_PARTITION=precision_landing
@@ -341,7 +353,7 @@ PC:
 
 ```bash
 cd ~/precision-landing
-export PX4_DIR="$HOME/PX4-Autopilot"
+export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"
 ./scripts/setup.sh hitl_pc
 ```
 

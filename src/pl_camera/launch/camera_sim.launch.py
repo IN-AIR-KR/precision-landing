@@ -48,7 +48,7 @@ def generate_launch_description():
         DeclareLaunchArgument('world', default_value='aruco_moving'),
         DeclareLaunchArgument('model', default_value='x500_mono_cam_down_0'),
         DeclareLaunchArgument('link', default_value='camera_link'),
-        DeclareLaunchArgument('sensor', default_value='camera'),
+        DeclareLaunchArgument('sensor', default_value='imager'),
         DeclareLaunchArgument('image_topic', default_value='/camera/image_raw'),
         DeclareLaunchArgument('camera_info_topic', default_value='/camera/camera_info'),
         OpaqueFunction(function=setup)])
