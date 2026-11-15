@@ -274,7 +274,15 @@ void PrecisionLand::correctTarget(const Eigen::Vector3d& measured_position_world
 
 void PrecisionLand::onActivate()
 {
+	// Wait for a new target observation on every activation.
+	_tag = ArucoTag{};
+	_target_position.setConstant(std::numeric_limits<double>::quiet_NaN());
+	_target_velocity.setZero();
+	_target_P.setZero();
+	_target_initialized = false;
+	_target_lost_prev = true;
 	_xy_integral_velocity.setZero();
+	_search_waypoint_index = 0;
 	generateSearchWaypoints();
 	_search_started = true;
 	switchToState(State::SEARCH);
@@ -312,7 +320,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 
 	case State::SEARCH: {
 
-		if (_target_initialized) {
+		if (_target_initialized && !target_lost) {
 			_approach_altitude = _vehicle_local_position->positionNed().z();
 			switchToState(State::ALIGN);
 			break;

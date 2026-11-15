@@ -41,13 +41,19 @@ def setup(context):
             camera_parameters[name] = camera_config[name]
     camera = Node(package='pl_camera', executable='csi_camera', name='csi_camera',
                   output='screen', parameters=[camera_parameters])
+    stream_url = LaunchConfiguration('stream_url').perform(context).strip()
+    streaming = []
+    if stream_url:
+        streaming.append(Node(
+            package='pl_streaming', executable='hud_streamer', output='screen',
+            parameters=[{'url': stream_url}]))
     required = [camera, *nodes]
     handlers = [RegisterEventHandler(OnProcessExit(
         target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))],
     )) for node in required]
     return [SetEnvironmentVariable('ROS_DOMAIN_ID', str(config['px4'].get('domain_id', 0))),
-            *handlers, monitor, *required, recorder('real')]
+            *handlers, monitor, *required, recorder('real'), *streaming]
 
 
 def generate_launch_description():
@@ -55,5 +61,7 @@ def generate_launch_description():
         *recording_arguments(),
         DeclareLaunchArgument('config', default_value=str(
             Path(get_package_share_directory('pl_bringup')) / 'config/real.yaml')),
+        DeclareLaunchArgument('stream_url', default_value='',
+                              description='Optional RTSP publish URL for the live HUD'),
         OpaqueFunction(function=setup),
     ])

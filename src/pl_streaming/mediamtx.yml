@@ -1,0 +1,6 @@
+rtmp: no
+hls: no
+srt: no
+paths:
+  hud:
+    source: publisher

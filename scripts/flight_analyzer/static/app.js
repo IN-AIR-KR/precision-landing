@@ -544,10 +544,15 @@ async function updateScene() {
     $("scene-center").options[1].disabled = !hasDrone;
     $("scene-truth").hidden = !data.truth.some((row) => row.length > 1);
     sceneReady = hasDrone || hasEstimate || !$("scene-truth").hidden;
+    const originNotes = {
+      nearArm: "원점은 ARM 전환에 가장 가까운 유효 드론 위치입니다.",
+      first: "ARM 전환이 기록되지 않아 첫 유효 드론 위치를 원점으로 표시합니다.",
+      local: "드론 위치가 없어 PX4 로컬 원점을 사용합니다.",
+    };
     status.textContent = !sceneReady ? "이 기록에는 표시할 위치 데이터가 없습니다."
-      : data.hasTruth && $("scene-truth").hidden
-        ? "실제 마커를 표시할 수 없습니다. PX4와 Gazebo 위치를 맞출 공통 샘플이 필요합니다."
-        : "";
+      : [originNotes[data.originSource], data.hasTruth && $("scene-truth").hidden
+        ? "실제 마커를 표시하려면 PX4와 Gazebo의 공통 위치 샘플이 필요합니다."
+        : ""].filter(Boolean).join(" ");
   }
   $("v-play").disabled = $("v-seek").disabled = !timelineOn();
   updateSceneTime();
@@ -600,7 +605,9 @@ function pumpFrame() {
   img.onload = () => {
     if (token !== V.request || id !== currentId) return;
     V.loading = false;
-    $("v-img").src = img.src;
+    img.id = "v-img";
+    img.alt = "";
+    $("v-img").replaceWith(img);
     V.shown = i;
     pumpFrame();
   };

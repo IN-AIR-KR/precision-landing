@@ -30,6 +30,29 @@ export function sample(rows, t, maxGap, interpolate = true) {
 
 const toEnu = ([t, n, e, d]) => n === undefined ? [t] : [t, e, n, -d];
 
+function recordingOrigin(local, status) {
+  const valid = local.filter((row) => row.length === 4);
+  if (!valid.length) return {position: [0, 0, 0], source: "local"};
+
+  const states = status?.fields.arming_state;
+  // VehicleStatus defines ARMED as 2. ARM-triggered bags usually start already armed.
+  const armIndex = states?.findIndex((state, i) => state === 2 && states[i - 1] === 1) ?? -1;
+  if (armIndex >= 0) {
+    const t = status.t[armIndex];
+    const after = local.findIndex((row) => row[0] >= t);
+    if (after >= 0 && local[after].length === 4) {
+      const next = local[after];
+      const prev = local[after - 1];
+      if (next[0] === t || (prev?.length === 4 && next[0] - prev[0] <= 0.3)) {
+        return {position: sample(local, t, 0.3), source: "arm"};
+      }
+    }
+    const nearest = valid.reduce((a, b) => Math.abs(a[0] - t) <= Math.abs(b[0] - t) ? a : b);
+    return {position: nearest.slice(1), source: "nearArm"};
+  }
+  return {position: valid[0].slice(1), source: "first"};
+}
+
 export function sceneData(topics) {
   const local = rows(px4(topics, "vehicle_local_position"), XYZ, (f, i) =>
     (!f.xy_valid || f.xy_valid[i] === 1) && (!f.z_valid || f.z_valid[i] === 1)).map(toEnu);
@@ -45,11 +68,14 @@ export function sceneData(topics) {
     break;
   }
   const marker = rows(topics["/pl/sim/marker_pose"], POSE);
+  const {position: origin, source: originSource} = recordingOrigin(local, px4(topics, "vehicle_status"));
+  const shift = ([t, ...xyz]) => [t, ...xyz.map((v, i) => v - origin[i])];
   return {
-    drone: local,
+    originSource,
+    drone: local.map(shift),
     attitude: rows(px4(topics, "vehicle_attitude"), ["q_1", "q_2", "q_3", "q_0"]),
-    estimate: rows(topics["/target_pose_world"], POSE).map(toEnu),
+    estimate: rows(topics["/target_pose_world"], POSE).map(toEnu).map(shift),
     hasTruth: marker.some((row) => row.length > 1),
-    truth: offset ? marker.map(([t, ...xyz]) => [t, ...xyz.map((v, i) => v + offset[i])]) : [],
+    truth: offset ? marker.map(([t, ...xyz]) => shift([t, ...xyz.map((v, i) => v + offset[i])])) : [],
   };
 }

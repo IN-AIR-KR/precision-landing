@@ -41,9 +41,18 @@ def body_relative_position(detection, extrinsic):
     return (translation + position + w * cross + np.cross(xyz, cross)).tolist()
 
 
-def render(image, state):
-    """Overlay telemetry directly on the camera frame at its original resolution."""
-    canvas = image.copy() if image is not None else np.full((960, 1280, 3), 28, np.uint8)
+def render(image, state, max_width=0):
+    """Draw telemetry at the output resolution so text stays sharp."""
+    if image is None:
+        width = min(1280, max_width) if max_width else 1280
+        height = round(width * 9 / 16) if max_width else 960
+        canvas = np.full((height, width, 3), 28, np.uint8)
+    elif 0 < max_width < image.shape[1]:
+        height, width = image.shape[:2]
+        canvas = cv2.resize(image, (max_width, max(1, round(height * max_width / width))),
+                            interpolation=cv2.INTER_AREA)
+    else:
+        canvas = image.copy()
     h, w = canvas.shape[:2]
     unit = min(w / 1280, h / 960)
     margin = max(12, round(28 * unit))
@@ -52,7 +61,7 @@ def render(image, state):
 
     def text(value, x, y, size=.8, color=white, align='left', outline=True, bold=False):
         weight = max(thickness + 1, round(4 * unit)) if bold else thickness
-        scale = size * unit
+        scale = size * max(0.45, unit)
         width = cv2.getTextSize(value, cv2.FONT_HERSHEY_SIMPLEX, scale, weight)[0][0]
         if align == 'right':
             x -= width
@@ -133,7 +142,7 @@ def render(image, state):
 class Monitor(Node):
     def __init__(self):
         super().__init__('landing_monitor')
-        defaults = {'transport': 'raw', 'fps': 10.0, 'jpeg_quality': 80, 'stale_after': 2.0}
+        defaults = {'transport': 'raw', 'fps': 10.0, 'jpeg_quality': 80, 'max_width': 0, 'stale_after': 2.0}
         config = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
         translation = np.asarray(self.declare_parameter('camera_position_body', [0., 0., -.1]).value)
         rotation = np.asarray(self.declare_parameter(
@@ -144,6 +153,9 @@ class Monitor(Node):
             raise ValueError('Invalid camera mounting transform')
         self.camera_extrinsic = (translation, rotation / norm)
         self.transport = config['transport']
+        self.max_width = int(config['max_width'])
+        if self.max_width != 0 and self.max_width < 320:
+            raise ValueError('HUD max_width must be zero or at least 320')
         self.fps, self.quality, self.stale = float(config['fps']), int(config['jpeg_quality']), float(config['stale_after'])
         if self.transport not in ('raw', 'compressed') or self.fps <= 0 or self.stale <= 0 or not 1 <= self.quality <= 100:
             raise ValueError('Invalid monitoring transport/rate/quality/staleness configuration')
@@ -154,7 +166,6 @@ class Monitor(Node):
         self.inputs, self.samples = {}, {}
         self.image = None
         self.header = None
-        self.last_image_decode = -math.inf
         self.create_timer(1/self.fps, self.tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
     def receive(self, key, value):
@@ -170,9 +181,6 @@ class Monitor(Node):
             self.get_logger().warning(str(exc), throttle_duration_sec=5)
 
     def image_input(self, msg):
-        now = time.monotonic()
-        if now - self.last_image_decode < 1/self.fps:
-            return
         try:
             if self.transport == 'raw':
                 image = to_bgr(msg)
@@ -181,7 +189,6 @@ class Monitor(Node):
                 if image is None:
                     raise ValueError('Invalid JPEG input')
             self.image, self.header = image, msg.header
-            self.last_image_decode = now
             self.receive('image', {'stamp_ns': msg.header.stamp.sec*1000000000+msg.header.stamp.nanosec})
         except (ValueError, cv2.error) as exc:
             self.get_logger().warning(str(exc), throttle_duration_sec=5)
@@ -239,7 +246,7 @@ class Monitor(Node):
             self.status_pub.publish(String(data=json.dumps(state, allow_nan=False)))
         if not (raw or jpeg):
             return
-        frame = render(self.image, state)
+        frame = render(self.image, state, self.max_width)
         if raw:
             msg = Image(height=frame.shape[0], width=frame.shape[1], encoding='bgr8', step=frame.shape[1]*3)
             if self.header is not None:

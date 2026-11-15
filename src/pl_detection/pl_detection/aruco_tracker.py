@@ -113,10 +113,13 @@ class ArucoTracker(Node):
     def __init__(self):
         super().__init__('aruco_tracker_node')
         defaults = {'aruco_id': 0, 'dictionary': 2, 'marker_size': 0.5,
-                    'optical_frame': 'camera_frame', 'input_transport': 'raw', 'debug_fps': 15.0, 'jpeg_quality': 80}
+                    'optical_frame': 'camera_frame', 'input_transport': 'raw', 'debug_fps': 15.0, 'debug_max_width': 0, 'jpeg_quality': 80}
         values = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
         self.frame = values['optical_frame']
         self.debug_fps = float(values['debug_fps'])
+        self.debug_max_width = int(values['debug_max_width'])
+        if self.debug_max_width < 0:
+            raise ValueError('debug_max_width must be nonnegative')
         self.jpeg_quality = int(values['jpeg_quality'])
         if self.debug_fps <= 0 or not 1 <= self.jpeg_quality <= 100:
             raise ValueError('debug_fps must be positive and jpeg_quality in [1,100]')
@@ -175,6 +178,11 @@ class ArucoTracker(Node):
                 self.pose_pub.publish(pose)
             if draw:
                 self.last_debug = now
+                height, width = image.shape[:2]
+                if 0 < self.debug_max_width < width:
+                    image = cv2.resize(image, (self.debug_max_width,
+                                       max(1, round(height * self.debug_max_width / width))),
+                                       interpolation=cv2.INTER_AREA)
                 if raw:
                     output = Image()
                     output.header = msg.header

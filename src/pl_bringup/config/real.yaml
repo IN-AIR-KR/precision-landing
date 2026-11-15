@@ -12,7 +12,8 @@ detection:
   aruco_id: 0
   dictionary: 2
   marker_size: 0.15
-  debug_fps: 15.0
+  debug_fps: 60.0 # Keep each frame from the 30 Hz camera available to the HUD.
+  debug_max_width: 640
   jpeg_quality: 80
 control:
   align:
@@ -26,7 +27,7 @@ control:
     velocity_d_gain: 0.0
     max_speed_mps: 10.0
   target_estimation:
-    timeout_s: 5.0
+    timeout_s: 1.0
     acceleration_noise_mps2: 1.0
     position_noise_m: 0.1
   camera_extrinsic:
@@ -40,7 +41,8 @@ px4:
     device: /dev/ttyTHS1
     baud: 921600 # Match PX4 SER_TEL2_BAUD.
 viz:
-  transport: compressed
-  fps: 10.0
-  jpeg_quality: 80
+  transport: raw
+  fps: 30.0
+  jpeg_quality: 45
+  max_width: 640
   stale_after: 2.0
