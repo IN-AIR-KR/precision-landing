@@ -1,5 +1,4 @@
 """Real flight profile with Jetson CSI capture."""
-import json
 import os
 from pathlib import Path
 from shutil import which
@@ -15,6 +14,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from pl_bringup.parameters import control_parameters
 from pl_bringup.recording import recorder, recording_arguments
+from pl_bringup.real_vision import vision_nodes
 
 
 def streaming_actions(stream_url):
@@ -44,32 +44,11 @@ def setup(context):
     config_path = Path(LaunchConfiguration('config').perform(context)).expanduser().resolve()
     config = yaml.safe_load(config_path.read_text())
     controller = control_parameters(config['control'])
-    camera_config = config['camera']
-    calibration = camera_config['calibration']
-    if not calibration:
-        raise RuntimeError('Set camera.calibration in real.yaml to the measured camera calibration.')
-
-    nodes = [
-        Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen',
-             parameters=[dict(config['detection'], optical_frame='camera_optical_frame')]),
-        Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
-             parameters=[controller]),
-    ]
-    monitor_parameters = {
-        **{k: v for k, v in config['viz'].items() if k != 'gazebo'},
-        'camera_position_body': controller['camera_position_body'],
-        'camera_orientation_body': controller['camera_orientation_body'],
-    }
-    monitor = Node(package='pl_viz', executable='monitor', output='screen',
-                   parameters=[monitor_parameters])
-    camera_parameters = {'calibration_json': json.dumps(calibration)}
-    for name in ('width', 'height', 'fps', 'output_width', 'output_height'):
-        if name in camera_config:
-            camera_parameters[name] = camera_config[name]
-    camera = Node(package='pl_camera', executable='csi_camera', name='csi_camera',
-                  output='screen', parameters=[camera_parameters])
+    camera, detection, monitor = vision_nodes(config, controller)
+    control_node = Node(package='pl_control', executable='precision_land', name='precision_land',
+                        output='screen', parameters=[controller])
     stream_url = LaunchConfiguration('stream_url').perform(context).strip()
-    required = [camera, *nodes]
+    required = [camera, detection, control_node]
     handlers = [RegisterEventHandler(OnProcessExit(
         target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))],

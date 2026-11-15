@@ -1,6 +1,7 @@
 """Jetson CSI camera adapter: expose the same ROS camera inputs as the Gazebo bridge.
 
-The camera node owns the defaults. Launch arguments override them when supplied.
+The standalone launch defaults to IMX219 mode 4 at 1280x720 and 60 fps.
+Supply capture arguments to use the camera node's settings for another mode.
 
     ros2 launch pl_camera camera_csi.launch.py
     ros2 launch pl_camera camera_csi.launch.py width:=640 height:=480 fps:=60
@@ -36,6 +37,8 @@ def setup(context):
             parameters[key] = float(value)
         else:
             parameters[key] = value
+    if not parameters.keys() & {'sensor_mode', 'width', 'height', 'fps'}:
+        parameters.update(sensor_mode=4, width=1280, height=720, fps=60.0)
     camera = Node(package='pl_camera', executable='csi_camera', name='csi_camera',
                   output='screen', parameters=[parameters])
     # A camera that dies is not recoverable by itself: Argus holds the sensor

@@ -15,6 +15,13 @@ import yaml
 
 WINDOW = 'Camera calibration'
 MIN_SAMPLES = 10
+IMX219_MODES = {
+    0: (3280, 2464, 21),
+    1: (3280, 1848, 28),
+    2: (1920, 1080, 30),
+    3: (1640, 1232, 30),
+    4: (1280, 720, 60),
+}
 
 
 def save_calibration(path, size, board, samples):
@@ -222,12 +229,21 @@ def main():
     parser.add_argument('--rows', type=int, required=True, help='Inner corners per column')
     parser.add_argument('--square-mm', type=float, required=True, help='Measured square edge in mm')
     parser.add_argument('--sensor-id', type=int, default=0)
-    parser.add_argument('--width', type=int, default=1920)
-    parser.add_argument('--height', type=int, default=1080)
-    parser.add_argument('--fps', type=int, default=30)
+    parser.add_argument('--mode', type=int, choices=IMX219_MODES,
+                        help='IMX219 sensor mode (4 = 1280x720 @ 60 FPS)')
+    parser.add_argument('--width', type=int)
+    parser.add_argument('--height', type=int)
+    parser.add_argument('--fps', type=int)
     parser.add_argument('--flip-method', type=int, choices=range(8), default=0)
     parser.add_argument('--from-saved', action='store_true', help='Calibrate from saved PNGs without opening the camera')
     args = parser.parse_args()
+    capture_overrides = (args.width, args.height, args.fps)
+    if args.mode is not None and any(value is not None for value in capture_overrides):
+        parser.error('Use --mode or manual --width/--height/--fps settings.')
+    defaults = IMX219_MODES[args.mode if args.mode is not None else 2]
+    args.width, args.height, args.fps = (
+        default if value is None else value for value, default in zip(capture_overrides, defaults)
+    )
     if min(args.cols, args.rows) < 3 or not np.isfinite(args.square_mm) or args.square_mm <= 0:
         parser.error('Use at least 3x3 inner corners and a positive square size.')
     script_dir = Path(__file__).resolve().parent
@@ -245,8 +261,11 @@ def main():
     if min(args.width, args.height, args.fps) <= 0 or args.sensor_id < 0:
         parser.error('Resolution and FPS must be positive, and sensor ID must be nonnegative.')
 
+    source = f'nvarguscamerasrc sensor-id={args.sensor_id} wbmode=1'
+    if args.mode is not None:
+        source += f' sensor-mode={args.mode}'
     pipeline = (
-        f'nvarguscamerasrc sensor-id={args.sensor_id} wbmode=1 ! '
+        f'{source} ! '
         f'video/x-raw(memory:NVMM),width={args.width},height={args.height},'
         f'framerate={args.fps}/1,format=NV12 ! '
         f'nvvidconv flip-method={args.flip_method} ! video/x-raw,format=BGRx ! '

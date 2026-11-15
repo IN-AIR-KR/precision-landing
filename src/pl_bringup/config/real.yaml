@@ -1,17 +1,17 @@
 camera:
-  # Use 1280x720 @ 60 fps with a calibration taken in that sensor mode.
-  width: 1920
-  height: 1080
-  fps: 30.0
+  sensor_mode: 4
+  width: 1280
+  height: 720
+  fps: 60.0
   output_width: 640
   output_height: 360
   calibration:
-    image_width: 1920
-    image_height: 1080
+    image_width: 1280
+    image_height: 720
     camera_matrix:
-      data: [2705.800903857404, 0.0, 1003.1406871062092, 0.0, 2713.593121196796, 571.5154935492, 0.0, 0.0, 1.0]
+      data: [1277.8366167351137, 0.0, 633.7968674238508, 0.0, 1283.5562513778036, 351.82807981317274, 0.0, 0.0, 1.0]
     distortion_coefficients:
-      data: [0.32141601135157993, 0.5307061614945011, 0.012993343967254744, 0.003307600049441917, -12.89378647429946]
+      data: [0.20541205843403607, -0.5066457727321585, -0.00118806481462293, -0.0014567955645074116, 0.5771978407975649]
 detection:
   aruco_id: 0
   dictionary: 2
