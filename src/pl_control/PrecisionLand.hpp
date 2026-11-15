@@ -39,7 +39,7 @@ private:
 		// Initialize position with NaN values directly in the struct
 		Eigen::Vector3d position = Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
 		Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity();
-		rclcpp::Time timestamp;
+		rclcpp::Time timestamp{0};
 
 		bool valid() { return timestamp.nanoseconds() > 0; };
 	};
