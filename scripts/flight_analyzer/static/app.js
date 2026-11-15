@@ -154,6 +154,10 @@ function renderRecords() {
 // ---------------------------------------------------------------- 기록 열기
 async function openRecord(id) {
   setPlaying(false);
+  const config = $("record-config");
+  config.open = false;
+  config.hidden = true;
+  $("record-config-yaml").textContent = "";
   currentId = id;
   history.replaceState(null, "", "#" + encodeURIComponent(id));
   renderRecords();
@@ -174,6 +178,10 @@ async function openRecord(id) {
   }
   if (currentId !== id) return;
   rec = selected;
+  if (typeof rec.real_yaml === "string") {
+    $("record-config-yaml").textContent = rec.real_yaml;
+    config.hidden = false;
+  }
   setContentLoading(false);
   const topics = Object.keys(rec.topics);
   $("rec-meta").textContent =

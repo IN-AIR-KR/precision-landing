@@ -207,3 +207,6 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .scene-drone { color: #67b7ff; }
 .scene-estimate { color: #ffb45e; }
 .scene-truth { color: #53e6af; }
+
+#record-config > summary { cursor: pointer; font-weight: 600; }
+#record-config-yaml { overflow: auto; margin-bottom: 0; }
