@@ -12,12 +12,20 @@ function panel(title, topic, fields, note) {
   }) };
 }
 
+const PALETTE = ["#60a5fa", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#22d3ee", "#f472b6", "#a3e635"];
+
 const PANELS = [
   panel("Landing state", T, [["active", "Mode active"], ["target_lost", "Target lost"]], "0 / 1"),
   panel("ArUco detection", D, [["detected", "Marker detected"], ["pose_valid", "Pose valid"]], "0 / 1"),
-  panel("Marker relative to drone", M,
-    [["detection_value_body_position_m_0", "Forward"], ["detection_value_body_position_m_1", "Right"],
-     ["detection_value_body_position_m_2", "Down"]], "Body FRD [m]"),
+  {
+    title: "Marker relative to drone",
+    note: "Body FRD [m] · dashed = KF sample logged by the controller",
+    spanGaps: false,
+    series: ["Forward", "Right", "Down"].flatMap((axis, i) => [
+      { t: M, f: `detection_value_body_position_m_${i}`, label: `ArUco ${axis}`, color: PALETTE[i] },
+      { t: T, f: `kf_target_frd_m_${i}`, label: `KF ${axis}`, color: PALETTE[i], dash: [5, 4] },
+    ]),
+  },
   panel("Estimated target position", "/target_pose_world",
     [["pose_position_x", "North"], ["pose_position_y", "East"], ["pose_position_z", "Down"]], "Local NED [m]"),
   panel("Ground and vertical speed", M,
@@ -27,7 +35,6 @@ const PANELS = [
   panel("Battery remaining", M, [["battery_value_remaining_pct", "Remaining"]], "[%]"),
 ];
 
-const PALETTE = ["#60a5fa", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#22d3ee", "#f472b6", "#a3e635"];
 const STATE_COLORS = {
   SEARCH: "rgba(148,163,184,0.10)",
   ALIGN: "rgba(234,179,8,0.18)",
@@ -383,7 +390,7 @@ function makeChart(p, { data, specs, multiTopic }, el) {
       width: s.width ?? 1.5,
       dash: s.dash,
       show: seriesShown(p, s),
-      spanGaps: multiTopic,
+      spanGaps: p.spanGaps ?? multiTopic,
       paths: s.step ? uPlot.paths.stepped({ align: 1 }) : undefined,
       points: { show: false },
       value: (u, v) => (v == null ? "—" : p.flags ? String(Math.round((v - add) / mul)) : fmtVal((v - add) / mul)),

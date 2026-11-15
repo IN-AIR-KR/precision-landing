@@ -42,7 +42,15 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
         std_msgs::msg::String message;
         message.data = "{\"state\":\"" + stateName(_state) + "\",\"active\":" +
             (isActive() ? "true" : "false") + ",\"target_lost\":" +
-            (checkTargetTimeout() ? "true" : "false") + ",\"mode_id\":" + std::to_string(id()) + "}";
+            (checkTargetTimeout() ? "true" : "false") + ",\"mode_id\":" + std::to_string(id()) + ",\"kf_target_frd_m\":";
+        if (isActive() && _used_target_frd) {
+            const auto& position = *_used_target_frd;
+            message.data += "[" + std::to_string(position.x()) + "," +
+                std::to_string(position.y()) + "," + std::to_string(position.z()) + "]";
+        } else {
+            message.data += "null";
+        }
+        message.data += "}";
         _monitor_pub->publish(message);
     });
 }
@@ -280,6 +288,7 @@ void PrecisionLand::onActivate()
 	_target_velocity.setZero();
 	_target_P.setZero();
 	_target_initialized = false;
+	_used_target_frd.reset();
 	_target_lost_prev = true;
 	_xy_integral_velocity.setZero();
 	_search_waypoint_index = 0;
@@ -290,11 +299,12 @@ void PrecisionLand::onActivate()
 
 void PrecisionLand::onDeactivate()
 {
-	// No-op
+	_used_target_frd.reset();
 }
 
 void PrecisionLand::updateSetpoint(float dt_s)
 {
+	_used_target_frd.reset();
 	// Advance the target estimate by one control tick regardless of whether a new detection
 	// arrived this tick. This is what lets the estimate keep moving smoothly (rather than
 	// freezing) during brief gaps where the tag isn't visible.
@@ -400,8 +410,14 @@ void PrecisionLand::updateSetpoint(float dt_s)
 
 Eigen::Vector2f PrecisionLand::calculateVelocitySetpointXY(float dt_s)
 {
-	const Eigen::Vector2f vehicle_position = _vehicle_local_position->positionNed().head<2>();
-	const Eigen::Vector2f position_error = (_target_position.head<2>() - vehicle_position.cast<double>()).cast<float>();
+	const Eigen::Vector3d relative_ned =
+		_target_position - _vehicle_local_position->positionNed().cast<double>();
+	const Eigen::Vector2f position_error = relative_ned.head<2>().cast<float>();
+	// Record the exact KF sample used by the XY controller in the same frame as the HUD.
+	const Eigen::Quaterniond attitude = _vehicle_attitude->attitude().cast<double>();
+	if (relative_ned.allFinite() && attitude.coeffs().allFinite() && attitude.squaredNorm() > 1e-12) {
+		_used_target_frd = attitude.normalized().conjugate() * relative_ned;
+	}
 	const Eigen::Vector2f target_velocity = _target_velocity.head<2>().cast<float>();
 	const Eigen::Vector2f p_term = _param_vel_p_gain * position_error;
 

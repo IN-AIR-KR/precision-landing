@@ -1,6 +1,7 @@
 #pragma once
 #include <Eigen/Geometry>
 #include <chrono>
+#include <optional>
 #include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <px4_msgs/msg/vehicle_status.hpp>
@@ -110,6 +111,7 @@ private:
 	Eigen::Vector3d _target_velocity = Eigen::Vector3d::Zero();
 	Eigen::Matrix<double, 6, 6> _target_P = Eigen::Matrix<double, 6, 6>::Zero();
 	bool _target_initialized = false;
+	std::optional<Eigen::Vector3d> _used_target_frd;
 
 	// Land detection
 	bool _land_detected = false;
