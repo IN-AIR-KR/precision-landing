@@ -54,6 +54,21 @@ ros2 run pl_streaming hud_streamer --ros-args \
   -p url:=rtsp://127.0.0.1:8554/hud -p rtsp_transport:=tcp
 ```
 
+## Low-latency playback with GStreamer
+
+On the ground-station Mac, run this command with your Jetson's LAN IP.
+
+```bash
+gst-launch-1.0 -v \
+  rtspsrc location=rtsp://10.164.13.71:8554/hud \
+    protocols=udp latency=20 drop-on-latency=true do-retransmission=false \
+  ! rtph264depay ! h264parse ! avdec_h264 \
+  ! videoconvert ! autovideosink sync=false
+```
+
+If the video breaks up on Wi-Fi, increase `latency` to `50` ms. If UDP
+playback receives no video, switch to `protocols=tcp`.
+
 Start by comparing the video delay and detection throughput with live
 streaming off and on. Verify the recorded JPEG frame intervals in a fresh
 flight bag. Existing bags retain their original frame rate.
