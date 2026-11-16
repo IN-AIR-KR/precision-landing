@@ -90,27 +90,25 @@ graph TD
 ```mermaid
 stateDiagram-v2
     [*] --> IDLE
-    IDLE --> SEARCH: 모드 활성화
-    SEARCH --> SEARCH: 웨이포인트 탐색 반복
-    SEARCH --> ALIGN: 타겟 필터 초기화됨
+    IDLE --> ALIGN: 유효한 타겟 검출이 0.5초 이상 이어짐
     ALIGN --> APPROACH: 위치 오차와 상대 속도 조건 충족
-    ALIGN --> IDLE: 타겟 유실 / 실패 보고
-    APPROACH --> IDLE: 타겟 유실 / 실패 보고
+    ALIGN --> ABORTED: 타겟 유실 / 실패 보고
+    APPROACH --> ABORTED: 타겟 유실 / 실패 보고
     APPROACH --> FINISHED: PX4 landed 감지
     FINISHED --> [*]: PX4에 성공 보고
 ```
 
 | 단계       | 알고리즘 / 전이 조건                                                                                  |
 | ---------- | ----------------------------------------------------------------------------------------------------- |
-| `IDLE`     | 초기 대기 상태. 타겟 유실로 실패하면 복귀하며, 모드 활성화 시 탐색 시작                                  |
-| `SEARCH`   | NED 원점 XY 기준 반경 최대 2 m의 나선형 웨이포인트 탐색. 높이 간격 0.5 m. 필터가 초기화되면 접근 시작 |
+| `IDLE`     | 모드 활성화 후 처음 확인한 유효한 XYZ 위치를 유지하며 검출을 기다림                                  |
 | `ALIGN` | 진입 고도를 유지하며 XY 속도로 타겟 추종. 위치 오차와 기체−타겟 상대 속도가 임계값보다 작으면 하강    |
 | `APPROACH`  | XY 추종을 유지하며 일정 수직 속도로 하강. 마커 자세에서 yaw 지정. PX4 착륙 감지 시 완료               |
 | `FINISHED` | PX4 모드 실행 결과를 성공으로 보고                                                                    |
+| `ABORTED` | 타겟 유실 실패를 보고하고 setpoint 발행을 중지 |
 
-- FSM은 **5단계**. 화면의 `INACTIVE`는 별도 단계가 아니라 외부 모드 비활성 표시.
-- 색상: 대기 회색, 탐색·접근·하강 노란색, 완료 초록색. 활성 중 타겟 유실 또는 제어 상태 수신 이상은 빨간색 우선.
-- 수동 모드 전환 시 외부 모드가 비활성화됨. `IDLE` 자체가 Hold/자동 착륙 명령을 보내는 것은 아님.
+- FSM은 **5개 상태**. 화면의 `INACTIVE`는 별도 단계가 아니라 외부 모드 비활성 표시.
+- `IDLE`은 회색, `ALIGN`은 주황색, `APPROACH`는 노란색, `FINISHED`는 초록색, `ABORTED`는 빨간색. HUD 제어 상태 수신 이상도 빨간색으로 표시.
+- `IDLE`에서는 검출 간격이 0.25초를 넘으면 확인 시간과 필터 초기화를 다시 시작함. 정렬·하강 중 타겟 유실로 실패를 보고한 뒤에는 setpoint 발행을 중지함. 새 시도는 모드 재활성화로 시작함.
 
 ## 5. 상태 추정 및 제어
 
@@ -189,7 +187,7 @@ H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
 \|\mathbf{v}_{vehicle}-\hat{\mathbf{v}}_{target}\|<0.2\;\mathrm{m/s}
 ```
 
-- 마지막 관측 수신 후 기본 **5초** 초과 시 타겟 유실. 접근·하강 중이면 실패 보고 후 `IDLE`.
+- 마지막 관측 수신 후 **실기체 3초**, **SITL 5초** 초과 시 타겟 유실. 접근·하강 중이면 실패 보고 후 `ABORTED`.
 - 기본값은 [sim.yaml](src/pl_bringup/config/sim.yaml), 실기체 설정은 [real.yaml](src/pl_bringup/config/real.yaml).
 
 ## 6. 실행방법

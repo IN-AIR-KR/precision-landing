@@ -10,6 +10,8 @@
 
 static const std::string kModeName = "PrecisionLandCustom";
 static const bool kEnableDebugOutput = true;
+static constexpr auto kDetectionConfirmTime = std::chrono::milliseconds(500);
+static constexpr auto kDetectionMaxGap = std::chrono::milliseconds(250);
 
 using namespace px4_ros2::literals;
 
@@ -164,37 +166,53 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 
 void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
-	if (_search_started) {
-		auto tag = ArucoTag {
-			.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
-			.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
-			.timestamp = _node.now(),
-		};
+	if (!isActive() || _state == State::ABORTED || _state == State::FINISHED) {
+		return;
+	}
+	auto tag = ArucoTag {
+		.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
+		.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
+		.timestamp = _node.now(),
+	};
 
-		// Save tag position/orientation in NED world frame
-		_tag = getTagWorld(tag);
-
-		// Correct the target Kalman filter with this new position measurement. The filter keeps
-		// predicting every control tick regardless (see predictTarget(), called from
-		// updateSetpoint()), so the estimate keeps advancing smoothly through brief gaps where
-		// the tag isn't visible, instead of freezing until the next detection arrives.
-		correctTarget(_tag.position);
-
-		// Publish world-frame tag pose for visualization: filtered position, raw orientation
-		// (orientation isn't part of the filter state).
-		geometry_msgs::msg::PoseStamped world_pose_msg;
-		world_pose_msg.header.stamp = _node.now();
-		world_pose_msg.header.frame_id = "map";
-		world_pose_msg.pose.position.x = _target_position.x();
-		world_pose_msg.pose.position.y = _target_position.y();
-		world_pose_msg.pose.position.z = _target_position.z();
-		world_pose_msg.pose.orientation.w = _tag.orientation.w();
-		world_pose_msg.pose.orientation.x = _tag.orientation.x();
-		world_pose_msg.pose.orientation.y = _tag.orientation.y();
-		world_pose_msg.pose.orientation.z = _tag.orientation.z();
-		_target_pose_world_pub->publish(world_pose_msg);
+	if (!tag.position.allFinite() || !tag.orientation.coeffs().allFinite() ||
+	    tag.orientation.squaredNorm() < 1e-12) {
+		return;
 	}
 
+	const auto world_tag = getTagWorld(tag);
+	if (!world_tag.position.allFinite() || !world_tag.orientation.coeffs().allFinite()) {
+		return;
+	}
+	if (_state == State::IDLE) {
+		const auto received = SteadyClock::now();
+		if (!_target_initialized || received - _last_detection > kDetectionMaxGap) {
+			_first_detection = received;
+			_target_initialized = false;
+		}
+		_last_detection = received;
+	}
+	_tag = world_tag;
+
+	// Correct the target Kalman filter with this new position measurement. The filter keeps
+	// predicting every control tick regardless (see predictTarget(), called from
+	// updateSetpoint()), so the estimate keeps advancing smoothly through brief gaps where
+	// the tag isn't visible, instead of freezing until the next detection arrives.
+	correctTarget(_tag.position);
+
+	// Publish world-frame tag pose for visualization: filtered position, raw orientation
+	// (orientation isn't part of the filter state).
+	geometry_msgs::msg::PoseStamped world_pose_msg;
+	world_pose_msg.header.stamp = _node.now();
+	world_pose_msg.header.frame_id = "map";
+	world_pose_msg.pose.position.x = _target_position.x();
+	world_pose_msg.pose.position.y = _target_position.y();
+	world_pose_msg.pose.position.z = _target_position.z();
+	world_pose_msg.pose.orientation.w = _tag.orientation.w();
+	world_pose_msg.pose.orientation.x = _tag.orientation.x();
+	world_pose_msg.pose.orientation.y = _tag.orientation.y();
+	world_pose_msg.pose.orientation.z = _tag.orientation.z();
+	_target_pose_world_pub->publish(world_pose_msg);
 }
 
 PrecisionLand::ArucoTag PrecisionLand::getTagWorld(const ArucoTag& tag)
@@ -291,10 +309,10 @@ void PrecisionLand::onActivate()
 	_used_target_frd.reset();
 	_target_lost_prev = true;
 	_xy_integral_velocity.setZero();
-	_search_waypoint_index = 0;
-	generateSearchWaypoints();
-	_search_started = true;
-	switchToState(State::SEARCH);
+	_first_detection = {};
+	_last_detection = {};
+	_hold_position.reset();
+	switchToState(State::IDLE);
 }
 
 void PrecisionLand::onDeactivate()
@@ -305,12 +323,11 @@ void PrecisionLand::onDeactivate()
 void PrecisionLand::updateSetpoint(float dt_s)
 {
 	_used_target_frd.reset();
-	// Advance the target estimate by one control tick regardless of whether a new detection
-	// arrived this tick. This is what lets the estimate keep moving smoothly (rather than
-	// freezing) during brief gaps where the tag isn't visible.
+	if (_state == State::ABORTED) {
+		return;
+	}
 	predictTarget(dt_s);
-
-	bool target_lost = checkTargetTimeout();
+	const bool target_lost = checkTargetTimeout();
 
 	if (target_lost && !_target_lost_prev) {
 		RCLCPP_INFO(_node.get_logger(), "Target lost: State %s", stateName(_state).c_str());
@@ -324,31 +341,21 @@ void PrecisionLand::updateSetpoint(float dt_s)
 	// State machine
 	switch (_state) {
 	case State::IDLE: {
-		// No-op -- just spin
-		break;
-	}
-
-	case State::SEARCH: {
-
-		if (_target_initialized && !target_lost) {
-			_approach_altitude = _vehicle_local_position->positionNed().z();
-			switchToState(State::ALIGN);
-			break;
-		}
-
-		auto waypoint_position = _search_waypoints[_search_waypoint_index];
-
-		_trajectory_setpoint->updatePosition(waypoint_position);
-
-		if (positionReached(waypoint_position)) {
-			_search_waypoint_index++;
-
-			// If we have searched all waypoints, start over
-			if (_search_waypoint_index >= static_cast<int>(_search_waypoints.size())) {
-				_search_waypoint_index = 0;
+		if (!_hold_position) {
+			const Eigen::Vector3f position = _vehicle_local_position->positionNed();
+			if (!_vehicle_local_position->positionXYValid() ||
+			    !_vehicle_local_position->positionZValid() || !position.allFinite()) {
+				break;
 			}
+			_hold_position = position;
 		}
-
+		_trajectory_setpoint->updatePosition(*_hold_position);
+		if (_target_initialized && !target_lost &&
+		    _last_detection - _first_detection >= kDetectionConfirmTime &&
+		    SteadyClock::now() - _last_detection <= kDetectionMaxGap) {
+			_approach_altitude = _hold_position->z();
+			switchToState(State::ALIGN);
+		}
 		break;
 	}
 
@@ -357,7 +364,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		if (target_lost) {
 			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
 			ModeBase::completed(px4_ros2::Result::ModeFailureOther);
-			switchToState(State::IDLE);
+			switchToState(State::ABORTED);
 			return;
 		}
 
@@ -385,7 +392,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		if (target_lost) {
 			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
 			ModeBase::completed(px4_ros2::Result::ModeFailureOther);
-			switchToState(State::IDLE);
+			switchToState(State::ABORTED);
 			return;
 		}
 
@@ -405,6 +412,9 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		ModeBase::completed(px4_ros2::Result::Success);
 		break;
 	}
+
+	case State::ABORTED:
+		break;
 	} // end switch/case
 }
 
@@ -465,67 +475,6 @@ bool PrecisionLand::checkTargetTimeout()
 	return false;
 }
 
-void PrecisionLand::generateSearchWaypoints()
-{
-	// Generate spiral search waypoints
-	// The search waypoints are generated in the NED frame
-	// Parameters for the search pattern
-	double start_x = 0.0;
-	double start_y = 0.0;
-	double current_z = _vehicle_local_position->positionNed().z();
-	auto min_z = -1.0;
-
-	double max_radius = 2.0;
-	double layer_spacing = 0.5;
-	int points_per_layer = 16;
-	std::vector<Eigen::Vector3f> waypoints;
-
-	// Generate waypoints
-	// Calculate the number of layers needed
-	int num_layers = (static_cast<int>((min_z - current_z) / layer_spacing) / 2) < 1 ? 1 : (static_cast<int>((
-				 min_z - current_z) / layer_spacing) / 2);
-
-	// Generate waypoints
-	for (int layer = 0; layer < num_layers; ++layer) {
-		std::vector<Eigen::Vector3f> layer_waypoints;
-
-		// Spiral out to max radius
-		double radius = 0.0;
-
-		for (int point = 0; point < points_per_layer + 1; ++point) {
-			double angle = 2.0 * M_PI * point / points_per_layer;
-			double x = start_x + radius * cos(angle);
-			double y = start_y + radius * sin(angle);
-			double z = current_z;
-
-			layer_waypoints.push_back(Eigen::Vector3f(x, y, z));
-			radius += max_radius / points_per_layer;
-		}
-
-		// Push the spiral out waypoints to the main waypoints vector
-		waypoints.insert(waypoints.end(), layer_waypoints.begin(), layer_waypoints.end());
-
-		// Decrease the altitude for the inward spiral
-		current_z += layer_spacing;
-
-		// Reverse the layer waypoints for spiral in
-		std::reverse(layer_waypoints.begin(), layer_waypoints.end());
-
-		// Adjust the z-coordinate for the inward spiral
-		for (auto& waypoint : layer_waypoints) {
-			waypoint.z() = current_z;
-		}
-
-		// Push the reversed waypoints to the main waypoints vector
-		waypoints.insert(waypoints.end(), layer_waypoints.begin(), layer_waypoints.end());
-
-		// Decrease the altitude for the next outward spiral
-		current_z += layer_spacing;
-	}
-
-	_search_waypoints = waypoints;
-}
-
 bool PrecisionLand::positionReached(const Eigen::Vector3f& target) const
 {
 	auto position = _vehicle_local_position->positionNed();
@@ -534,8 +483,7 @@ bool PrecisionLand::positionReached(const Eigen::Vector3f& target) const
 	const auto delta_pos = target - position;
 	// Compare against velocity relative to the target instead of absolute vehicle velocity:
 	// for a moving target (e.g. ALIGN tracking the tag), the vehicle must keep moving at the
-	// target's speed, so absolute velocity would never settle near zero. _target_velocity is zero
-	// while no tag has been detected yet, so this is unchanged for the static SEARCH waypoints.
+	// target's speed, so absolute velocity would never settle near zero.
 	const auto relative_velocity = velocity - _target_velocity.cast<float>();
 	return (delta_pos.norm() < _param_delta_position) && (relative_velocity.norm() < _param_delta_velocity);
 }
@@ -546,9 +494,6 @@ std::string PrecisionLand::stateName(State state)
 	case State::IDLE:
 		return "IDLE";
 
-	case State::SEARCH:
-		return "SEARCH";
-
 	case State::ALIGN:
 		return "ALIGN";
 
@@ -557,6 +502,9 @@ std::string PrecisionLand::stateName(State state)
 
 	case State::FINISHED:
 		return "FINISHED";
+
+	case State::ABORTED:
+		return "ABORTED";
 
 	default:
 		return "Unknown";

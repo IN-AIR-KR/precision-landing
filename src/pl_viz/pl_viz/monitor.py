@@ -80,13 +80,14 @@ def render(image, state, max_width=0):
     c = current('control')
     phase = (c['state'].upper() if c['active'] else 'INACTIVE') if c else 'CONTROL ' + state['control']['health'].upper()
     # Status colour is shared by the label and the frame border (OpenCV BGR).
-    phase_color = (160, 160, 160)
-    if c and c['active']:
-        if c['state'] == 'FINISHED':
-            phase_color = (0, 220, 0)
-        elif c['state'] in ('SEARCH', 'ALIGN', 'APPROACH', 'FINAL_APPROACH'):
-            phase_color = yellow
-    if c is None or (c['active'] and c['target_lost']):
+    phase_color = {
+        'ALIGN': (0, 165, 255),
+        'APPROACH': yellow,
+        'FINAL_APPROACH': yellow,
+        'FINISHED': (0, 220, 0),
+        'ABORTED': (0, 0, 255),
+    }.get(phase, (160, 160, 160))
+    if c is None:
         phase_color = (0, 0, 255)
     border = max(3, round(7 * unit))
     # Draw entirely inside the image so all four edges have the same width.
@@ -95,7 +96,7 @@ def render(image, state, max_width=0):
     canvas[:, :border] = phase_color
     canvas[:, -border:] = phase_color
     text(phase, margin, margin + round(38 * unit), 1.35, phase_color, outline=False, bold=True)
-    if c and c['active'] and c['target_lost']:
+    if phase == 'ABORTED' and c['target_lost']:
         text('TARGET LOST', margin, margin + round(77 * unit), .7, phase_color, bold=True)
     if state['image']['health'] != 'ok':
         text('CAMERA: ' + state['image']['health'].upper(), margin,

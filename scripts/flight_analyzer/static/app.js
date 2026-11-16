@@ -40,11 +40,13 @@ const PANELS = [
 ];
 
 const STATE_COLORS = {
+  IDLE: "rgba(148,163,184,0.14)",
   SEARCH: "rgba(148,163,184,0.10)",
-  ALIGN: "rgba(234,179,8,0.18)",
-  APPROACH: "rgba(34,197,94,0.16)",
+  ALIGN: "rgba(255,165,0,0.18)",
+  APPROACH: "rgba(255,235,0,0.16)",
   FINAL_APPROACH: "rgba(59,130,246,0.20)",
-  FINISHED: "rgba(168,85,247,0.18)",
+  FINISHED: "rgba(0,220,0,0.18)",
+  ABORTED: "rgba(255,0,0,0.18)",
   INACTIVE: "rgba(148,163,184,0.07)",
 };
 const CHART_H = 210;

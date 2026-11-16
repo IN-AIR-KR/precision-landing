@@ -31,7 +31,7 @@ control:
     velocity_d_gain: 0.0
     max_speed_mps: 10.0
   target_estimation:
-    timeout_s: 1.0
+    timeout_s: 3.0
     acceleration_noise_mps2: 1.0
     position_noise_m: 0.1
   camera_extrinsic:

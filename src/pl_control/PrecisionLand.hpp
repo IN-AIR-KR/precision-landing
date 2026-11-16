@@ -77,10 +77,10 @@ private:
 
 	enum class State {
 		IDLE,
-		SEARCH, 	// Searches for target using a search pattern
 		ALIGN, 	// Positioning over landing target while maintaining altitude
 		APPROACH, 	// Stay over landing target while descending
-		FINISHED
+		FINISHED,
+		ABORTED
 	};
 
 	void switchToState(State state);
@@ -99,7 +99,8 @@ private:
 
 	// Data
 	State _state = State::IDLE;
-	bool _search_started = false;
+	std::optional<Eigen::Vector3f> _hold_position;
+	SteadyClock::time_point _first_detection{}, _last_detection{};
 
 	ArucoTag _tag;
 	float _approach_altitude = {};
@@ -116,13 +117,6 @@ private:
 	// Land detection
 	bool _land_detected = false;
 	bool _target_lost_prev = true;
-
-	// Waypoints for SEARCH pattern
-	std::vector<Eigen::Vector3f> _search_waypoints;
-	// SEARCH pattern generation
-	void generateSearchWaypoints();
-	// SEARCH pattern index
-	int _search_waypoint_index = 0;
 
 	// Parameters
 	float _param_descent_vel = {};
