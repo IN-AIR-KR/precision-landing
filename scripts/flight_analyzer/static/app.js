@@ -620,33 +620,41 @@ function showFrameAt(t) {
     V.request = null;
     V.loading = false;
     V.shown = -1;
-    $("v-img").removeAttribute("src");
+    clearFrame();
     $("v-empty").textContent = "Waiting for first HUD frame";
     return;
   }
   $("v-empty").textContent = "";
   pumpFrame();
 }
-function pumpFrame() {
+function clearFrame() {
+  const frame = $("v-frame");
+  frame.getContext("2d").clearRect(0, 0, frame.width, frame.height);
+}
+
+async function pumpFrame() {
   if (V.loading || V.want === V.shown || V.want < 0) return;
   const i = V.want, id = currentId;
   const token = V.request = Symbol();
   V.loading = true;
   const img = new Image();
-  img.onload = () => {
-    if (token !== V.request || id !== currentId) return;
-    V.loading = false;
-    img.id = "v-img";
-    img.alt = "";
-    $("v-img").replaceWith(img);
-    V.shown = i;
-    pumpFrame();
-  };
-  img.onerror = () => {
-    if (token !== V.request || id !== currentId) return;
-    V.loading = false; V.shown = i; pumpFrame();
-  };
   img.src = `/api/frame?id=${encodeURIComponent(id)}&i=${i}`;
+  try {
+    await img.decode();
+    if (token !== V.request || id !== currentId) return;
+    const frame = $("v-frame");
+    if (frame.width !== img.naturalWidth || frame.height !== img.naturalHeight) {
+      frame.width = img.naturalWidth;
+      frame.height = img.naturalHeight;
+    }
+    frame.getContext("2d").drawImage(img, 0, 0);
+  } catch {
+    // Keep the previous frame if the next one cannot be decoded.
+  }
+  if (token !== V.request || id !== currentId) return;
+  V.loading = false;
+  V.shown = i;
+  pumpFrame();
 }
 function updateVideoInfo(t) {
   if (!hasVideo()) return;
@@ -706,7 +714,7 @@ function resetTimeline() {
   $("scene-truth").hidden = true;
   V.t = 0; V.shown = -1; V.want = -1;
   V.loading = false; V.request = null;
-  $("v-img").removeAttribute("src");
+  clearFrame();
   $("v-info").textContent = "";
   const ok = hasVideo();
   $("v-export").disabled = !ok;
