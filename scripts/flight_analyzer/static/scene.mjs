@@ -1,10 +1,36 @@
 import * as THREE from "./vendor/three/three.module.min.js";
 import { OrbitControls } from "./vendor/three/OrbitControls.js";
+import { LineMaterial } from "./vendor/three/LineMaterial.js";
+import { LineSegments2 } from "./vendor/three/LineSegments2.js";
+import { LineSegmentsGeometry } from "./vendor/three/LineSegmentsGeometry.js";
 import { sample, sceneData } from "./scene-data.mjs";
 
+const lineWidth = 2;
 const colors = { drone: "#67b7ff", estimate: "#ffb45e", truth: "#53e6af" };
 const gaps = { drone: 0.3, estimate: 0.5, truth: 0.3 };
 const nedToEnu = new THREE.Quaternion(Math.SQRT1_2, Math.SQRT1_2, 0, 0);
+
+function screenLine(geometry, options) {
+  const material = new LineMaterial({ linewidth: lineWidth, ...options });
+  const line = new LineSegments2(geometry, material);
+  line.onBeforeRender = (renderer) => renderer.getSize(material.resolution);
+  return line;
+}
+
+function droneAxes(size) {
+  const geometry = new LineSegmentsGeometry();
+  geometry.setPositions([
+    0, 0, 0, size, 0, 0,
+    0, 0, 0, 0, size, 0,
+    0, 0, 0, 0, 0, size,
+  ]);
+  geometry.setColors([
+    1, 0, 0, 1, 0.6, 0,
+    0, 1, 0, 0.6, 1, 0,
+    0, 0, 1, 0, 0.6, 1,
+  ]);
+  return screenLine(geometry, { vertexColors: true });
+}
 
 export class LandingScene {
   constructor(host) {
@@ -54,11 +80,11 @@ export class LandingScene {
           vertices.push(...prev.slice(1), ...row.slice(1));
         }
       }
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-      this.items.add(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
-        color, transparent: true, opacity: 0.65,
-      })));
+      if (vertices.length) {
+        const geometry = new LineSegmentsGeometry();
+        geometry.setPositions(vertices);
+        this.items.add(screenLine(geometry, { color, transparent: true, opacity: 0.65 }));
+      }
       const shape = key === "drone" ? new THREE.ConeGeometry(0.21, 0.58, 4)
         : key === "estimate" ? new THREE.SphereGeometry(0.16, 16, 12)
         : new THREE.BoxGeometry(0.36, 0.36, 0.06);
@@ -66,7 +92,7 @@ export class LandingScene {
       const object = new THREE.Mesh(shape, new THREE.MeshBasicMaterial({
         color, wireframe: key === "truth",
       }));
-      if (key === "drone") object.add(new THREE.AxesHelper(0.65));
+      if (key === "drone") object.add(droneAxes(0.65));
       this.items.add(object);
       this.objects[key] = object;
     }
