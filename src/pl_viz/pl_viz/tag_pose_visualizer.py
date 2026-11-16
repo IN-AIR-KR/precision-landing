@@ -28,7 +28,7 @@ class TagPoseVisualizer(Node):
             color.a = 0.8
         self.marker.lifetime.nsec = 500_000_000
         self.subscription = self.create_subscription(
-            PoseStamped, '/target_pose_world', self.on_pose,
+            PoseStamped, '/pl/target_pose_world', self.on_pose,
             QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT),
         )
 

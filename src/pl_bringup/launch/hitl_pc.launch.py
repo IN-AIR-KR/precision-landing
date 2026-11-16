@@ -59,17 +59,17 @@ def setup(context):
     agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', str(config['px4']['udp']['port'])], output='screen')
     camera = IncludeLaunchDescription(PythonLaunchDescriptionSource(str(
         Path(get_package_share_directory('pl_camera'))/'launch/camera_sim.launch.py')),
-        launch_arguments={'world': world, 'image_topic': '/hitl/pc/camera/image_raw',
+        launch_arguments={'world': world, 'image_topic': '/pl/hitl/pc/camera/image_raw',
                           'debug_bridge': 'false'}.items())
     encoder = Node(package='pl_camera', executable='image_relay', name='hitl_camera_encoder', output='screen',
-        parameters=[{'direction': 'encode', 'input_topic': '/hitl/pc/camera/image_raw',
-            'output_topic': '/camera/image_raw/compressed', 'fps': float(arg('camera_fps')),
+        parameters=[{'direction': 'encode', 'input_topic': '/pl/hitl/pc/camera/image_raw',
+            'output_topic': '/pl/camera/image_raw/compressed', 'fps': float(arg('camera_fps')),
             'jpeg_quality': int(arg('jpeg_quality'))}])
     decoder = Node(package='pl_camera', executable='image_relay', name='hitl_monitor_decoder', output='screen',
         parameters=[{'direction': 'decode', 'input_topic': '/pl/monitor/image/compressed',
-            'output_topic': '/hitl/pc/monitor/image', 'fps': float(config['viz']['fps'])}])
+            'output_topic': '/pl/hitl/pc/monitor/image', 'fps': float(config['viz']['fps'])}])
     viewer = Node(package='rqt_image_view', executable='rqt_image_view', name='hitl_image_view',
-                  arguments=['/hitl/pc/monitor/image'], condition=IfCondition(LaunchConfiguration('viewer')))
+                  arguments=['/pl/hitl/pc/monitor/image'], condition=IfCondition(LaunchConfiguration('viewer')))
     required = [gazebo, flight, agent, encoder]
     handlers = [RegisterEventHandler(OnProcessExit(target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='Required PC process exited'))])) for node in required]

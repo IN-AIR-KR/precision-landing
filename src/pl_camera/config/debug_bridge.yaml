@@ -1,4 +1,4 @@
-- topic_name: /image_proc
+- topic_name: /pl/image_proc
   ros_type_name: sensor_msgs/msg/Image
   gz_type_name: gz.msgs.Image
   direction: ROS_TO_GZ

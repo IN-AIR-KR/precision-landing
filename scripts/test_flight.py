@@ -67,9 +67,9 @@ subs = [node.create_subscription(t, topic, cb, qos_profile_sensor_data) for t, t
     (VehicleLocalPosition, px4_topic('vehicle_local_position', VehicleLocalPosition), position),
     (VehicleStatus, px4_topic('vehicle_status', VehicleStatus), status),
     (VehicleLandDetected, px4_topic('vehicle_land_detected', VehicleLandDetected), landed),
-    (PoseStamped, '/target_pose', tag),
+    (PoseStamped, '/pl/target_pose', tag),
     (CompressedImage if args.image_transport == 'compressed' else Image,
-     '/image_proc/compressed' if args.image_transport == 'compressed' else '/image_proc', image)]]
+     '/pl/image_proc/compressed' if args.image_transport == 'compressed' else '/pl/image_proc', image)]]
 client = node.create_client(Trigger, '/pl/start_landing')
 assert client.wait_for_service(timeout_sec=10), 'Start landing service unavailable'
 mode_id = None

@@ -132,13 +132,13 @@ class ArucoTracker(Node):
         if transport not in ('raw', 'compressed'):
             raise ValueError('input_transport must be raw or compressed')
         self.create_subscription(CompressedImage if transport == 'compressed' else Image,
-                                 '/camera/image_raw/compressed' if transport == 'compressed' else '/camera/image_raw',
+                                 '/pl/camera/image_raw/compressed' if transport == 'compressed' else '/pl/camera/image_raw',
                                  self.image_callback, qos)
-        self.info_sub = self.create_subscription(CameraInfo, '/camera/camera_info', self.info_callback, qos)
-        self.image_pub = self.create_publisher(Image, '/image_proc', qos)
-        self.compressed_pub = self.create_publisher(CompressedImage, '/image_proc/compressed', qos)
+        self.info_sub = self.create_subscription(CameraInfo, '/pl/camera/camera_info', self.info_callback, qos)
+        self.image_pub = self.create_publisher(Image, '/pl/image_proc', qos)
+        self.compressed_pub = self.create_publisher(CompressedImage, '/pl/image_proc/compressed', qos)
         self.status_pub = self.create_publisher(String, '/pl/detection/status', qos)
-        self.pose_pub = self.create_publisher(PoseStamped, '/target_pose', qos)
+        self.pose_pub = self.create_publisher(PoseStamped, '/pl/target_pose', qos)
 
     def info_callback(self, msg):
         self.camera = np.asarray(msg.k, dtype=np.float64).reshape(3, 3).copy()

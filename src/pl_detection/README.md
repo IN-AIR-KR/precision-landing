@@ -3,10 +3,10 @@
 Python ArUco detector. Install binary-only requirements with `scripts/setup.sh`;
 source `scripts/env.sh` to select the workspace-local wheel runtime.
 
-Inputs: `/camera/image_raw` (`sensor_msgs/Image`, default `input_transport=raw`)
-or `/camera/image_raw/compressed` (`sensor_msgs/CompressedImage`, `input_transport=compressed`), and `/camera/camera_info`
+Inputs: `/pl/camera/image_raw` (`sensor_msgs/Image`, default `input_transport=raw`)
+or `/pl/camera/image_raw/compressed` (`sensor_msgs/CompressedImage`, `input_transport=compressed`), and `/pl/camera/camera_info`
 (`sensor_msgs/CameraInfo`), best-effort, volatile, depth 1. Launch may remap them.
-Outputs: `/target_pose` (`geometry_msgs/PoseStamped`) and `/image_proc` (BGR8),
+Outputs: `/pl/target_pose` (`geometry_msgs/PoseStamped`) and `/pl/image_proc` (BGR8),
 with the same QoS and original image timestamp. Optical axes are x right, y down,
 z forward; `optical_frame` defaults to `camera_frame`, or input frame if empty.
 
@@ -25,8 +25,8 @@ Detection uses default ArucoDetector parameters, float32 marker corners,
 undistortPoints followed by iterative solvePnP, and the original OpenCV quaternion
 sign convention. Only the first matching target is published. Annotated images
 are drawn/published only when raw or compressed debug subscribers exist, capped by
-`debug_fps` (default 15). JPEG encoding runs only for `/image_proc/compressed`
-subscribers, with `jpeg_quality` (default 80). Detection and `/target_pose` are
+`debug_fps` (default 15). JPEG encoding runs only for `/pl/image_proc/compressed`
+subscribers, with `jpeg_quality` (default 80). Detection and `/pl/target_pose` are
 independent of debug subscriptions. `/pl/detection/status` publishes frame-level
 JSON detection/pose metadata only when subscribed.
 

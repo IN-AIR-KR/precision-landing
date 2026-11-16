@@ -26,13 +26,13 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 
 	_vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
 
-	_target_pose_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>("/target_pose",
+	_target_pose_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>("/pl/target_pose",
 			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseCallback, this, std::placeholders::_1));
 
 	_vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>("/fmu/out/vehicle_land_detected",
 				     rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
 
-	_target_pose_world_pub = _node.create_publisher<geometry_msgs::msg::PoseStamped>("/target_pose_world", rclcpp::QoS(1).best_effort());
+	_target_pose_world_pub = _node.create_publisher<geometry_msgs::msg::PoseStamped>("/pl/target_pose_world", rclcpp::QoS(1).best_effort());
 
 	loadParameters();
 

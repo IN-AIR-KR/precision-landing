@@ -37,7 +37,7 @@ def setup(context):
         name='debug_image_bridge', output='screen', condition=IfCondition(LaunchConfiguration('debug_bridge')), parameters=[{
             'config_file': str(Path(get_package_share_directory('pl_camera')) / 'config/debug_bridge.yaml'),
             'subscription_heartbeat': 200,
-            'qos_overrides./image_proc.subscription.reliability': 'best_effort'}])
+            'qos_overrides./pl/image_proc.subscription.reliability': 'best_effort'}])
     return [debug_bridge, *ground_truth, RegisterEventHandler(OnProcessExit(target_action=bridge,
                 on_exit=[EmitEvent(event=Shutdown(reason='Camera bridge exited'))])), bridge]
 
@@ -49,6 +49,6 @@ def generate_launch_description():
         DeclareLaunchArgument('model', default_value='x500_mono_cam_down_0'),
         DeclareLaunchArgument('link', default_value='camera_link'),
         DeclareLaunchArgument('sensor', default_value='imager'),
-        DeclareLaunchArgument('image_topic', default_value='/camera/image_raw'),
-        DeclareLaunchArgument('camera_info_topic', default_value='/camera/camera_info'),
+        DeclareLaunchArgument('image_topic', default_value='/pl/camera/image_raw'),
+        DeclareLaunchArgument('camera_info_topic', default_value='/pl/camera/camera_info'),
         OpaqueFunction(function=setup)])

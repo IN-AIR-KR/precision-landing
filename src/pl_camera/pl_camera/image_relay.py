@@ -17,8 +17,8 @@ from pl_detection.aruco_tracker import to_bgr
 class ImageRelay(Node):
     def __init__(self, name='image_relay', **kwargs):
         super().__init__(name, **kwargs)
-        defaults = {'direction': 'encode', 'input_topic': '/hitl/pc/camera/image_raw',
-                    'output_topic': '/camera/image_raw/compressed', 'fps': 30.0, 'jpeg_quality': 90}
+        defaults = {'direction': 'encode', 'input_topic': '/pl/hitl/pc/camera/image_raw',
+                    'output_topic': '/pl/camera/image_raw/compressed', 'fps': 30.0, 'jpeg_quality': 90}
         config = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
         self.encode = config['direction'] == 'encode'
         self.fps, self.quality = float(config['fps']), int(config['jpeg_quality'])

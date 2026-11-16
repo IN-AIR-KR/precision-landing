@@ -14,8 +14,13 @@ MSG_DIR = Path(__file__).resolve().parents[2] / "src/px4_msgs/msg"
 SKIP_TYPES = {"sensor_msgs/msg/CompressedImage", "sensor_msgs/msg/Image"}
 VIDEO_TYPE = "sensor_msgs/msg/CompressedImage"
 VIDEO_TOPIC = "/pl/monitor/image/compressed"
+LEGACY_TOPICS = {
+    "/camera/camera_info": "/pl/camera/camera_info",
+    "/target_pose": "/pl/target_pose",
+    "/target_pose_world": "/pl/target_pose_world",
+}
 RATE_TOPICS = {
-    "/camera/camera_info": "camera",
+    "/pl/camera/camera_info": "camera",
     "/pl/detection/status": "detection",
 }
 CONTROL_SETPOINT = "/fmu/in/trajectory_setpoint"
@@ -173,7 +178,7 @@ def load_record(record: Path) -> dict:
             if lo is not None:
                 t0 = lo if t0 is None else min(t0, lo)
                 t_end = hi if t_end is None else max(t_end, hi)
-            topics = {tid: (name, ty) for tid, name, ty in
+            topics = {tid: (LEGACY_TOPICS.get(name, name), ty) for tid, name, ty in
                       con.execute("SELECT id, name, type FROM topics")}
             for tid, (name, ty) in topics.items():
                 if name == VIDEO_TOPIC and ty == VIDEO_TYPE:

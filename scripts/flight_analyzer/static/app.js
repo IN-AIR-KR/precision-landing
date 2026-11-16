@@ -5,6 +5,11 @@ const T = "/pl/control/status";
 const D = "/pl/detection/status";
 const M = "/pl/monitor/status";
 const OUTPUT_RATES = "viewer/output_rates";
+const LEGACY_TOPICS = new Map([
+  ["/camera/camera_info", "/pl/camera/camera_info"],
+  ["/target_pose", "/pl/target_pose"],
+  ["/target_pose_world", "/pl/target_pose_world"],
+]);
 
 function panel(title, topic, fields, note) {
   return { title, note, series: fields.map((field) => {
@@ -30,7 +35,7 @@ const PANELS = [
       { t: T, f: `kf_target_frd_m_${i}`, label: `KF ${axis}`, color: PALETTE[i], dash: [5, 4] },
     ]),
   },
-  panel("Estimated target position", "/target_pose_world",
+  panel("Estimated target position", "/pl/target_pose_world",
     [["pose_position_x", "North"], ["pose_position_y", "East"], ["pose_position_z", "Down"]], "Local NED [m]"),
   panel("Ground and vertical speed", M,
     [["velocity_value_horizontal_m_s", "Horizontal"], ["velocity_value_vertical_m_s", "Down"]], "[m/s]"),
@@ -58,7 +63,10 @@ let stateSegs = [];        // [{t0, t1, state}]
 let syncing = false;       // 줌 전파 재진입 방지
 let records = [];
 let currentId = null;
-let customPanels = loadLS("pl_analyzer.custom", []);
+let customPanels = loadLS("pl_analyzer.custom", []).map((p) => ({
+  ...p,
+  series: p.series.map((s) => ({ ...s, t: LEGACY_TOPICS.get(s.t) ?? s.t })),
+}));
 let layout = loadLS("pl_analyzer.layout", "split") === "graphs" ? "graphs" : "split";
 let sceneCenter = loadLS("pl_analyzer.scene_center", "origin");
 let scene, sceneRecord, scenePromise;

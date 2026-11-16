@@ -212,7 +212,7 @@ class Monitor(Node):
                                 'remaining_pct': float(m.remaining*100) if 0 <= m.remaining <= 1 else None})),
             }
         if need_image:
-            cls, topic = (Image, '/image_proc') if self.transport == 'raw' else (CompressedImage, '/image_proc/compressed')
+            cls, topic = (Image, '/pl/image_proc') if self.transport == 'raw' else (CompressedImage, '/pl/image_proc/compressed')
             desired['image'] = (cls, topic, self.image_input)
         for key in set(self.inputs) - set(desired):
             self.destroy_subscription(self.inputs.pop(key))

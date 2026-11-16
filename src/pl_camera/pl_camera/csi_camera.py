@@ -132,8 +132,8 @@ class CsiCamera(Node):
             'output_width': 0, 'output_height': 0,  # 0 keeps the capture dimension
             'flip_method': 0,            # nvvidconv: 0 none, 2 180deg, 4 horiz, 6 vert
             'encoding': 'bgr8',          # bgr8 or mono8 (mono8 is cheaper for ArUco)
-            'image_topic': '/camera/image_raw',
-            'camera_info_topic': '/camera/camera_info',
+            'image_topic': '/pl/camera/image_raw',
+            'camera_info_topic': '/pl/camera/camera_info',
             'frame_id': 'camera_optical_frame',
             'camera_info_url': '',
             'calibration_json': '',

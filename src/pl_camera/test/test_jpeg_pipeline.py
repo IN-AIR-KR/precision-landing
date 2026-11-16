@@ -19,15 +19,15 @@ def test_jpeg_header_detection_and_lazy_viewer():
     rclpy.init(args=['--ros-args', '-p', 'input_transport:=compressed', '-p', 'marker_size:=1.0'])
     encoder = ImageRelay('test_encoder')
     decoder = ImageRelay('test_decoder', parameter_overrides=[
-        Parameter('direction', value='decode'), Parameter('input_topic', value='/image_proc/compressed'),
+        Parameter('direction', value='decode'), Parameter('input_topic', value='/pl/image_proc/compressed'),
         Parameter('output_topic', value='/test/decoded')])
     detector = ArucoTracker()
     probe = rclpy.create_node('jpeg_test_probe')
     executor = SingleThreadedExecutor()
     for node in (encoder, decoder, detector, probe):
         executor.add_node(node)
-    raw = probe.create_publisher(Image, '/hitl/pc/camera/image_raw', qos)
-    info = probe.create_publisher(CameraInfo, '/camera/camera_info', qos)
+    raw = probe.create_publisher(Image, '/pl/hitl/pc/camera/image_raw', qos)
+    info = probe.create_publisher(CameraInfo, '/pl/camera/camera_info', qos)
     frame = np.full((600,800,3),255,np.uint8)
     frame[200:400,300:500] = cv2.cvtColor(cv2.aruco.generateImageMarker(cv2.aruco.getPredefinedDictionary(2),0,200),cv2.COLOR_GRAY2BGR)
     msg = Image(height=600,width=800,encoding='bgr8',step=2400,data=array('B',frame.tobytes()))
@@ -36,8 +36,8 @@ def test_jpeg_header_detection_and_lazy_viewer():
     msg.header.frame_id='camera_frame'
     calibration = CameraInfo(k=[500.,0.,399.5,0.,500.,299.5,0.,0.,1.],d=[0.]*5)
     poses, decoded, compressed = [], [], []
-    probe.create_subscription(PoseStamped,'/target_pose',poses.append,qos)
-    probe.create_subscription(CompressedImage,'/camera/image_raw/compressed',compressed.append,qos)
+    probe.create_subscription(PoseStamped,'/pl/target_pose',poses.append,qos)
+    probe.create_subscription(CompressedImage,'/pl/camera/image_raw/compressed',compressed.append,qos)
     image_sub = None
 
     def spin(seconds, publish=True):

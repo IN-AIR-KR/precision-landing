@@ -26,15 +26,15 @@ graph TD
         CAMERA_BRIDGE["camera_bridge<br/>(ros_gz_bridge)"]
     end
 
-    IMAGE("/camera/image_raw")
-    INFO("/camera/camera_info")
+    IMAGE("/pl/camera/image_raw")
+    INFO("/pl/camera/camera_info")
 
     subgraph pl_detection ["pl_detection"]
         DETECTOR["aruco_tracker<br/>ArUco 검출 · 자세 계산"]
     end
 
-    POSE("/target_pose")
-    DEBUG("/image_proc")
+    POSE("/pl/target_pose")
+    DEBUG("/pl/image_proc")
     DETECTION_STATUS("/pl/detection/status")
 
     subgraph pl_control ["pl_control"]
@@ -329,11 +329,11 @@ ros2 run rqt_image_view rqt_image_view /pl/monitor/image
 
 ```mermaid
 flowchart LR
-    GZ[PC: Gazebo] --> RAW("/hitl/pc/camera/image_raw") --> ENC[PC: JPEG encode]
-    ENC --> JPEG("/camera/image_raw/compressed<br/>Wi-Fi") --> DET[Jetson: pl_detection]
-    DET --> POSE("/target_pose") --> CTRL[Jetson: pl_control]
+    GZ[PC: Gazebo] --> RAW("/pl/hitl/pc/camera/image_raw") --> ENC[PC: JPEG encode]
+    ENC --> JPEG("/pl/camera/image_raw/compressed<br/>Wi-Fi") --> DET[Jetson: pl_detection]
+    DET --> POSE("/pl/target_pose") --> CTRL[Jetson: pl_control]
     PX4[PC: PX4 SITL + Agent] <-->|DDS: 상태 · setpoint| CTRL
-    DET --> DEBUG("/image_proc<br/>Jetson 내부") --> HUD[Jetson: pl_viz]
+    DET --> DEBUG("/pl/image_proc<br/>Jetson 내부") --> HUD[Jetson: pl_viz]
     HUD --> OUT("/pl/monitor/image/compressed<br/>Wi-Fi") --> DEC[PC: JPEG decode]
     DEC --> VIEW[PC: 영상 뷰어]
 ```
@@ -414,7 +414,7 @@ python3 scripts/test_flight.py --image-transport compressed
 ros2 launch pl_bringup hitl_pc.launch.py camera_fps:=20.0 jpeg_quality:=90 gui:=false viewer:=false
 
 # PC: 영상 창만 다시 열기 (PC의 JPEG 디코더가 압축 토픽을 구독)
-ros2 run rqt_image_view rqt_image_view /hitl/pc/monitor/image
+ros2 run rqt_image_view rqt_image_view /pl/hitl/pc/monitor/image
 ```
 
 `world:=aruco`를 쓰면 0.5 m 마커의 정적 월드를 사용합니다. 이때 **양쪽 launch 모두** `world:=aruco`를 지정해야 합니다. 기본 `aruco_moving`은 1 m 마커이며 `--speed 0`으로 정지 시험도 가능합니다. 양쪽은 기본적으로 같은 `sim.yaml`의 제어 설정을 사용합니다.
@@ -423,12 +423,12 @@ ros2 run rqt_image_view rqt_image_view /hitl/pc/monitor/image
 
 ```bash
 ros2 topic list
-ros2 topic hz /camera/image_raw/compressed
-ros2 topic bw /camera/image_raw/compressed
+ros2 topic hz /pl/camera/image_raw/compressed
+ros2 topic bw /pl/camera/image_raw/compressed
 ros2 topic echo /fmu/out/vehicle_status_v4 --once --qos-reliability best_effort
 ```
 
-PC에서 `ros2 multicast receive`, Jetson에서 `ros2 multicast send`로 검색용 multicast 전달을 점검할 수 있습니다. 이 시험의 성공만으로 모든 DDS 통신이 보장되지는 않습니다. 영상은 best-effort/depth 1로 오래된 프레임 적체를 줄이며, Wi-Fi 부하가 높으면 프레임이 누락될 수 있습니다. PC 뷰어에서는 `/hitl/pc/monitor/image`를 사용하고 Jetson의 `/image_proc`·`/pl/monitor/image` 원본을 직접 선택하지 않습니다.
+PC에서 `ros2 multicast receive`, Jetson에서 `ros2 multicast send`로 검색용 multicast 전달을 점검할 수 있습니다. 이 시험의 성공만으로 모든 DDS 통신이 보장되지는 않습니다. 영상은 best-effort/depth 1로 오래된 프레임 적체를 줄이며, Wi-Fi 부하가 높으면 프레임이 누락될 수 있습니다. PC 뷰어에서는 `/pl/hitl/pc/monitor/image`를 사용하고 Jetson의 `/pl/image_proc`·`/pl/monitor/image` 원본을 직접 선택하지 않습니다.
 
 종료는 먼저 Jetson launch, 다음 PC launch에서 `Ctrl+C`입니다. PC launch는 자신이 시작한 시뮬과 Agent를 종료하며, 영상 창만 닫는 것은 비행 스택을 종료하지 않습니다.
 

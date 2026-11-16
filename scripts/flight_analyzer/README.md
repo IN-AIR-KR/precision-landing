@@ -21,6 +21,7 @@ sudo apt install ros-humble-ros2bag ros-humble-rosbag2-storage-default-plugins
 ## 다시 보기
 
 Jetson의 기록 디렉터리를 통째로 노트북의 `flight_logs/`에 복사할 수 있다. 뷰어 실행에는 ROS가 필요 없다.
+뷰어는 기존 bag의 `/camera/camera_info`, `/target_pose`, `/target_pose_world`도 새 `/pl` 경로로 읽는다.
 
 ```bash
 python3 -m venv /tmp/pl-viewer

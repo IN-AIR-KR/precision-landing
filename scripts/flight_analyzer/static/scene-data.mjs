@@ -74,7 +74,7 @@ export function sceneData(topics) {
     originSource,
     drone: local.map(shift),
     attitude: rows(px4(topics, "vehicle_attitude"), ["q_1", "q_2", "q_3", "q_0"]),
-    estimate: rows(topics["/target_pose_world"], POSE).map(toEnu).map(shift),
+    estimate: rows(topics["/pl/target_pose_world"], POSE).map(toEnu).map(shift),
     hasTruth: marker.some((row) => row.length > 1),
     truth: offset ? marker.map(([t, ...xyz]) => shift([t, ...xyz.map((v, i) => v + offset[i])])) : [],
   };

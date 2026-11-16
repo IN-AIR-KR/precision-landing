@@ -30,7 +30,7 @@ def test_demand_and_camera_loss(transport, monkeypatch, tmp_path):
     monkeypatch.setattr(cv2, 'imencode', lambda *a, **kw: (encoded.append(a[1].shape), encode(*a, **kw))[1])
     process = detector.detector.process
     monkeypatch.setattr(detector.detector, 'process', lambda *a, **kw: (drawings.append(kw.get('draw', True)), process(*a, **kw))[1])
-    image_pub = probe.create_publisher(Image, '/camera/image_raw', qos)
+    image_pub = probe.create_publisher(Image, '/pl/camera/image_raw', qos)
     control_pub = probe.create_publisher(String, '/pl/control/status', qos)
     gps_pub = probe.create_publisher(SensorGps, mod.px4_topic('vehicle_gps_position', SensorGps), qos)
     battery_pub = probe.create_publisher(BatteryStatus, mod.px4_topic('battery_status', BatteryStatus), qos)
@@ -44,7 +44,7 @@ def test_demand_and_camera_loss(transport, monkeypatch, tmp_path):
     marker = cv2.aruco.generateImageMarker(cv2.aruco.getPredefinedDictionary(2),0,200)
     frame[200:400,300:500] = cv2.cvtColor(marker,cv2.COLOR_GRAY2BGR)
     msg = Image(height=600,width=800,encoding='bgr8',step=2400,data=array('B',frame.tobytes()))
-    pose_sub = probe.create_subscription(PoseStamped, '/target_pose', poses.append, qos)
+    pose_sub = probe.create_subscription(PoseStamped, '/pl/target_pose', poses.append, qos)
     subs = [pose_sub]
     camera_on = True
     phase = 'ALIGN'

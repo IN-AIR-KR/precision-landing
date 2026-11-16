@@ -67,7 +67,7 @@ private:
 	// Target Kalman filter: constant-velocity model of the (possibly moving) landing target in the
 	// world/NED frame. predictTarget() runs every control tick regardless of detections, so the
 	// estimate keeps advancing smoothly through brief gaps where the tag isn't visible.
-	// correctTarget() runs whenever a new /target_pose detection arrives.
+	// correctTarget() runs whenever a new /pl/target_pose detection arrives.
 	void predictTarget(float dt_s);
 	void correctTarget(const Eigen::Vector3d& measured_position_world);
 
