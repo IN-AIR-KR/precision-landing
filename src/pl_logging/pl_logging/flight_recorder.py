@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 import signal
 import subprocess
-import tempfile
 
 import rclpy
 from px4_msgs.msg import VehicleStatus
@@ -67,7 +66,9 @@ class FlightRecorder(Node):
     def start_recording(self):
         try:
             stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            self.output = Path(tempfile.mkdtemp(prefix=f'{stamp}_{self.profile}_', dir=self.root)) / 'bag'
+            record_dir = self.root / f'{stamp}_{self.profile}'
+            record_dir.mkdir(mode=0o700)
+            self.output = record_dir / 'bag'
             if self.config_yaml is not None:
                 (self.output.parent / 'real.yaml').write_text(self.config_yaml, encoding='utf-8')
             self.process = subprocess.Popen(
