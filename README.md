@@ -224,7 +224,8 @@ cd ~/precision-landing
 ```
 
 - Gazebo, PX4 SITL, Agent, ROS 노드, 모니터 창 자동 실행.
-- 기본 월드: `aruco_moving`, 마커 1 m. 타겟은 처음에 정지.
+- 기본 월드 `aruco_moving`에서는 기체 시작점에서 월드 +X 방향으로 1.5 m 앞에 이동 패드가 있습니다. 마커 변 길이는 1 m입니다.
+- `SIM_WORLD=aruco`에서는 0.5 m 정지 마커가 기체 시작점에서 월드 +X 방향으로 1 m 앞에 있습니다.
 - 모니터 창을 닫아도 비행은 유지. 실행 터미널에서 `Ctrl+C`로 전체 종료.
 - 로그: `.run/`. GUI 없이 실행: `HEADLESS=1 ./scripts/run.sh`.
 
@@ -234,7 +235,7 @@ cd ~/precision-landing
 cd ~/precision-landing
 source scripts/env.sh
 python3 scripts/test_flight.py             # 이동 타겟 0.3 m/s
-# python3 scripts/test_flight.py --speed 0  # 정지 타겟
+# SIM_WORLD=aruco /usr/bin/python3 scripts/test_flight.py --speed 0  # aruco 월드에서 정지 타겟
 ```
 
 각 시험 전 시뮬을 새로 실행합니다. 시험은 이륙·모드 전환·타겟 이동·착륙·자동 disarm을 확인합니다.

@@ -55,7 +55,9 @@ rclpy.init()
 node = rclpy.create_node('precision_flight_test')
 state = {'tags': 0, 'images': 0}
 def position(m): state.update(x=m.x, y=m.y, z=m.z)
-def status(m): state.update(nav=m.nav_state, armed=m.arming_state == 2)
+def status(m):
+    state.update(nav=m.nav_state, armed=m.arming_state == 2,
+                 preflight_ready=m.pre_flight_checks_pass)
 def landed(m): state.update(landed=m.landed)
 def tag(m): state['tags'] += 1
 def image(m): state['images'] += 1
@@ -90,7 +92,7 @@ try:
         while time.monotonic() - start < 120:
             rclpy.spin_once(node, timeout_sec=.1)
             elapsed = time.monotonic() - start
-            if phase == 'ready' and elapsed > 5 and 'z' in state:
+            if phase == 'ready' and elapsed > 5 and 'z' in state and state.get('preflight_ready'):
                 rejected = client.call_async(Trigger.Request())
                 rclpy.spin_until_future_complete(node, rejected, timeout_sec=7)
                 assert rejected.done() and not rejected.result().success, 'Ground start must be rejected'
@@ -99,6 +101,7 @@ try:
                 subprocess.run([str(binary.parent / 'px4-commander'), 'takeoff'], check=True)
                 phase = 'takeoff'
             elif phase == 'takeoff' and state.get('z', 0) < -2.2:
+                tags_at_activation = state['tags']
                 if args.start_via == 'service':
                     start_future = client.call_async(Trigger.Request())
                 else:
@@ -111,7 +114,8 @@ try:
                     assert response.success, response.message
                     mode_id = int(re.search(r'mode=(\d+)', response.message)[1])
                     start_future = None
-                if mode_id is not None and state.get('nav') == mode_id and state['tags'] > 5:
+                if (mode_id is not None and state.get('nav') == mode_id
+                        and state['tags'] - tags_at_activation > 5):
                     repeat_future = client.call_async(Trigger.Request())
                     velocity(args.speed)
                     phase = 'tracking'

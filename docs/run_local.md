@@ -17,7 +17,8 @@ export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"
 ```
 
 `aruco_moving` 월드, Gazebo GUI, `/pl/monitor/image` 공통 모니터 창, DDS Agent(pl_bringup launch 소유), ROS 노드를 함께
-실행합니다. 기존 `aruco_moving_target` 패드를 원점에서 X 방향 1.5m 떨어진 곳에 배치합니다.
+실행합니다. 기체는 원점에서 이륙하고 `aruco_moving_target` 패드는 월드 +X 방향으로 1.5 m 떨어져 있습니다.
+`SIM_WORLD=aruco`로 실행하면 기체는 정지 마커에서 월드 -X 방향으로 1 m 떨어진 곳에 스폰됩니다.
 마커 크기는 모델과 같은 1.0m입니다. 처음에 패드는 정지해 있습니다.
 
 QGroundControl은 별도 터미널에서 실행합니다:

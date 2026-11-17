@@ -6,8 +6,14 @@ export RUN_LOG_DIR="${RUN_LOG_DIR:-$PRECISION_ROOT/.run}"
 mkdir -p "$RUN_LOG_DIR"
 export SIM_WORLD="${SIM_WORLD:-aruco_moving}"
 case "$SIM_WORLD" in
-  aruco) marker_size=0.5 ;;
-  aruco_moving) marker_size=1.0 ;;
+  aruco)
+    marker_size=0.5
+    default_spawn_pose="-1.0,0,0"
+    ;;
+  aruco_moving)
+    marker_size=1.0
+    default_spawn_pose="0,0,0"
+    ;;
   *) echo "Unsupported SIM_WORLD: $SIM_WORLD" >&2; exit 1 ;;
 esac
 # Isolate Gazebo discovery from other simulations on this computer.
@@ -50,6 +56,7 @@ export PX4_RUN_DIR="$RUN_LOG_DIR/px4-rootfs"
 mkdir -p "$PX4_RUN_DIR"
 setsid env PX4_GZ_STANDALONE=1 PX4_SYS_AUTOSTART=4014 PX4_SIM_MODEL=gz_x500_mono_cam_down \
   GZ_IP=127.0.0.1 PX4_GZ_WORLD="$SIM_WORLD" \
+  PX4_GZ_MODEL_POSE="${PX4_GZ_MODEL_POSE:-$default_spawn_pose}" \
   "$PX4_DIR/build/px4_sitl_default/bin/px4" -d \
   "$PX4_DIR/build/px4_sitl_default/etc" -w "$PX4_RUN_DIR" > "$RUN_LOG_DIR/px4.log" 2>&1 &
 px4_pid=$!

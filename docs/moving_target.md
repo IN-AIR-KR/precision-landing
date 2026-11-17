@@ -37,9 +37,8 @@
 
 ### 월드: `simulation/gz/worlds/aruco_moving.sdf`
 
-- 기존 `aruco.sdf`(지면 + 조명만 있는 월드)를 복사하고, `arucotag` 모델 대신 `aruco_moving_target`을 `<pose>1.5 0 0 0 0 0</pose>`로 원점에서 1.5m 떨어진 곳에 include합니다.
-  - 드론도 원점 근처에서 스폰되므로, 겹치지 않게 떨어뜨려 놓은 것입니다. 그러면서도 `PrecisionLand.cpp`의 나선 탐색 반경(2.0m) 안에는 들어옵니다.
-- 월드 원본은 이 저장소에 포함되어 있습니다. `scripts/run.sh`가 전용 PX4 checkout의 `Tools/simulation/gz/worlds/`로 복사합니다. PX4 시작 스크립트가 해당 위치에서 월드를 읽습니다.
+- `aruco_moving_target`을 원점에서 월드 +X 방향으로 1.5 m 떨어진 곳에 배치합니다. 기체는 원점에서 이륙합니다. 패드는 기체 이륙과 정밀착륙 모드 활성화 및 마커 재검출을 확인할 때까지 정지합니다.
+- `scripts/run.sh`는 저장소에 있는 월드 파일을 직접 사용합니다.
 - 모델(텍스처 포함)은 `precision-landing` 저장소 안에 두고 `GZ_SIM_RESOURCE_PATH`로 참조합니다.
 
 ## 실행 방법
@@ -53,7 +52,7 @@ PX4_GZ_WORLD=aruco_moving \
 make px4_sitl gz_x500_mono_cam_down
 ```
 
-시뮬레이션이 뜨면 패드는 가만히 있습니다. 드론을 Precision Land 모드로 보내 탐색을 시작한 뒤(또는 그 전에), 다른 터미널에서 `gz topic` 명령으로 속도를 넣어서 움직이게 하세요.
+시뮬레이션이 뜨면 패드는 가만히 있습니다. 이륙하고 Precision Land 모드를 활성화한 뒤, 다른 터미널에서 `gz topic` 명령으로 패드를 움직이세요.
 
 나머지(MicroXRCEAgent, `ros2 launch pl_control precision_landing_system.launch.py`)는 정적 마커일 때와 동일합니다.
 
