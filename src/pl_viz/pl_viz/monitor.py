@@ -83,6 +83,7 @@ def render(image, state, max_width=0):
     phase_color = {
         'ALIGN': (0, 165, 255),
         'APPROACH': yellow,
+        'LANDING': yellow,
         'FINAL_APPROACH': yellow,
         'FINISHED': (0, 220, 0),
         'ABORTED': (0, 0, 255),

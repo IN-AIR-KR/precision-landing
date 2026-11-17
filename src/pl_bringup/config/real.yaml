@@ -50,3 +50,10 @@ viz:
   jpeg_quality: 45
   max_width: 640
   stale_after: 2.0
+mpc:
+  # Required by real_mpc.launch.py. Use values for this airframe and payload.
+  hover_thrust: null
+  px4_thrust_model_factor: null
+  measured_motor_thrust_model_factor: null
+  land_detector_z_velocity_max: null
+  approach_descent_speed: null

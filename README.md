@@ -239,6 +239,33 @@ python3 scripts/test_flight.py             # 이동 타겟 0.3 m/s
 
 각 시험 전 시뮬을 새로 실행합니다. 시험은 이륙·모드 전환·타겟 이동·착륙·자동 disarm을 확인합니다.
 
+#### PAMPC 정지 타겟 시험
+
+기존 SITL 환경을 준비한 뒤 `pl_mpc`를 빌드하고 전용 런치를 선택합니다.
+
+```bash
+./scripts/build.sh sim_mpc
+HEADLESS=1 SIM_WORLD=aruco BRINGUP_LAUNCH=sim_mpc.launch.py ./scripts/run.sh
+```
+
+다른 터미널에서 같은 `PX4_DIR`를 설정하고 시험을 실행합니다.
+
+```bash
+source scripts/env.sh
+SIM_WORLD=aruco /usr/bin/python3 scripts/test_flight.py --speed 0
+```
+
+`sim_mpc.launch.py`는 기존 카메라, 검출기, HUD, bag 녹화 설정을 사용합니다.
+`APPROACH`에서 KF로 예측한 타겟의 1 m 위를 추종하며 PAMPC의 첫 추력·기체 각속도 입력을 PX4로 보냅니다.
+수직 참조 속도는 `mpc.approach_descent_speed`(기본 0.5 m/s)로 설정합니다.
+마커 네 모서리의 현재 및 0.4초 뒤 예상 화면 여유가 줄면 하강 참조를 감속합니다.
+`LANDING`에서는 인계 시 생성한 궤적을 따라갑니다.
+SITL 추력 변환은 x500 Gazebo 모터 모델과 `THR_MDL_FAC=0`을 기준으로 하며,
+호버 명령은 프로필의 `mpc.hover_thrust`로 지정할 수 있습니다(기본 0.745).
+Flight Analyzer에서 `/pl/control/status`의 `final_tracking_error_ned_m`,
+`contact_wait_s`, `failure_reason`을 확인할 수 있습니다.
+PAMPC 착륙 성공은 ROS 로그의 `FINISHED`와 PX4 착륙 감지 및 자동 디스암을 함께 확인합니다.
+
 #### QGC에서 수동 착륙 시험
 
 1. 시뮬레이션을 실행한 뒤 QGroundControl(QGC)을 열고, PX4 SITL에 연결된 **Fly** 화면으로 이동합니다.
@@ -317,6 +344,35 @@ ros2 run rqt_image_view rqt_image_view /pl/monitor/image
 실기체는 `./scripts/setup.sh real`로 빌드한 뒤 `./scripts/run_real.sh`로 CSI 카메라와 착륙 스택을 실행합니다. `real.yaml`의 `control.camera_extrinsic`에 실측 위치·회전을 입력하고, `px4.uart`를 기체 설정에 맞춥니다. 기본 CSI 모드(1920×1080)에서 측정한 보정값은 `real.yaml`의 `camera.calibration`에 넣습니다. 기체별 설정 파일은 `./scripts/run_real.sh config:=/absolute/path/to/real.yaml`로 선택합니다. 저장소의 기본 설정 디렉터리를 사용한다면 빌드해서 설치 경로에 반영합니다.
 
 세부 안내: [실행 환경](docs/run_local.md) · [카메라 입력](docs/camera_inputs_stage1.md) · [CSI 카메라(IMX219)](docs/csi_camera_imx219.md) · [CSI 카메라(OV5647)](docs/csi_camera_ov5647.md) · [Pixhawk UART 연결](docs/pixhawk_uart_link.md) · [PX4 호환](docs/px4_compatibility_stage3.md) · [모니터링](docs/monitoring_stage4.md) · [리팩터링 계획](docs/refactor_plan.md)
+
+#### 실기체 PAMPC · 정지 타겟
+
+Jetson에서 `./scripts/setup.sh real_mpc`로 빌드합니다. `real.yaml`을 기체별 파일로
+복사하고 카메라 보정, 장착 위치·회전, ArUco ID·사전·실측 마커 변 길이,
+PX4 DDS 도메인 및 UART를 실제 구성에 맞춥니다.
+
+`mpc`에는 아래 실기체 값을 입력합니다.
+
+| 설정 | 입력할 값 |
+| --- | --- |
+| `hover_thrust` | 같은 탑재중량으로 안정 호버할 때 ULog에서 확인한 정규화 집합 추력 크기 |
+| `px4_thrust_model_factor` | 실제 PX4의 `THR_MDL_FAC` |
+| `measured_motor_thrust_model_factor` | 모터·ESC·프롭 조합의 추력 데이터로 맞춘 모델 계수. 검증된 `THR_MDL_FAC`가 실측 곡선과 일치하면 같은 값 |
+| `land_detector_z_velocity_max` | 실제 PX4의 `LNDMC_Z_VEL_MAX`. 궤적 종점 이후 접촉 판정용 하강 명령은 이 값의 1.2배 |
+| `approach_descent_speed` | 접근 하강 참조 속도(m/s). 0.5 m/s는 SITL 시험값이며 실제 속도 제한은 별도 |
+
+기존 시리얼 XRCE Agent 서비스가 실행 중이면 그대로 사용합니다. 서비스 설정과
+기체별 프로필의 UART·baud·도메인을 맞춥니다. 수동으로 실행할 때는 같은 포트에서
+Agent를 하나만 실행합니다.
+
+```bash
+BRINGUP_LAUNCH=real_mpc.launch.py ./scripts/run_real.sh config:=/absolute/path/to/real-mpc.yaml
+```
+
+프로펠러를 제거한 벤치 시험에서 PX4 메시지 호환 검사, `PrecisionLandCustom` 등록,
+마커 포즈와 카메라 프레임, 기체 자세 및 위치 갱신을 확인합니다. 비행 전 조종사가
+RC로 기존 비행 모드에 즉시 복귀할 수 있는지와 DDS 연결 상실 시 동작을 확인합니다.
+SITL 전용 `test_flight.py`는 실기체 시험에 사용하지 않습니다.
 
 ### 6.3 HITL PC / Jetson 분리 실행 — Wi-Fi, JPEG 전송
 

@@ -49,6 +49,7 @@ const STATE_COLORS = {
   SEARCH: "rgba(148,163,184,0.10)",
   ALIGN: "rgba(255,165,0,0.18)",
   APPROACH: "rgba(255,235,0,0.16)",
+  LANDING: "rgba(59,130,246,0.20)",
   FINAL_APPROACH: "rgba(59,130,246,0.20)",
   FINISHED: "rgba(0,220,0,0.18)",
   ABORTED: "rgba(255,0,0,0.18)",

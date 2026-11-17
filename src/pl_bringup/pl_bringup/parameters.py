@@ -22,3 +22,29 @@ def control_parameters(control):
         'camera_position_body': [float(value) for value in extrinsic['position']],
         'camera_orientation_body': [float(value) for value in extrinsic['rotation']],
     }
+
+
+def real_mpc_parameters(config):
+    """Require airframe-specific calibration before starting the CTBR controller."""
+    from math import isfinite
+
+    mpc = config.get('mpc') or {}
+    values = {}
+    for key in ('hover_thrust', 'px4_thrust_model_factor', 'measured_motor_thrust_model_factor',
+                'land_detector_z_velocity_max', 'approach_descent_speed'):
+        value = mpc.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value):
+            raise RuntimeError(f'Set mpc.{key} to a measured or configured value in the real profile.')
+        values[key] = float(value)
+    if not 0. < values['hover_thrust'] < 1.:
+        raise RuntimeError('mpc.hover_thrust must be between 0 and 1.')
+    for key in ('px4_thrust_model_factor', 'measured_motor_thrust_model_factor'):
+        if not 0. <= values[key] <= 1.:
+            raise RuntimeError(f'mpc.{key} must be between 0 and 1.')
+    for key in ('land_detector_z_velocity_max', 'approach_descent_speed'):
+        if values[key] <= 0.:
+            raise RuntimeError(f'mpc.{key} must be positive.')
+    marker_size = float(config['detection']['marker_size'])
+    if not isfinite(marker_size) or marker_size <= 0.:
+        raise RuntimeError('Set detection.marker_size to the measured marker side length in meters.')
+    return dict(values, marker_size=marker_size)

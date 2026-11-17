@@ -21,7 +21,7 @@ TOPIC_FILTER = (
     r'|/pl/target_pose(_world)?'
     r'|/fmu/out/(vehicle_status|vehicle_land_detected|vehicle_local_position|'
     r'vehicle_attitude|vehicle_gps_position|battery_status|vehicle_command_ack)(_v[0-9]+)?'
-    r'|/fmu/in/(trajectory_setpoint|vehicle_command)(_v[0-9]+)?)$'
+    r'|/fmu/in/(trajectory_setpoint|vehicle_rates_setpoint|vehicle_command)(_v[0-9]+)?)$'
 )
 
 

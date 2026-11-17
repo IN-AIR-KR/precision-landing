@@ -66,7 +66,7 @@ if ! grep -q 'Startup script returned successfully' "$RUN_LOG_DIR/px4.log"; then
   echo "PX4 startup timed out. Check $RUN_LOG_DIR/px4.log." >&2
   exit 1
 fi
-setsid ros2 launch pl_bringup sim.launch.py config:="${BRINGUP_CONFIG:-$PRECISION_ROOT/install/pl_bringup/share/pl_bringup/config/sim.yaml}" world:="$SIM_WORLD" marker_size:="$marker_size" "$@" > "$RUN_LOG_DIR"/ros.log 2>&1 &
+setsid ros2 launch pl_bringup "${BRINGUP_LAUNCH:-sim.launch.py}" config:="${BRINGUP_CONFIG:-$PRECISION_ROOT/install/pl_bringup/share/pl_bringup/config/sim.yaml}" world:="$SIM_WORLD" marker_size:="$marker_size" "$@" > "$RUN_LOG_DIR"/ros.log 2>&1 &
 pids+=("$!")
 required_pids+=("$!")
 if [[ "${HEADLESS:-}" != 1 ]]; then
