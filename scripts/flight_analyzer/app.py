@@ -1,5 +1,6 @@
 """Browse recorded precision landings in a web browser."""
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -41,13 +42,7 @@ def _record_path(rec_id: str) -> Path:
 
 
 def _records(root: Path) -> list:
-    """기록 목록은 디렉터리·파일 정보만으로 빠르게 만든다.
-
-    이전에는 목록을 열 때마다 모든 bag DB를 열어 topic별 COUNT/MIN/MAX를 계산했다.
-    기록 수가 많으면 첫 화면만 보는데도 수 초가 걸린다. 목록에는 폴더명과 DB 크기만
-    싣고, 길이·토픽 수·제어 메시지 수는 사용자가 기록을 선택한 뒤 load_record()에서
-    계산한다.
-    """
+    """Read recording summaries and target tags from sidecar metadata."""
     def db_files(record: Path) -> list[Path]:
         # auto_save 형식(<record>/bag/*.db3)과, 복사한 일반 rosbag 디렉터리 모두 지원.
         candidates = [record / "bag", record]
@@ -93,6 +88,16 @@ def _records(root: Path) -> list:
         duration = duration_ns / 1e9 if duration_ns is not None else None
         return start, duration
 
+    def record_metadata(record: Path) -> dict:
+        for directory in (record, record.parent) if record.name == "bag" else (record,):
+            try:
+                metadata = json.loads((directory / "flight_metadata.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if isinstance(metadata, dict):
+                return metadata
+        return {}
+
     candidates = [root] if looks_like_record(root) else []
     candidates.extend(
         d for d in root.iterdir()
@@ -102,12 +107,16 @@ def _records(root: Path) -> list:
     for d in candidates:
         files = db_files(d)
         start, duration = metadata_summary(d)
+        metadata = record_metadata(d)
+        motion, controller = metadata.get("target_motion"), metadata.get("controller")
         out.append({
             "id": "." if d == root else d.relative_to(root).as_posix(),
             "name": d.name,
             "size": sum(p.stat().st_size for p in files),
             "start": start,
             "duration": duration,
+            "target_motion": motion if motion in ("stationary", "moving") else None,
+            "controller": controller if controller in ("pid", "mpc") else None,
         })
     out.sort(key=lambda r: r["name"], reverse=True)   # <YYYYmmdd_HHMMSS> → 최신이 위
     return out

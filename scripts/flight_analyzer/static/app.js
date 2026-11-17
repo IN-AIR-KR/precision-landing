@@ -155,6 +155,17 @@ function renderRecords() {
     const name = li.children[0];
     name.append(document.createTextNode(r.name));
     const sub = li.children[1];
+    const tags = [
+      [r.target_motion, {stationary: "STATIC", moving: "MOVING"}[r.target_motion]],
+      [r.controller, {pid: "PID", mpc: "MPC"}[r.controller]],
+    ];
+    for (const [kind, label] of tags) {
+      if (!label) continue;
+      const tag = document.createElement("span");
+      tag.classList.add("record-tag", kind);
+      tag.textContent = label;
+      sub.appendChild(tag);
+    }
     const parts = [
       r.start ? r.start.replace("T", " ").slice(5, 16) : null,
       r.duration != null ? fmtDur(r.duration) : null,
