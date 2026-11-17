@@ -58,7 +58,7 @@ def setup(context, controller_package):
         on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))],
     )) for node in required]
     return [SetEnvironmentVariable('ROS_DOMAIN_ID', str(config['px4'].get('domain_id', 0))),
-            *handlers, monitor, *required, recorder('real', config_yaml=config_yaml), *streaming_actions(stream_url)]
+            *handlers, monitor, *required, recorder('real', config_yaml=config_yaml, controller_package=controller_package), *streaming_actions(stream_url)]
 
 
 def real_launch(controller_package):

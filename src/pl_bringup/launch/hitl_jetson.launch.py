@@ -34,7 +34,7 @@ def setup(context):
                    parameters=[dict(monitor_parameters, transport='raw')])
     handlers = [RegisterEventHandler(OnProcessExit(target_action=node,
         on_exit=[EmitEvent(event=Shutdown(reason='Required Jetson process exited'))])) for node in (detector, control)]
-    return [*handlers, detector, control, monitor, recorder('hitl')]
+    return [*handlers, detector, control, monitor, recorder('hitl', controller_package='pl_control')]
 
 
 def generate_launch_description():

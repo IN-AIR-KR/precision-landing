@@ -50,7 +50,7 @@ def setup(context, controller_package):
     }
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
                    parameters=[monitor_parameters])
-    return [*camera_actions, monitor, recorder('sim')] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
+    return [*camera_actions, monitor, recorder('sim', sim_world=world, controller_package=controller_package)] + nodes + [RegisterEventHandler(OnProcessExit(target_action=n, on_exit=[EmitEvent(event=Shutdown(reason='A required process exited'))])) for n in nodes]
 
 
 def simulation_launch(controller_package, config_name):

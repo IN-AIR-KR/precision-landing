@@ -14,10 +14,15 @@ def recording_arguments():
     ]
 
 
-def recorder(profile, *, config_yaml=None):
+def recorder(profile, *, config_yaml=None, sim_world=None, controller_package=None):
     def setup(context):
         executable = Path(get_package_prefix('pl_logging')) / 'lib/pl_logging/flight_recorder'
         command = [str(executable), '--profile', profile]
+        controller = {'pl_control': 'pid', 'pl_mpc': 'mpc'}.get(controller_package)
+        if controller is not None:
+            command.extend(['--controller', controller])
+        if sim_world is not None:
+            command.extend(['--sim-world', sim_world])
         log_dir = LaunchConfiguration('log_dir').perform(context)
         if log_dir:
             command += ['--log-dir', log_dir]

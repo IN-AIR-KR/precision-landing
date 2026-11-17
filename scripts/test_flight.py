@@ -4,6 +4,7 @@ Uses the local PX4 commander and a GCS heartbeat on the onboard UDP endpoint.
 """
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -14,10 +15,11 @@ import signal
 import time
 
 import rclpy
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
 from px4_msgs.msg import VehicleCommand, VehicleLocalPosition, VehicleStatus, VehicleLandDetected
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image, CompressedImage
+from std_msgs.msg import String
 from std_srvs.srv import Trigger
 from pymavlink import mavutil
 
@@ -28,6 +30,8 @@ parser.add_argument('--image-transport', choices=['raw', 'compressed'], default=
 parser.add_argument('--speed', type=float, default=0.3)
 parser.add_argument('--output', type=Path, default=Path('.run/moving-flight.jsonl'))
 args = parser.parse_args()
+if not math.isfinite(args.speed):
+    parser.error('--speed must be finite')
 root = Path(__file__).resolve().parents[1]
 px4 = Path(os.environ.get('PX4_DIR', str(Path.home() / 'PX4-Autopilot-6ea3539')))
 binary = px4 / 'build/px4_sitl_default/bin/px4'
@@ -35,6 +39,9 @@ pids = subprocess.check_output(['pgrep', '-x', 'px4'], text=True).split()
 assert len(pids) == 1 and Path(f'/proc/{pids[0]}/exe').resolve() == binary.resolve(), 'Expected configured local SITL process'
 runtime = Path(f'/proc/{pids[0]}/cwd').resolve()
 assert runtime.name == 'px4-rootfs' and runtime.is_relative_to(root), 'Expected project-owned SITL working directory'
+px4_environment = Path(f'/proc/{pids[0]}/environ').read_bytes().split(b'\0')
+world = next((entry.partition(b'=')[2].decode() for entry in px4_environment
+              if entry.startswith(b'PX4_GZ_WORLD=')), os.environ.get('SIM_WORLD', 'aruco_moving'))
 os.environ.setdefault('ROS_DOMAIN_ID', '42')
 os.environ.setdefault('GZ_PARTITION', 'precision_landing')
 stop = threading.Event()
@@ -53,6 +60,14 @@ thread = threading.Thread(target=heartbeat, daemon=True)
 thread.start()
 rclpy.init()
 node = rclpy.create_node('precision_flight_test')
+metadata_pub = node.create_publisher(
+    String, '/pl/flight_test/metadata', QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+commanded_speed = 0.0 if world == 'aruco' else args.speed
+metadata_pub.publish(String(data=json.dumps({
+    'world': world,
+    'target_motion': 'moving' if commanded_speed else 'stationary',
+    'target_speed_mps': commanded_speed,
+})))
 state = {'tags': 0, 'images': 0}
 def position(m): state.update(x=m.x, y=m.y, z=m.z)
 def status(m):
@@ -77,7 +92,7 @@ assert client.wait_for_service(timeout_sec=10), 'Start landing service unavailab
 mode_id = None
 start_future = repeat_future = paused_detector = None
 def velocity(speed):
-    if os.environ.get('SIM_WORLD') == 'aruco':
+    if world == 'aruco':
         return
     command = ['gz', 'topic', '-t', '/model/aruco_moving_target/cmd_vel',
                '-m', 'gz.msgs.Twist', '-p', f'linear: {{x: {speed}, y: 0}}']
