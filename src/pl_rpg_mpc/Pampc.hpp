@@ -176,15 +176,16 @@ struct BodyRateCommand {
 };
 
 // Uses the generated RPG ACADO solver. One controller owns its global workspace.
-class RpgSolver
+class MpcSolver
 {
 public:
-    static constexpr double sample_time = 0.1;
     void reset();
     std::optional<BodyRateCommand> solve(const Motion& start, const Eigen::Quaterniond& attitude_ned_frd,
-                                         const ApproachReference& reference, const View& view);
+                                         const ApproachReference& reference, const View& view,
+                                         double control_step = 0.02);
 
 private:
     bool initialized_ = false;
+    double thrust_state_ = 9.8066;
 };
 }

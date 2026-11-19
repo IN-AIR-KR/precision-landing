@@ -45,7 +45,7 @@ def setup(context, controller_package):
     config_yaml = config_path.read_text(encoding='utf-8')
     config = yaml.safe_load(config_yaml)
     controller = control_parameters(config['control'])
-    if controller_package == 'pl_mpc':
+    if controller_package == 'pl_rpg_mpc':
         from pl_bringup.parameters import real_mpc_parameters
         controller.update(real_mpc_parameters(config))
     camera, detection, monitor = vision_nodes(config, controller)

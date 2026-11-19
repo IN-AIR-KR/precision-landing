@@ -159,7 +159,7 @@ def main():
     parser.add_argument('--log-dir', type=Path, help='Log root (default: checkout/flight_logs)')
     parser.add_argument('--profile', default='manual', choices=['manual', 'real', 'sim', 'hitl'])
     parser.add_argument('--sim-world', help='Gazebo world for this recording')
-    parser.add_argument('--controller', choices=['pid', 'mpc'], help='Controller selected by bringup')
+    parser.add_argument('--controller', choices=['pid', 'mpc', 'pampc', 'chao_mpc'], help='Controller selected by bringup')
     args = parser.parse_args()
     try:
         root = args.log_dir.expanduser().resolve() if args.log_dir else default_log_root()

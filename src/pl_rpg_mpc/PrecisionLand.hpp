@@ -77,12 +77,13 @@ private:
 	void failLanding(const char* reason);
 	rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr _camera_info_sub;
 	std::optional<pampc::View> _view;
-	pampc::RpgSolver _pampc_solver;
+	pampc::MpcSolver _pampc_solver;
 	std::optional<pampc::MinimumJerk> _final_trajectory;
 	double _marker_size = 1.0;
 	pampc::ThrustCalibration _thrust_calibration;
 	double _land_detector_z_velocity_max = 0.25;
 	double _approach_descent_speed = 0.5;
+	bool _stationary_target = false;
 	double _handoff_time = 0.;
 	double _final_elapsed = 0.;
 	double _contact_wait = 0.;

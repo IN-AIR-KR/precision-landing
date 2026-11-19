@@ -18,7 +18,7 @@ def recorder(profile, *, config_yaml=None, sim_world=None, controller_package=No
     def setup(context):
         executable = Path(get_package_prefix('pl_logging')) / 'lib/pl_logging/flight_recorder'
         command = [str(executable), '--profile', profile]
-        controller = {'pl_control': 'pid', 'pl_mpc': 'mpc'}.get(controller_package)
+        controller = {'pl_control': 'pid', 'pl_rpg_mpc': 'pampc', 'pl_fsc_mpc': 'chao_mpc'}.get(controller_package)
         if controller is not None:
             command.extend(['--controller', controller])
         if sim_world is not None:

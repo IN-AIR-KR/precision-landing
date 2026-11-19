@@ -18,7 +18,7 @@ TEST(Pampc, MinimumJerkMatchesMovingBoundaryConditions)
     EXPECT_TRUE(trajectory.feasible(2., 0.7, 1.5));
 }
 
-TEST(Pampc, RpgSolverTracksReferenceWithPerceptionEnabled)
+TEST(Pampc, MpcSolverTracksReferenceWithPerceptionEnabled)
 {
     const View view{Eigen::Affine3d::Identity(), Eigen::Quaterniond::Identity(),
                     {300., 300.}, {320., 240.}, {640., 480.}, 0.5, 0.};
@@ -28,7 +28,7 @@ TEST(Pampc, RpgSolverTracksReferenceWithPerceptionEnabled)
     EXPECT_FALSE(view.containsMarker(vehicle.position, attitude, Vector(1., 0., 0.)));
     EXPECT_FALSE(view.containsMarker(vehicle.position, attitude, Vector(0., 0., -2.)));
     const Motion target{{0.5, 0., 0.}};
-    RpgSolver solver;
+    MpcSolver solver;
     const auto command = solver.solve(vehicle, Eigen::Quaterniond::Identity(),
                                       ApproachReference{target, -1., -1., 0.5}, view);
     ASSERT_TRUE(command);

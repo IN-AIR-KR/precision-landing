@@ -242,7 +242,7 @@ python3 scripts/test_flight.py             # 이동 타겟 0.3 m/s
 
 #### PAMPC 정지 타겟 시험
 
-기존 SITL 환경을 준비한 뒤 `pl_mpc`를 빌드하고 전용 런치를 선택합니다.
+기존 SITL 환경을 준비한 뒤 `pl_rpg_mpc`를 빌드하고 전용 런치를 선택합니다.
 
 ```bash
 ./scripts/build.sh sim_mpc
@@ -266,6 +266,19 @@ SITL 추력 변환은 x500 Gazebo 모터 모델과 `THR_MDL_FAC=0`을 기준으�
 Flight Analyzer에서 `/pl/control/status`의 `final_tracking_error_ned_m`,
 `contact_wait_s`, `failure_reason`을 확인할 수 있습니다.
 PAMPC 착륙 성공은 ROS 로그의 `FINISHED`와 PX4 착륙 감지 및 자동 디스암을 함께 확인합니다.
+
+#### FSC IBVS MPC 정지 타겟 시험
+
+`./scripts/build.sh sim_mpc`는 RPG와 FSC IBVS 제어기를 함께 빌드합니다.
+RPG는 `sim_mpc.launch.py` 또는 `sim_rpg_mpc.launch.py`로 실행합니다.
+FSC IBVS로 같은 정지 타겟 절차를 시험하려면 아래 런치를 사용합니다.
+
+```bash
+HEADLESS=1 SIM_WORLD=aruco BRINGUP_LAUNCH=sim_fsc_mpc.launch.py ./scripts/run.sh
+```
+
+FSC IBVS는 접근 중 마커 중심의 투영 위치에 소프트 시야 제약을 적용합니다.
+착륙 인계 이후에는 두 제어기 모두 기존 고정 착륙 궤적을 사용합니다.
 
 #### QGC에서 수동 착륙 시험
 

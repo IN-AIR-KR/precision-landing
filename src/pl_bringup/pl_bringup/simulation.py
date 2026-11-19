@@ -22,11 +22,13 @@ def setup(context, controller_package):
     detection = dict(config['detection'], optical_frame='camera_frame')
     if size:
         detection['marker_size'] = float(size)
-    if controller_package == 'pl_mpc':
+    if controller_package in ('pl_rpg_mpc', 'pl_fsc_mpc'):
         controller['marker_size'] = float(detection['marker_size'])
         mpc = config.get('mpc', {})
         controller['approach_descent_speed'] = mpc.get('approach_descent_speed', 0.5)
         controller['hover_thrust'] = mpc.get('hover_thrust', 0.745)
+    if controller_package == 'pl_fsc_mpc' and world == 'aruco':
+        controller['stationary_target'] = True
     camera = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(Path(get_package_share_directory('pl_camera'))/'launch/camera_sim.launch.py')),
         launch_arguments={'world': world}.items())

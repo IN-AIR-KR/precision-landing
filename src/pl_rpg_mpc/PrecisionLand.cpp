@@ -173,6 +173,7 @@ void PrecisionLand::loadParameters()
 	_node.get_parameter("target_accel_noise", _param_target_accel_noise);
 	_node.get_parameter("target_pos_noise", _param_target_pos_noise);
 
+	_stationary_target = _node.declare_parameter<bool>("stationary_target", false);
 	_approach_descent_speed = _node.declare_parameter<double>("approach_descent_speed", 0.5);
 	if (!std::isfinite(_approach_descent_speed) || _approach_descent_speed <= 0.) {
 		throw std::invalid_argument("PAMPC approach descent speed must be positive and finite");
@@ -475,7 +476,9 @@ void PrecisionLand::updatePampc(float dt_s)
 		return;
 	}
 
-	const Motion target{_target_position, {_target_velocity.x(), _target_velocity.y(), 0.}};
+	const Vector target_velocity = _stationary_target ? Vector::Zero() :
+		Vector(_target_velocity.x(), _target_velocity.y(), 0.);
+	const Motion target{_target_position, target_velocity};
 	const double horizontal_error = (vehicle.position - target.position).head<2>().norm();
 	const double relative_speed = (vehicle.velocity - target.velocity).head<2>().norm();
 	const double clearance = target.position.z() - vehicle.position.z();
@@ -531,9 +534,9 @@ void PrecisionLand::updatePampc(float dt_s)
 		std::clamp((corner_margin - view.margin) / margin_ramp, 0., 1.) : 1.;
 	const ApproachReference reference{target, vehicle.position.z(), goal_z,
 	                                  _approach_descent_speed * descent_scale};
-	const auto command = _pampc_solver.solve(vehicle, attitude, reference, view);
+	const auto command = _pampc_solver.solve(vehicle, attitude, reference, view, dt_s);
 	if (!command) {
-		failLanding("RPG MPC solver failed");
+		failLanding("MPC solver failed");
 		return;
 	}
 	RCLCPP_DEBUG_THROTTLE(_node.get_logger(), *_node.get_clock(), 500,

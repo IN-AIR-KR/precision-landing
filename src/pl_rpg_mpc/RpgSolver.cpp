@@ -11,6 +11,7 @@ namespace pampc
 namespace
 {
 constexpr double gravity = 9.8066;
+constexpr double sample_time = 0.1;
 const Eigen::Quaterniond flip(0., 1., 0., 0.);
 
 using State = Eigen::Matrix<real_t, ACADO_NX, 1>;
@@ -26,14 +27,14 @@ State solverState(const Motion& motion, const Eigen::Quaterniond& attitude)
 }
 }
 
-void RpgSolver::reset()
+void MpcSolver::reset()
 {
     initialized_ = false;
 }
 
-std::optional<BodyRateCommand> RpgSolver::solve(
+std::optional<BodyRateCommand> MpcSolver::solve(
     const Motion& start, const Eigen::Quaterniond& attitude_ned_frd,
-    const ApproachReference& reference, const View& view)
+    const ApproachReference& reference, const View& view, double)
 {
     if (!attitude_ned_frd.coeffs().allFinite() || attitude_ned_frd.norm() < 1e-6) {
         return std::nullopt;
