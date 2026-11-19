@@ -157,7 +157,9 @@ function renderRecords() {
     const sub = li.children[1];
     const tags = [
       [r.target_motion, {stationary: "STATIC", moving: "MOVING"}[r.target_motion]],
-      [r.controller, {pid: "PID", mpc: "MPC"}[r.controller]],
+      ["moving", r.target_motion === "moving" && Number.isFinite(r.target_speed_mps)
+        ? `${r.target_speed_mps} M/S` : null],
+      [r.controller, {pid: "PID", mpc: "MPC", pampc: "PAMPC", chao_mpc: "Chao MPC"}[r.controller]],
     ];
     for (const [kind, label] of tags) {
       if (!label) continue;

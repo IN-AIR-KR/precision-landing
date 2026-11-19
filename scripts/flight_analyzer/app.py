@@ -1,6 +1,7 @@
 """Browse recorded precision landings in a web browser."""
 import argparse
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -109,6 +110,9 @@ def _records(root: Path) -> list:
         start, duration = metadata_summary(d)
         metadata = record_metadata(d)
         motion, controller = metadata.get("target_motion"), metadata.get("controller")
+        speed = metadata.get("target_speed_mps")
+        if motion != "moving" or type(speed) not in (int, float) or not math.isfinite(speed):
+            speed = None
         out.append({
             "id": "." if d == root else d.relative_to(root).as_posix(),
             "name": d.name,
@@ -116,7 +120,8 @@ def _records(root: Path) -> list:
             "start": start,
             "duration": duration,
             "target_motion": motion if motion in ("stationary", "moving") else None,
-            "controller": controller if controller in ("pid", "mpc") else None,
+            "target_speed_mps": speed,
+            "controller": controller if controller in ("pid", "mpc", "pampc", "chao_mpc") else None,
         })
     out.sort(key=lambda r: r["name"], reverse=True)   # <YYYYmmdd_HHMMSS> → 최신이 위
     return out
