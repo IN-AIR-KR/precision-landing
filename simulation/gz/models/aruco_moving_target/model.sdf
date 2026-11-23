@@ -44,13 +44,13 @@
           <contact/>
         </surface>
       </collision>
-      <!-- ArUco tag on top of the platform. Size must match aruco_tracker's marker_size param (1.0m). -->
+      <!-- ArUco tag on top of the platform. Size must match aruco_tracker's marker_size param (0.30m). -->
       <visual name="aruco_tag_visual">
         <pose>0 0 0.052 0 0 0</pose>
         <geometry>
           <plane>
             <normal>0 0 1</normal>
-            <size>1.0 1.0</size>
+            <size>0.30 0.30</size>
           </plane>
         </geometry>
         <material>

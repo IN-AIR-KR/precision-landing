@@ -10,8 +10,8 @@
 
 static const std::string kModeName = "PrecisionLandCustom";
 static const bool kEnableDebugOutput = true;
-static constexpr auto kDetectionConfirmTime = std::chrono::milliseconds(500);
-static constexpr auto kDetectionMaxGap = std::chrono::milliseconds(250);
+static constexpr auto kDetectionConfirmTime = std::chrono::milliseconds(200);
+static constexpr auto kDetectionMaxGap = std::chrono::milliseconds(500);
 
 using namespace px4_ros2::literals;
 

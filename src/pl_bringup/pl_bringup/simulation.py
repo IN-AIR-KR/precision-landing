@@ -9,7 +9,7 @@ from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetParameter
 from pl_bringup.parameters import control_parameters
 from pl_bringup.recording import recorder, recording_arguments
 
@@ -58,6 +58,7 @@ def setup(context, controller_package):
 def simulation_launch(controller_package, config_name):
     default = str(Path(get_package_share_directory('pl_bringup'))/'config'/config_name)
     return LaunchDescription([
+        SetParameter(name="use_sim_time", value=True),
         *recording_arguments(),
         DeclareLaunchArgument('config', default_value=default),
         DeclareLaunchArgument('world', default_value=''),

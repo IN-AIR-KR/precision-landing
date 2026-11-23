@@ -507,3 +507,20 @@ PC에서 `ros2 multicast receive`, Jetson에서 `ros2 multicast send`로 검색�
 ### 6.4 비행 로그 녹화 및 재생
 
 실기체(`./scripts/run_real.sh`)와 SITL(`./scripts/run.sh`)에서 녹화기는 기본으로 실행된다. 녹화를 끄려면 `record:=false`를 전달한다. 비행별 ARM부터 DISARM까지 기록하며 로그는 루트의 `flight_logs/`에 저장된다. [웹뷰어 실행과 기록 항목](scripts/flight_analyzer/README.md)을 참고한다.
+
+#### IMX219 시뮬레이션 카메라
+
+시뮬레이션 기본 카메라는 Raspberry Pi Camera Module 2의 기본 렌즈와
+1280×720 센서 중앙 크롭 모드를 근사합니다. 공식 전체 센서 가로 화각
+62.2°에서 2560×1440 영역을 2×2 비닝한다고 가정해 가로 50.424°,
+세로 29.667°를 사용합니다. 실제 드라이버의 센서 크롭이 다르면 조정해야 합니다.
+
+Gazebo는 같은 화각으로 640×360, 시뮬레이션 시간 기준 60 Hz 영상을
+직접 렌더링합니다. 해상도와 초점거리의 픽셀 단위 값이 함께 줄어들며
+카메라 브리지가 영상과 CameraInfo를 검출기에 전달합니다.
+검출 입력은 /pl/camera/image_raw입니다. 두 시뮬레이션 타겟의 마커는
+한 변 0.30 m입니다. 렌즈 왜곡은 이상적인 핀홀 모델로 근사합니다.
+
+공식 사양과 센서 모드 근거는
+[Raspberry Pi 카메라 사양](https://www.raspberrypi.com/documentation/accessories/camera.html)과
+[공식 Camera Guide](https://magazines-static.raspberrypi.org/books/full_pdfs/000/000/036/original/Camera-Guide.pdf?1590756684=)를 참고하세요.

@@ -7,11 +7,11 @@ mkdir -p "$RUN_LOG_DIR"
 export SIM_WORLD="${SIM_WORLD:-aruco_moving}"
 case "$SIM_WORLD" in
   aruco)
-    marker_size=0.5
+    marker_size=0.30
     default_spawn_pose="-1.0,0,0"
     ;;
   aruco_moving)
-    marker_size=1.0
+    marker_size=0.30
     default_spawn_pose="0,0,0"
     ;;
   *) echo "Unsupported SIM_WORLD: $SIM_WORLD" >&2; exit 1 ;;
