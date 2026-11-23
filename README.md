@@ -33,7 +33,7 @@ graph TD
         DETECTOR["aruco_tracker<br/>ArUco 검출 · 자세 계산"]
     end
 
-    POSE("/pl/target_pose")
+    POSE("/pl/target_observation")
     DEBUG("/pl/image_proc")
     DETECTION_STATUS("/pl/detection/status")
 
@@ -401,7 +401,7 @@ SITL 전용 `test_flight.py`는 실기체 시험에 사용하지 않습니다.
 flowchart LR
     GZ[PC: Gazebo] --> RAW("/pl/hitl/pc/camera/image_raw") --> ENC[PC: JPEG encode]
     ENC --> JPEG("/pl/camera/image_raw/compressed<br/>Wi-Fi") --> DET[Jetson: pl_detection]
-    DET --> POSE("/pl/target_pose") --> CTRL[Jetson: pl_control]
+    DET --> POSE("/pl/target_observation") --> CTRL[Jetson: pl_control]
     PX4[PC: PX4 SITL + Agent] <-->|DDS: 상태 · setpoint| CTRL
     DET --> DEBUG("/pl/image_proc<br/>Jetson 내부") --> HUD[Jetson: pl_viz]
     HUD --> OUT("/pl/monitor/image/compressed<br/>Wi-Fi") --> DEC[PC: JPEG decode]

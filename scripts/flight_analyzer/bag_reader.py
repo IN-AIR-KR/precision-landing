@@ -59,6 +59,8 @@ def typestore(msg_dir=None):
         add = {}
         for f in sorted((msg_dir or MSG_DIR).rglob("*.msg")):
             add.update(get_types_from_msg(f.read_text(), f"px4_msgs/msg/{f.stem}"))
+        for f in sorted((Path(__file__).resolve().parents[2] / "src/pl_msgs/msg").glob("*.msg")):
+            add.update(get_types_from_msg(f.read_text(), f"pl_msgs/msg/{f.stem}"))
         ts.register(add)
         _typestore = ts
     return _typestore

@@ -14,6 +14,7 @@ find_package(Eigen3 REQUIRED)
 
 find_package(px4_ros2_cpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(pl_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
 include_directories(${Eigen3_INCLUDE_DIRS})
@@ -25,7 +26,7 @@ add_executable(precision_land
     RpgSolver.cpp
 )
 
-ament_target_dependencies(precision_land rclcpp Eigen3 px4_ros2_cpp geometry_msgs sensor_msgs std_srvs std_msgs)
+ament_target_dependencies(precision_land rclcpp Eigen3 px4_ros2_cpp pl_msgs geometry_msgs sensor_msgs std_srvs std_msgs)
 
 target_link_libraries(precision_land rpg_mpc_solver)
 

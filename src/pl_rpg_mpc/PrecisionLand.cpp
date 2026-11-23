@@ -26,8 +26,8 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 
 	_vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
 
-	_target_pose_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>("/pl/target_pose",
-			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseCallback, this, std::placeholders::_1));
+	_target_observation_sub = _node.create_subscription<pl_msgs::msg::TargetObservation>("/pl/target_observation",
+			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetObservationCallback, this, std::placeholders::_1));
 
 	_vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>("/fmu/out/vehicle_land_detected",
 				     rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
@@ -204,8 +204,11 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 	_land_received = SteadyClock::now();
 }
 
-void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+void PrecisionLand::targetObservationCallback(const pl_msgs::msg::TargetObservation::SharedPtr msg)
 {
+	if (!msg->detected) {
+		return;
+	}
 	if (_tracking_enabled && _state != State::LANDING && _state != State::FINISHED) {
 		auto tag = ArucoTag {
 			.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),

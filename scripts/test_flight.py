@@ -17,7 +17,7 @@ import time
 import rclpy
 from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
 from px4_msgs.msg import VehicleCommand, VehicleLocalPosition, VehicleStatus, VehicleLandDetected
-from geometry_msgs.msg import PoseStamped
+from pl_msgs.msg import TargetObservation
 from sensor_msgs.msg import Image, CompressedImage
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
@@ -74,7 +74,7 @@ def status(m):
     state.update(nav=m.nav_state, armed=m.arming_state == 2,
                  preflight_ready=m.pre_flight_checks_pass)
 def landed(m): state.update(landed=m.landed)
-def tag(m): state['tags'] += 1
+def tag(m): state['tags'] += int(m.detected)
 def image(m): state['images'] += 1
 def px4_topic(name, message_type):
     version = getattr(message_type, 'MESSAGE_VERSION', 0)
@@ -84,7 +84,7 @@ subs = [node.create_subscription(t, topic, cb, qos_profile_sensor_data) for t, t
     (VehicleLocalPosition, px4_topic('vehicle_local_position', VehicleLocalPosition), position),
     (VehicleStatus, px4_topic('vehicle_status', VehicleStatus), status),
     (VehicleLandDetected, px4_topic('vehicle_land_detected', VehicleLandDetected), landed),
-    (PoseStamped, '/pl/target_pose', tag),
+    (TargetObservation, '/pl/target_observation', tag),
     (CompressedImage if args.image_transport == 'compressed' else Image,
      '/pl/image_proc/compressed' if args.image_transport == 'compressed' else '/pl/image_proc', image)]]
 client = node.create_client(Trigger, '/pl/start_landing')

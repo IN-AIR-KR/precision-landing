@@ -9,7 +9,7 @@ from rclpy.executors import SingleThreadedExecutor
 from rclpy.parameter import Parameter
 from rclpy.qos import qos_profile_sensor_data as qos
 from sensor_msgs.msg import Image, CameraInfo, CompressedImage
-from geometry_msgs.msg import PoseStamped
+from pl_msgs.msg import TargetObservation
 from pl_camera.image_relay import ImageRelay
 from pl_detection.aruco_tracker import ArucoTracker
 
@@ -36,7 +36,7 @@ def test_jpeg_header_detection_and_lazy_viewer():
     msg.header.frame_id='camera_frame'
     calibration = CameraInfo(k=[500.,0.,399.5,0.,500.,299.5,0.,0.,1.],d=[0.]*5)
     poses, decoded, compressed = [], [], []
-    probe.create_subscription(PoseStamped,'/pl/target_pose',poses.append,qos)
+    probe.create_subscription(TargetObservation,'/pl/target_observation',poses.append,qos)
     probe.create_subscription(CompressedImage,'/pl/camera/image_raw/compressed',compressed.append,qos)
     image_sub = None
 

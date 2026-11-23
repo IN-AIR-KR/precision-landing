@@ -19,6 +19,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <pl_msgs/msg/target_observation.hpp>
 #include <cmath>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
@@ -29,7 +30,7 @@ class PrecisionLand : public px4_ros2::ModeBase
 public:
 	explicit PrecisionLand(rclcpp::Node& node);
 
-	void targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+	void targetObservationCallback(const pl_msgs::msg::TargetObservation::SharedPtr msg);
 	void vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg);
 
 	// See ModeBasep
@@ -69,7 +70,7 @@ private:
 	// Target Kalman filter: constant-velocity model of the (possibly moving) landing target in the
 	// world/NED frame. predictTarget() runs every control tick regardless of detections, so the
 	// estimate keeps advancing smoothly through brief gaps where the tag isn't visible.
-	// correctTarget() runs whenever a new /pl/target_pose detection arrives.
+	// correctTarget() runs whenever a new /pl/target_observation detection arrives.
 	void predictTarget(float dt_s);
 	void correctTarget(const Eigen::Vector3d& measured_position_world);
 
@@ -105,7 +106,7 @@ private:
 
 	// ros2
 	rclcpp::Node& _node;
-	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_sub;
+	rclcpp::Subscription<pl_msgs::msg::TargetObservation>::SharedPtr _target_observation_sub;
 	rclcpp::Subscription<px4_msgs::msg::VehicleLandDetected>::SharedPtr _vehicle_land_detected_sub;
 	rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_world_pub;
 

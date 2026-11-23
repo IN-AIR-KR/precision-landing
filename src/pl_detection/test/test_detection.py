@@ -57,3 +57,37 @@ def test_known_marker_pose_and_missing_target():
     assert abs(quaternion[0]) == pytest.approx(1.)
     assert Detector(2, 1, 1.).process(image.copy(), camera, np.zeros(5)) is None
     assert Detector(2, 0, 1.).process(image.copy(), None, None) is None
+
+
+def test_observation_binds_frame_result_and_pose(monkeypatch):
+    import rclpy
+    from sensor_msgs.msg import CameraInfo, Image
+    from pl_detection.aruco_tracker import ArucoTracker
+
+    rclpy.init()
+    node = ArucoTracker()
+    observations = []
+    monkeypatch.setattr(node.observation_pub, 'publish', observations.append)
+    try:
+        node.info_callback(CameraInfo(k=[600., 0., 400., 0., 600., 300., 0., 0., 1.], d=[0.] * 5))
+        frame = np.full((600, 800, 3), 255, np.uint8)
+        marker = cv2.aruco.generateImageMarker(cv2.aruco.getPredefinedDictionary(2), 0, 200)
+        frame[200:400, 300:500] = cv2.cvtColor(marker, cv2.COLOR_GRAY2BGR)
+        image = Image(height=600, width=800, encoding='bgr8', step=2400,
+                      data=array('B', frame.tobytes()))
+        image.header.stamp.sec = 17
+        node.image_callback(image)
+        assert len(observations) == 1
+        assert observations[0].header.stamp == image.header.stamp
+        assert observations[0].detected
+        assert observations[0].pose.position.z > 0
+        image.header.stamp.sec = 18
+        image.data = array('B', np.full_like(frame, 255).tobytes())
+        node.image_callback(image)
+        assert len(observations) == 2
+        assert observations[1].header.stamp == image.header.stamp
+        assert not observations[1].detected
+        assert observations[1].pose.position.z == 0
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()

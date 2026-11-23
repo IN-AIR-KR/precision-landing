@@ -7,7 +7,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from rclpy.executors import ExternalShutdownException
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import PoseStamped
+from pl_msgs.msg import TargetObservation
 import math
 import json
 import time
@@ -138,7 +138,7 @@ class ArucoTracker(Node):
         self.image_pub = self.create_publisher(Image, '/pl/image_proc', qos)
         self.compressed_pub = self.create_publisher(CompressedImage, '/pl/image_proc/compressed', qos)
         self.status_pub = self.create_publisher(String, '/pl/detection/status', qos)
-        self.pose_pub = self.create_publisher(PoseStamped, '/pl/target_pose', qos)
+        self.observation_pub = self.create_publisher(TargetObservation, '/pl/target_observation', qos)
 
     def info_callback(self, msg):
         self.camera = np.asarray(msg.k, dtype=np.float64).reshape(3, 3).copy()
@@ -161,6 +161,8 @@ class ArucoTracker(Node):
             compressed = self.compressed_pub.get_subscription_count() > 0
             draw = (raw or compressed) and now - self.last_debug >= 1 / self.debug_fps
             result = self.detector.process(image, self.camera, self.distortion, draw=draw)
+            if result is not None and not all(np.isfinite(value).all() for value in result):
+                result = None
             if self.status_pub.get_subscription_count():
                 self.status_pub.publish(String(data=json.dumps({
                     'stamp_ns': msg.header.stamp.sec * 1000000000 + msg.header.stamp.nanosec,
@@ -168,14 +170,15 @@ class ArucoTracker(Node):
                     'pose_valid': result is not None,
                     'position_m': result[0].tolist() if result is not None else None,
                     'distance_m': float(np.linalg.norm(result[0])) if result is not None else None})))
+            observation = TargetObservation()
+            observation.header.stamp = msg.header.stamp
+            observation.header.frame_id = self.frame or msg.header.frame_id
+            observation.detected = result is not None
             if result is not None:
                 p, q = result
-                pose = PoseStamped()
-                pose.header.stamp = msg.header.stamp
-                pose.header.frame_id = self.frame or msg.header.frame_id
-                pose.pose.position.x, pose.pose.position.y, pose.pose.position.z = map(float, p)
-                pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w = map(float, q)
-                self.pose_pub.publish(pose)
+                observation.pose.position.x, observation.pose.position.y, observation.pose.position.z = map(float, p)
+                observation.pose.orientation.x, observation.pose.orientation.y, observation.pose.orientation.z, observation.pose.orientation.w = map(float, q)
+            self.observation_pub.publish(observation)
             if draw:
                 self.last_debug = now
                 height, width = image.shape[:2]

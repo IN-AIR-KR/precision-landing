@@ -12,7 +12,7 @@ from rclpy.qos import qos_profile_sensor_data as qos
 from sensor_msgs.msg import Image, CameraInfo, CompressedImage
 from std_msgs.msg import String
 from px4_msgs.msg import BatteryStatus, SensorGps, VehicleLocalPosition
-from geometry_msgs.msg import PoseStamped
+from pl_msgs.msg import TargetObservation
 from pl_detection.aruco_tracker import ArucoTracker
 from pl_viz import monitor as mod
 
@@ -44,7 +44,7 @@ def test_demand_and_camera_loss(transport, monkeypatch, tmp_path):
     marker = cv2.aruco.generateImageMarker(cv2.aruco.getPredefinedDictionary(2),0,200)
     frame[200:400,300:500] = cv2.cvtColor(marker,cv2.COLOR_GRAY2BGR)
     msg = Image(height=600,width=800,encoding='bgr8',step=2400,data=array('B',frame.tobytes()))
-    pose_sub = probe.create_subscription(PoseStamped, '/pl/target_pose', poses.append, qos)
+    pose_sub = probe.create_subscription(TargetObservation, '/pl/target_observation', poses.append, qos)
     subs = [pose_sub]
     camera_on = True
     phase = 'ALIGN'
