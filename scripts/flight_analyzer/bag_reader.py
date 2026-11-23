@@ -153,6 +153,29 @@ def flatten_json(value, prefix=""):
     return {prefix.removesuffix("_"): _scalar(value)}
 
 
+
+def relative_ground_truth(vehicle_rows, marker_rows):
+    """Pair Gazebo samples by their shared source stamp and rotate ENU into body FRD."""
+    vehicles = {row["source_stamp_ns"]: row for _, row in vehicle_rows}
+    result = []
+    for received, marker in marker_rows:
+        vehicle = vehicles.get(marker["source_stamp_ns"])
+        relative = [None, None, None]
+        if vehicle is not None:
+            delta = np.array([marker[f"pose_position_{axis}"] - vehicle[f"pose_position_{axis}"]
+                              for axis in "xyz"], dtype=float)
+            q = np.array([vehicle[f"pose_orientation_{axis}"] for axis in "wxyz"], dtype=float)
+            norm = np.linalg.norm(q)
+            if np.isfinite(delta).all() and np.isfinite(q).all() and norm > 1e-12:
+                q /= norm
+                cross = np.cross(q[1:], delta)
+                # Inverse body-FLU -> Gazebo-ENU rotation, followed by FLU -> FRD.
+                body = delta - 2 * q[0] * cross + 2 * np.cross(q[1:], cross)
+                relative = (body * [1, -1, -1]).tolist()
+        result.append((received, {f"position_m_{i}": value for i, value in enumerate(relative)}))
+    return result
+
+
 def load_record(record: Path) -> dict:
     """기록 하나를 토픽별 열(column) 데이터로 읽는다.
 
@@ -207,6 +230,8 @@ def load_record(record: Path) -> dict:
                         flat = flatten_json(json.loads(msg.data))
                     else:
                         flat = flatten(msg)
+                        if name in ("/pl/sim/vehicle_pose", "/pl/sim/marker_pose"):
+                            flat["source_stamp_ns"] = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
                 except Exception as e:  # 타입 미등록 / .msg 정의 불일치
                     errors[name] = f"{name} ({ty}): {type(e).__name__}: {e}"
                     rows.pop(name, None)
@@ -216,6 +241,12 @@ def load_record(record: Path) -> dict:
 
     if t0 is None:
         t0 = t_end = 0
+    vehicle_truth = rows.get("/pl/sim/vehicle_pose", [])
+    marker_truth = rows.get("/pl/sim/marker_pose", [])
+    if vehicle_truth and marker_truth:
+        name = "/pl/sim/marker_relative_frd"
+        rows[name] = relative_ground_truth(vehicle_truth, marker_truth)
+        types[name] = "derived/GroundTruthFRD"
     out_topics = {}
     for name, items in rows.items():
         items.sort(key=lambda item: item[0])

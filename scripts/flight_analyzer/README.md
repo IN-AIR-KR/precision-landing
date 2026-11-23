@@ -53,3 +53,8 @@ SITL 및 HITL에서 Gazebo가 제공하는 마커와 드론의 실제 위치를 
 `/pl/control/status`에 기록된 KF 값을 비교한다. KF 점선은 컨트롤러가 수평
 속도 명령에 사용한 최신 타겟 추정값을 같은 제어 주기의 기체 자세로 변환해
 기록한 값이다. 이 필드가 없는 기존 bag에서는 ArUco 측정값만 표시된다.
+
+시뮬레이션 기록에 /pl/sim/marker_pose와 /pl/sim/vehicle_pose가 있으면,
+Marker relative to drone에 GT Forward / Right / Down을 얇은 실선으로 표시한다.
+같은 원본 timestamp의 Gazebo 위치·자세를 사용해 기체 원점 기준 FRD로
+계산한다. 기존 GT 토픽을 활용하므로 추가 녹화 토픽은 필요하지 않다.

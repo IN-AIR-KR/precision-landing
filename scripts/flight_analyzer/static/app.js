@@ -28,11 +28,12 @@ const PANELS = [
   panel("ArUco detection", D, [["detected", "Marker detected"], ["pose_valid", "Pose valid"]], "0 / 1"),
   {
     title: "Marker relative to drone",
-    note: "Body FRD [m] · dashed = KF sample logged by the controller",
+    note: "Body FRD [m] · dashed = KF · thin solid = Gazebo GT",
     spanGaps: false,
     series: ["Forward", "Right", "Down"].flatMap((axis, i) => [
       { t: M, f: `detection_value_body_position_m_${i}`, label: `ArUco ${axis}`, color: PALETTE[i] },
       { t: T, f: `kf_target_frd_m_${i}`, label: `KF ${axis}`, color: PALETTE[i], dash: [5, 4] },
+      { t: "/pl/sim/marker_relative_frd", f: `position_m_${i}`, label: `GT ${axis}`, color: PALETTE[i], width: 1 },
     ]),
   },
   panel("Estimated target position", "/pl/target_pose_world",
