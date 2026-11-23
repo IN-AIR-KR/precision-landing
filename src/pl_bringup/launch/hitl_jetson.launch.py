@@ -21,7 +21,7 @@ def setup(context):
         raise ValueError('world must be aruco or aruco_moving')
     detector = Node(package='pl_detection', executable='aruco_tracker', name='aruco_tracker', output='screen',
         parameters=[dict(config['detection'], optical_frame='camera_frame',
-                         input_transport='compressed', marker_size=.5 if world == 'aruco' else 1.0)])
+                         input_transport='compressed')])
     control = Node(package='pl_control', executable='precision_land', name='precision_land', output='screen',
                    parameters=[controller])
     # Raw stays on Jetson. Only the final overlay is encoded for the PC viewer.

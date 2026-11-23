@@ -9,7 +9,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('world', default_value='aruco'),
-        DeclareLaunchArgument('marker_size', default_value='0.5'),
+        DeclareLaunchArgument('marker_size', default_value=''),
         DeclareLaunchArgument('enable_gazebo_viz', default_value='true'),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(PathJoinSubstitution([
