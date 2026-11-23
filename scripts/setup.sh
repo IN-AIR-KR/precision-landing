@@ -17,5 +17,5 @@ touch .deps/COLCON_IGNORE
 if [[ ( "$profile" == sim || "$profile" == sim_mpc || "$profile" == hitl_pc ) && ! -d .deps/apt/root/opt/ros/humble/share/gps_msgs ]]; then
   (cd .deps/apt; apt-get download ros-humble-gps-msgs; dpkg-deb -x ros-humble-gps-msgs*.deb root)
 fi
-python3 -m pip install --only-binary=:all: --upgrade --target "$root/.deps/python" -r requirements-detection.txt
+python3 -m pip install --only-binary=:all: --upgrade --target "$root/.deps/python" -r scripts/requirements-detection.txt
 exec ./scripts/build.sh "$profile"

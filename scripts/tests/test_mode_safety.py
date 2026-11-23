@@ -3,7 +3,7 @@
 import os,signal,subprocess,time
 from pathlib import Path
 import yaml
-root=Path(__file__).resolve().parents[1]
+root=Path(__file__).resolve().parents[2]
 os.chdir(root)
 out=root/'.run'/('mode-safety-'+time.strftime('%Y%m%d-%H%M%S'));out.mkdir(exist_ok=False)
 config=yaml.safe_load((root/'src/pl_bringup/config/sim.yaml').read_text())
@@ -20,7 +20,7 @@ with (out/'runner.log').open('w') as log:
    time.sleep(1)
   else:raise RuntimeError('Registration timeout')
   with (out/'test.log').open('w') as testlog:
-   subprocess.run(['python3','scripts/test_flight.py','--speed','0','--exercise-handover','--output',str(out/'flight.jsonl')],env=env,stdout=testlog,stderr=subprocess.STDOUT,check=True,timeout=150)
+   subprocess.run(['python3','scripts/tests/test_flight.py','--speed','0','--exercise-handover','--output',str(out/'flight.jsonl')],env=env,stdout=testlog,stderr=subprocess.STDOUT,check=True,timeout=150)
  finally:
   if p.poll() is None:
    os.killpg(p.pid,signal.SIGINT)

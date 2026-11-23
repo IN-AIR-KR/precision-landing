@@ -9,7 +9,7 @@
   <exec_depend>pl_msgs</exec_depend>
   <exec_depend>rclpy</exec_depend><exec_depend>sensor_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend><exec_depend>python3-numpy</exec_depend>
-  <!-- OpenCV headless wheel is pinned in requirements-detection.txt. -->
+  <!-- OpenCV headless wheel is pinned in scripts/requirements-detection.txt. -->
   <test_depend>python3-pytest</test_depend>
   <export><build_type>ament_python</build_type></export>
 </package>

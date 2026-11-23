@@ -32,7 +32,7 @@ parser.add_argument('--output', type=Path, default=Path('.run/moving-flight.json
 args = parser.parse_args()
 if not math.isfinite(args.speed):
     parser.error('--speed must be finite')
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[2]
 px4 = Path(os.environ.get('PX4_DIR', str(Path.home() / 'PX4-Autopilot-6ea3539')))
 binary = px4 / 'build/px4_sitl_default/bin/px4'
 pids = subprocess.check_output(['pgrep', '-x', 'px4'], text=True).split()

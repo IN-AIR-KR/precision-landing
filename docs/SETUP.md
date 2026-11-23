@@ -134,13 +134,13 @@ rosdep update
 
 ## 6. 인식기 Python 런타임 (저장소 내부 격리)
 
-`requirements-detection.txt`의 고정 버전을 **저장소 안 `.deps/python`에만** 설치합니다.
+`scripts/requirements-detection.txt`의 고정 버전을 **저장소 안 `.deps/python`에만** 설치합니다.
 `scripts/env.sh`가 `PYTHONPATH`에 이 경로를 앞세우므로, 시스템 Python과
 JetPack/apt OpenCV에는 영향이 없습니다.
 
 ```bash
 cd ~/INAIR/precision_landing
-python3 -m pip install --only-binary=:all: --upgrade --target "$PWD/.deps/python" -r requirements-detection.txt
+python3 -m pip install --only-binary=:all: --upgrade --target "$PWD/.deps/python" -r scripts/requirements-detection.txt
 ```
 
 | 패키지 | 버전 | 휠 |
@@ -506,10 +506,10 @@ HEADLESS=1 PX4_DIR=$HOME/PX4-Autopilot ./scripts/run.sh
 
 - `HEADLESS=1`이면 `gz sim -g`(GUI)와 `rqt_image_view`를 띄우지 않습니다. 젯슨에서는 권장.
 - 로그: `.run/{gazebo,px4,ros}.log` (DDS Agent 로그는 `ros.log`에 섞임)
-- 기본 월드는 `SIM_WORLD=aruco_moving`(marker_size 1.0). 정지 마커는 `SIM_WORLD=aruco`(0.5).
+- 기본 월드는 `SIM_WORLD=aruco_moving`, 정지 마커 월드는 `SIM_WORLD=aruco`입니다. 검출기 마커 크기는 `sim.yaml`의 `detection.marker_size`를 사용하며 기본값은 0.30 m입니다. 이 값은 Gazebo 모델의 마커 크기와 맞춥니다.
 - `pgrep -x px4`가 잡히거나 UDP `:8888`이 사용 중이면 실행을 거부합니다. 재실행 전에 완전 종료를 확인하세요.
 
-### 9.7 `scripts/test_flight.py` 버그 수정
+### 9.7 `scripts/tests/test_flight.py` 버그 수정
 
 ```
 NameError: name 'paused_detector' is not defined   (test_flight.py:155)
@@ -597,7 +597,7 @@ PC 없이 젯슨만으로 `hitl_jetson` 프로필을 기동한 결과:
 
 ### 12.2 `sim` 프로필 SITL — 전 구간 통과
 
-`HEADLESS=1 ./scripts/run.sh`로 기동한 뒤 `scripts/test_flight.py`를 돌린 결과입니다.
+`HEADLESS=1 ./scripts/run.sh`로 기동한 뒤 `scripts/tests/test_flight.py`를 돌린 결과입니다.
 
 기동 상태:
 
@@ -614,8 +614,8 @@ PC 없이 젯슨만으로 `hitl_jetson` 프로필을 기동한 결과:
 
 | 테스트 | 명령 | 소요 | 결과 |
 | --- | --- | --- | --- |
-| 정지 표적 | `python3 scripts/test_flight.py --speed 0` | 34.4s | `phase: passed`, 자동 disarm |
-| 이동 표적 | `python3 scripts/test_flight.py --speed 0.3` | 32.6s | `PASS: landing and automatic disarm (target speed 0.3 m/s)`, 종료 코드 0 |
+| 정지 표적 | `python3 scripts/tests/test_flight.py --speed 0` | 34.4s | `phase: passed`, 자동 disarm |
+| 이동 표적 | `python3 scripts/tests/test_flight.py --speed 0.3` | 32.6s | `PASS: landing and automatic disarm (target speed 0.3 m/s)`, 종료 코드 0 |
 
 이동 표적 시퀀스(요약):
 
