@@ -117,8 +117,14 @@ def test_demand_and_camera_loss(transport, monkeypatch, tmp_path):
         camera_on=False
         phase='APPROACH'
         count=len(jpegs)
-        spin(2.5)
-        state=json.loads(states[-1].data)
+        # Queued camera callbacks can arrive after the source stops publishing.
+        # Wait for the monitor's observed staleness, with a bounded deadline.
+        deadline=time.monotonic()+5
+        while time.monotonic()<deadline:
+            spin(.1)
+            state=json.loads(states[-1].data)
+            if state['image']['health']=='stale' and state['detection']['health']=='stale':
+                break
         assert state['image']['health']=='stale'
         assert state['detection']['health']=='stale'
         assert state['control']['health']=='ok' and state['control']['value']['state']=='APPROACH'
