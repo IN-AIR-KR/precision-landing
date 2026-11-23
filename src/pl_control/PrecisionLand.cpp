@@ -10,8 +10,8 @@
 
 static const std::string kModeName = "PrecisionLandCustom";
 static const bool kEnableDebugOutput = true;
-static constexpr auto kDetectionConfirmTime = std::chrono::milliseconds(200);
-static constexpr auto kDetectionMaxGap = std::chrono::milliseconds(500);
+static constexpr int64_t kDetectionConfirmTimeNs = 100'000'000;
+static constexpr int64_t kDetectionMaxGapNs = 200'000'000;
 
 using namespace px4_ros2::literals;
 
@@ -166,10 +166,22 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 
 void PrecisionLand::targetObservationCallback(const pl_msgs::msg::TargetObservation::SharedPtr msg)
 {
-	if (!msg->detected) {
+	if (!isActive() || _state == State::ABORTED || _state == State::FINISHED) {
 		return;
 	}
-	if (!isActive() || _state == State::ABORTED || _state == State::FINISHED) {
+	const auto now = _node.now();
+	const int64_t stamp_ns = rclcpp::Time(msg->header.stamp).nanoseconds();
+	if (_last_observation_stamp_ns && stamp_ns <= *_last_observation_stamp_ns) {
+		return;
+	}
+	if (_state == State::IDLE && _last_observation_stamp_ns &&
+	    (stamp_ns - *_last_observation_stamp_ns > kDetectionMaxGapNs ||
+	     !_last_detection || (now - *_last_detection).nanoseconds() > kDetectionMaxGapNs)) {
+		_first_detection_stamp_ns.reset();
+	}
+	_last_observation_stamp_ns = stamp_ns;
+	if (!msg->detected) {
+		_first_detection_stamp_ns.reset();
 		return;
 	}
 	auto tag = ArucoTag {
@@ -179,22 +191,21 @@ void PrecisionLand::targetObservationCallback(const pl_msgs::msg::TargetObservat
 	};
 
 	if (!tag.position.allFinite() || !tag.orientation.coeffs().allFinite() ||
-	    tag.orientation.squaredNorm() < 1e-12) {
+	    tag.orientation.squaredNorm() < 1e-12 || tag.position.z() <= 0.) {
+		_first_detection_stamp_ns.reset();
 		return;
 	}
 
 	const auto world_tag = getTagWorld(tag);
 	if (!world_tag.position.allFinite() || !world_tag.orientation.coeffs().allFinite()) {
+		_first_detection_stamp_ns.reset();
 		return;
 	}
-	if (_state == State::IDLE) {
-		const auto received = SteadyClock::now();
-		if (!_target_initialized || received - _last_detection > kDetectionMaxGap) {
-			_first_detection = received;
-			_target_initialized = false;
-		}
-		_last_detection = received;
+	if (_state == State::IDLE && !_first_detection_stamp_ns) {
+		_first_detection_stamp_ns = stamp_ns;
+		_target_initialized = false;
 	}
+	_last_detection = now;
 	_tag = world_tag;
 
 	// Correct the target Kalman filter with this new position measurement. The filter keeps
@@ -312,8 +323,9 @@ void PrecisionLand::onActivate()
 	_used_target_frd.reset();
 	_target_lost_prev = true;
 	_xy_integral_velocity.setZero();
-	_first_detection = {};
-	_last_detection = {};
+	_first_detection_stamp_ns.reset();
+	_last_observation_stamp_ns.reset();
+	_last_detection.reset();
 	_hold_position.reset();
 	switchToState(State::IDLE);
 }
@@ -354,8 +366,11 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		}
 		_trajectory_setpoint->updatePosition(*_hold_position);
 		if (_target_initialized && !target_lost &&
-		    _last_detection - _first_detection >= kDetectionConfirmTime &&
-		    SteadyClock::now() - _last_detection <= kDetectionMaxGap) {
+		    _first_detection_stamp_ns && _last_observation_stamp_ns &&
+		    *_last_observation_stamp_ns - *_first_detection_stamp_ns >= kDetectionConfirmTimeNs &&
+		    _last_detection &&
+		    (_node.now() - *_last_detection).nanoseconds() >= 0 &&
+		    (_node.now() - *_last_detection).nanoseconds() <= kDetectionMaxGapNs) {
 			_approach_altitude = _hold_position->z();
 			switchToState(State::ALIGN);
 		}

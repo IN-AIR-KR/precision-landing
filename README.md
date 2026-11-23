@@ -90,7 +90,7 @@ graph TD
 ```mermaid
 stateDiagram-v2
     [*] --> IDLE
-    IDLE --> ALIGN: 유효한 타겟 검출이 0.5초 이상 이어짐
+    IDLE --> ALIGN: 유효한 타겟 observation이 영상 시간 기준 100 ms 이상 연속 수신
     ALIGN --> APPROACH: 위치 오차와 상대 속도 조건 충족
     ALIGN --> ABORTED: 타겟 유실 / 실패 보고
     APPROACH --> ABORTED: 타겟 유실 / 실패 보고

@@ -101,7 +101,9 @@ private:
 	// Data
 	State _state = State::IDLE;
 	std::optional<Eigen::Vector3f> _hold_position;
-	SteadyClock::time_point _first_detection{}, _last_detection{};
+	std::optional<int64_t> _first_detection_stamp_ns;
+	std::optional<int64_t> _last_observation_stamp_ns;
+	std::optional<rclcpp::Time> _last_detection;
 
 	ArucoTag _tag;
 	float _approach_altitude = {};
