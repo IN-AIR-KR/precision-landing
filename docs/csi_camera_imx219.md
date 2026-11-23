@@ -36,7 +36,7 @@ sudo /opt/nvidia/jetson-io/jetson-io.py
 
 - CAM0 = CSI 포트 **A** 입니다. 파일명의 `-A`가 CAM0, `-C`가 CAM1입니다.
 - 40핀 헤더 UART와 **동시에 쓸 수 있습니다.** jetson-io가 두 오버레이를 `OVERLAYS`
-  한 줄에 모아 씁니다 → [pixhawk_uart_link.md](pixhawk_uart_link.md) 3절
+  한 줄에 모아 씁니다 → [Jetson 환경 설정](SETUP.md)
 
 비대화형으로도 가능합니다.
 
@@ -270,5 +270,5 @@ ros2 run rqt_image_view rqt_image_view /image_proc
 - 실기체 진동 환경에서의 롤링 셔터 영향
 
 관련 문서: [csi_camera_ov5647.md](csi_camera_ov5647.md) ·
-[pixhawk_uart_link.md](pixhawk_uart_link.md) ·
-[camera_inputs_stage1.md](camera_inputs_stage1.md)
+[Jetson 환경 설정](SETUP.md) ·
+[실기체 실행](../README.md#64-실기체-실행)

@@ -1,5 +1,26 @@
 # Precision Landing
 
+## 목차
+
+- [1. 시스템 개요](#1-시스템-개요)
+- [2. 요구사항](#2-요구사항)
+- [3. 노드 구조](#3-노드-구조)
+- [4. 착륙 FSM](#4-착륙-fsm)
+- [5. 상태 추정 및 제어](#5-상태-추정-및-제어)
+  - [5.1 마커 관측과 좌표 변환](#51-마커-관측과-좌표-변환)
+  - [5.2 타겟 위치·속도 추정](#52-타겟-위치속도-추정)
+  - [5.3 수평 추종·하강 제어](#53-수평-추종하강-제어)
+- [6. 실행방법](#6-실행방법)
+  - [6.1 간단 실행 — sh 사용](#61-간단-실행--sh-사용)
+    - [PAMPC 정지 타겟 시험](#pampc-정지-타겟-시험)
+    - [FSC IBVS MPC 정지 타겟 시험](#fsc-ibvs-mpc-정지-타겟-시험)
+    - [QGC에서 수동 착륙 시험](#qgc에서-수동-착륙-시험)
+  - [6.2 Gazebo·PX4·ROS 스택 분리 실행](#62-gazebopx4ros-스택-분리-실행)
+  - [6.3 HITL PC / Jetson 분리 실행 — Wi-Fi, JPEG 전송](#63-hitl-pc--jetson-분리-실행--wi-fi-jpeg-전송)
+  - [6.4 실기체 실행](#64-실기체-실행)
+    - [실기체 이동 차량 착륙 전 설정](#실기체-이동-차량-착륙-전-설정)
+    - [실기체 PAMPC · 정지 타겟](#실기체-pampc--정지-타겟)
+
 ## 1. 시스템 개요
 
 하향 카메라로 ArUco 마커를 인식하고, 정지하거나 이동하는 타겟에 착륙하는 ROS 2 기반 시스템
@@ -72,16 +93,16 @@ graph TD
     AGENT <-->|UART| PX4_HW
 ```
 
-| 패키지 | 노드·실행 항목 | 역할 |
-| --- | --- | --- |
-| `pl_camera` | `camera_bridge`, `debug_image_bridge`, `image_relay` | Gazebo 영상·보정값·시계를 ROS로 연결하고, 디버그 영상 역방향 브리지와 HITL JPEG 변환을 제공 |
-| `pl_detection` | `aruco_tracker` | ArUco 마커를 검출하고 카메라 기준 마커 자세, 디버그 영상, 검출 상태를 발행 |
-| `pl_control` | `precision_land` | PX4 외부 모드에서 타겟 위치·속도를 추정하고, 착륙 FSM에 따라 setpoint와 제어 상태를 발행 |
-| `pl_viz` | `landing_monitor`, `tag_pose_visualizer` | 영상 HUD와 선택적인 Gazebo 타겟 위치 표시 |
-| `pl_bringup` | SITL·실기체·HITL launch | 환경별 설정을 적용하고 ROS 노드와 DDS Agent의 실행을 구성 |
-| `ros_gz_bridge` | `parameter_bridge` | Gazebo Transport와 ROS 2 메시지를 변환 |
-| `px4_msgs` | 메시지 정의 | ROS 2와 PX4가 주고받는 메시지 타입을 제공 |
-| `px4_ros2_cpp` | PX4 인터페이스 라이브러리 | 외부 모드 등록, 기체 상태 수신, setpoint 발행을 지원 |
+| 패키지          | 노드·실행 항목                                       | 역할                                                                                        |
+| --------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `pl_camera`     | `camera_bridge`, `debug_image_bridge`, `image_relay` | Gazebo 영상·보정값·시계를 ROS로 연결하고, 디버그 영상 역방향 브리지와 HITL JPEG 변환을 제공 |
+| `pl_detection`  | `aruco_tracker`                                      | ArUco 마커를 검출하고 카메라 기준 마커 자세, 디버그 영상, 검출 상태를 발행                  |
+| `pl_control`    | `precision_land`                                     | PX4 외부 모드에서 타겟 위치·속도를 추정하고, 착륙 FSM에 따라 setpoint와 제어 상태를 발행    |
+| `pl_viz`        | `landing_monitor`, `tag_pose_visualizer`             | 영상 HUD와 선택적인 Gazebo 타겟 위치 표시                                                   |
+| `pl_bringup`    | SITL·실기체·HITL launch                              | 환경별 설정을 적용하고 ROS 노드와 DDS Agent의 실행을 구성                                   |
+| `ros_gz_bridge` | `parameter_bridge`                                   | Gazebo Transport와 ROS 2 메시지를 변환                                                      |
+| `px4_msgs`      | 메시지 정의                                          | ROS 2와 PX4가 주고받는 메시지 타입을 제공                                                   |
+| `px4_ros2_cpp`  | PX4 인터페이스 라이브러리                            | 외부 모드 등록, 기체 상태 수신, setpoint 발행을 지원                                        |
 
 실기체에서는 Jetson CSI 카메라 노드가 영상과 카메라 보정 정보를 발행합니다.
 
@@ -98,13 +119,13 @@ stateDiagram-v2
     FINISHED --> [*]: PX4에 성공 보고
 ```
 
-| 단계       | 알고리즘 / 전이 조건                                                                                  |
-| ---------- | ----------------------------------------------------------------------------------------------------- |
-| `IDLE`     | 모드 활성화 후 처음 확인한 유효한 XYZ 위치를 유지하며 검출을 기다림                                  |
-| `ALIGN` | 진입 고도를 유지하며 XY 속도로 타겟 추종. 위치 오차와 기체−타겟 상대 속도가 임계값보다 작으면 하강    |
-| `APPROACH`  | XY 추종을 유지하며 일정 수직 속도로 하강. 마커 자세에서 yaw 지정. PX4 착륙 감지 시 완료               |
-| `FINISHED` | PX4 모드 실행 결과를 성공으로 보고                                                                    |
-| `ABORTED` | 타겟 유실 실패를 보고하고 setpoint 발행을 중지 |
+| 단계       | 알고리즘 / 전이 조건                                                                               |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| `IDLE`     | 모드 활성화 후 처음 확인한 유효한 XYZ 위치를 유지하며 검출을 기다림                                |
+| `ALIGN`    | 진입 고도를 유지하며 XY 속도로 타겟 추종. 위치 오차와 기체−타겟 상대 속도가 임계값보다 작으면 하강 |
+| `APPROACH` | XY 추종을 유지하며 일정 수직 속도로 하강. 마커 자세에서 yaw 지정. PX4 착륙 감지 시 완료            |
+| `FINISHED` | PX4 모드 실행 결과를 성공으로 보고                                                                 |
+| `ABORTED`  | 타겟 유실 실패를 보고하고 setpoint 발행을 중지                                                     |
 
 - FSM은 **5개 상태**. 화면의 `INACTIVE`는 별도 단계가 아니라 외부 모드 비활성 표시.
 - `IDLE`은 회색, `ALIGN`은 주황색, `APPROACH`는 노란색, `FINISHED`는 초록색, `ABORTED`는 빨간색. HUD 제어 상태 수신 이상도 빨간색으로 표시.
@@ -159,7 +180,7 @@ H=[I\;0],\quad R=\sigma_p^2 I,\quad K=P^-H^T(HP^-H^T+R)^{-1}
 - 초기값: 위치는 첫 관측, 속도는 0; $`P_{pp}=\sigma_p^2I`$, $`P_{vv}=4I`$.
 - 기본값: $`\sigma_a=1.0\;\mathrm{m/s^2}`$, $`\sigma_p=0.1\;\mathrm{m}`$.
 - 마커 자세는 KF 상태에 포함하지 않고 관측값 사용.
-- **현재 제한:** 수신 시점의 기체 pose로 변환하며 유실 시간도 수신 시점 기준. 착륙 모드 진입 시 추정 상태를 초기화하고 새 검출을 기다림. 촬영 시각 보간과 Delayed KF는 [5번 계획](docs/refactor_plan.md)의 후속 작업.
+- **현재 제한:** 수신 시점의 기체 pose로 변환하며 유실 시간도 수신 시점 기준. 착륙 모드 진입 시 추정 상태를 초기화하고 새 검출을 기다림. 촬영 시각 보간과 Delayed KF는 아직 구현되지 않음.
 
 ### 5.3 수평 추종·하강 제어
 
@@ -224,8 +245,8 @@ cd ~/precision-landing
 ```
 
 - Gazebo, PX4 SITL, Agent, ROS 노드, 모니터 창 자동 실행.
-- 기본 월드 `aruco_moving`에서는 기체 시작점에서 월드 +X 방향으로 1.5 m 앞에 이동 패드가 있습니다. 마커 변 길이는 1 m입니다.
-- `SIM_WORLD=aruco`에서는 0.5 m 정지 마커가 기체 시작점에서 월드 +X 방향으로 1 m 앞에 있습니다.
+- 기본 월드 `aruco_moving`에서는 기체 시작점에서 월드 +X 방향으로 1.5 m 앞에 이동 패드가 있습니다. 마커 변 길이는 0.30 m입니다.
+- `SIM_WORLD=aruco`에서는 0.30 m 정지 마커가 기체 시작점에서 월드 +X 방향으로 1 m 앞에 있습니다.
 - 모니터 창을 닫아도 비행은 유지. 실행 터미널에서 `Ctrl+C`로 전체 종료.
 - 로그: `.run/`. GUI 없이 실행: `HEADLESS=1 ./scripts/run.sh`.
 
@@ -234,8 +255,8 @@ cd ~/precision-landing
 ```bash
 cd ~/precision-landing
 source scripts/env.sh
-python3 scripts/test_flight.py             # 이동 타겟 0.3 m/s
-# SIM_WORLD=aruco /usr/bin/python3 scripts/test_flight.py --speed 0  # aruco 월드에서 정지 타겟
+python3 scripts/tests/test_flight.py             # 이동 타겟 0.3 m/s
+# SIM_WORLD=aruco /usr/bin/python3 scripts/tests/test_flight.py --speed 0  # aruco 월드에서 정지 타겟
 ```
 
 각 시험 전 시뮬을 새로 실행합니다. 시험은 이륙·모드 전환·타겟 이동·착륙·자동 disarm을 확인합니다.
@@ -246,17 +267,17 @@ python3 scripts/test_flight.py             # 이동 타겟 0.3 m/s
 
 ```bash
 ./scripts/build.sh sim_mpc
-HEADLESS=1 SIM_WORLD=aruco BRINGUP_LAUNCH=sim_mpc.launch.py ./scripts/run.sh
+HEADLESS=1 SIM_WORLD=aruco BRINGUP_LAUNCH=sim_rpg_mpc.launch.py ./scripts/run.sh
 ```
 
 다른 터미널에서 같은 `PX4_DIR`를 설정하고 시험을 실행합니다.
 
 ```bash
 source scripts/env.sh
-SIM_WORLD=aruco /usr/bin/python3 scripts/test_flight.py --speed 0
+SIM_WORLD=aruco /usr/bin/python3 scripts/tests/test_flight.py --speed 0
 ```
 
-`sim_mpc.launch.py`는 기존 카메라, 검출기, HUD, bag 녹화 설정을 사용합니다.
+`sim_rpg_mpc.launch.py`는 기존 카메라, 검출기, HUD, bag 녹화 설정을 사용합니다.
 `APPROACH`에서 KF로 예측한 타겟의 1 m 위를 추종하며 PAMPC의 첫 추력·기체 각속도 입력을 PX4로 보냅니다.
 수직 참조 속도는 `mpc.approach_descent_speed`(기본 0.5 m/s)로 설정합니다.
 마커 네 모서리의 현재 및 0.4초 뒤 예상 화면 여유가 줄면 하강 참조를 감속합니다.
@@ -270,7 +291,7 @@ PAMPC 착륙 성공은 ROS 로그의 `FINISHED`와 PX4 착륙 감지 및 자동 
 #### FSC IBVS MPC 정지 타겟 시험
 
 `./scripts/build.sh sim_mpc`는 RPG와 FSC IBVS 제어기를 함께 빌드합니다.
-RPG는 `sim_mpc.launch.py` 또는 `sim_rpg_mpc.launch.py`로 실행합니다.
+RPG는 `sim_rpg_mpc.launch.py`로 실행합니다.
 FSC IBVS로 같은 정지 타겟 절차를 시험하려면 아래 런치를 사용합니다.
 
 ```bash
@@ -355,88 +376,6 @@ ros2 run rqt_image_view rqt_image_view /pl/monitor/image
 
 비행 시험은 별도 터미널에서 6.1의 `test_flight.py`를 실행하거나 [QGC 수동 착륙 절차](#qgc에서-수동-착륙-시험)를 따릅니다. 종료할 때는 각 실행 터미널에서 `Ctrl+C`를 누릅니다.
 
-실기체는 `./scripts/setup.sh real`로 빌드한 뒤 `./scripts/run_real.sh`로 CSI 카메라와 착륙 스택을 실행합니다. `real.yaml`의 `control.camera_extrinsic`에 실측 위치·회전을 입력하고, `px4.uart`를 기체 설정에 맞춥니다. 기본 CSI 모드 4(1280×720)에서 측정한 보정값은 `real.yaml`의 `camera.calibration`에 넣습니다. 기체별 설정 파일은 `./scripts/run_real.sh config:=/absolute/path/to/real.yaml`로 선택합니다. 저장소의 기본 설정 디렉터리를 사용한다면 빌드해서 설치 경로에 반영합니다.
-
-세부 안내: [실행 환경](docs/run_local.md) · [카메라 입력](docs/camera_inputs_stage1.md) · [CSI 카메라(IMX219)](docs/csi_camera_imx219.md) · [CSI 카메라(OV5647)](docs/csi_camera_ov5647.md) · [Pixhawk UART 연결](docs/pixhawk_uart_link.md) · [PX4 호환](docs/px4_compatibility_stage3.md) · [모니터링](docs/monitoring_stage4.md) · [리팩터링 계획](docs/refactor_plan.md)
-
-#### 실기체 이동 차량 착륙 전 설정
-
-QGC의 Parameters 화면에서 실제 비행 컨트롤러에 연결된 상태로 PX4 값을 확인합니다.
-PX4 파라미터는 SITL 인스턴스와 실기체에 각각 저장되므로, SITL에서 변경한 값은
-실기체에도 직접 적용해야 합니다. 아래 SITL 검증은 PID, 뒤 15 m에서 접근하는 차량,
-목표 이륙 고도 5 m, 30 cm 마커 조건에서 진행했습니다.
-
-| PX4 파라미터 | 설정·확인 사항 |
-| --- | --- |
-| `LNDMC_XY_VEL_MAX` | 착륙 감지에서 허용할 지면 기준 수평 속도. 차량 최대 속도와 추정 오차를 고려해 설정합니다. SITL은 **6.0 m/s**에서 차량 **2·3·5 m/s** 착륙 감지와 자동 디스암을 확인했습니다. |
-| `COM_DISARM_LAND` | 착륙 확정 후 자동 디스암 대기 시간. SITL 검증값은 **2.0초**입니다. 0은 자동 디스암을 비활성화합니다. |
-| `LNDMC_Z_VEL_MAX` | 착륙 감지 수직 속도 임계값. SITL 검증값은 **0.25 m/s**입니다. 높이 속도 제어에서는 하강 명령이 이 값의 1.1배 이상인지 함께 확인합니다. |
-| `LNDMC_TRIG_TIME` | 착륙 감지 조건 유지 시간. SITL 검증값은 **1.0초**입니다. |
-
-현재 PX4 기본 `LNDMC_XY_VEL_MAX=1.5 m/s`에서는 2 m/s 차량에 접촉해도
-수평 이동으로 판정되어 `ground_contact`와 `landed`가 성립하지 않았습니다.
-임계값을 높이면 낮은 추력·수직 속도·회전·지면 근접 조건과 함께 착륙을 판정합니다.
-실기체 적용 시 이 조건들과 실제 접촉 시점, 착륙 감지 및 디스암 순서를 함께 검증합니다.
-[PX4 착륙 감지 설명](https://docs.px4.io/main/en/advanced_config/land_detector)
-
-QGC MAVLink Console에서도 값을 확인하고 설정할 수 있습니다. 아래 6.0은
-최대 5 m/s 차량을 가정한 SITL 검증값이므로 실기체 시험 계획에 맞춰 선택합니다.
-
-```sh
-param show LNDMC_XY_VEL_MAX
-param set LNDMC_XY_VEL_MAX 6.0
-param show LNDMC_XY_VEL_MAX
-param show COM_DISARM_LAND
-param show LNDMC_Z_VEL_MAX
-param show LNDMC_TRIG_TIME
-```
-
-ROS 실기체 설정 파일도 확인합니다.
-
-| 설정 | 적용할 값 |
-| --- | --- |
-| `detection.marker_size` | 30 cm 마커는 **0.30**. 현재 저장소 `real.yaml`은 **0.15**이므로 기체별 설정 파일에서 수정합니다. 검은 외곽 테두리를 포함한 마커 변 길이를 측정합니다. |
-| `camera` | IMX219 모드 4, 촬영 **1280×720**, 출력 **640×360**. 보정값은 해당 센서 모드에서 측정하고 `camera.calibration`에 입력합니다. |
-| `control.camera_extrinsic` | 실제 카메라 광학 좌표계에서 기체 FRD로의 위치·회전 실측값. |
-| `control.target_estimation.timeout_s` | 실기체 기본 **3초**, 최근 SITL **5초**. 의도한 마커 상실 허용 시간을 기체별 파일에 지정합니다. |
-| `use_sim_time` | 실기체는 **false**, 실제 시간 기준. SITL 런치는 **true**로 Gazebo의 /clock을 사용합니다. |
-
-설정 후 실행 중인 제어기에서 적용값을 확인합니다.
-
-```sh
-ros2 param get /precision_land target_timeout
-ros2 param get /precision_land use_sim_time
-ros2 param get /aruco_tracker marker_size
-```
-
-#### 실기체 PAMPC · 정지 타겟
-
-Jetson에서 `./scripts/setup.sh real_mpc`로 빌드합니다. `real.yaml`을 기체별 파일로
-복사하고 카메라 보정, 장착 위치·회전, ArUco ID·사전·실측 마커 변 길이,
-PX4 DDS 도메인 및 UART를 실제 구성에 맞춥니다.
-
-`mpc`에는 아래 실기체 값을 입력합니다.
-
-| 설정 | 입력할 값 |
-| --- | --- |
-| `hover_thrust` | 같은 탑재중량으로 안정 호버할 때 ULog에서 확인한 정규화 집합 추력 크기 |
-| `px4_thrust_model_factor` | 실제 PX4의 `THR_MDL_FAC` |
-| `measured_motor_thrust_model_factor` | 모터·ESC·프롭 조합의 추력 데이터로 맞춘 모델 계수. 검증된 `THR_MDL_FAC`가 실측 곡선과 일치하면 같은 값 |
-| `land_detector_z_velocity_max` | 실제 PX4의 `LNDMC_Z_VEL_MAX`. 궤적 종점 이후 접촉 판정용 하강 명령은 이 값의 1.2배 |
-| `approach_descent_speed` | 접근 하강 참조 속도(m/s). 0.5 m/s는 SITL 시험값이며 실제 속도 제한은 별도 |
-
-기존 시리얼 XRCE Agent 서비스가 실행 중이면 그대로 사용합니다. 서비스 설정과
-기체별 프로필의 UART·baud·도메인을 맞춥니다. 수동으로 실행할 때는 같은 포트에서
-Agent를 하나만 실행합니다.
-
-```bash
-BRINGUP_LAUNCH=real_mpc.launch.py ./scripts/run_real.sh config:=/absolute/path/to/real-mpc.yaml
-```
-
-프로펠러를 제거한 벤치 시험에서 PX4 메시지 호환 검사, `PrecisionLandCustom` 등록,
-마커 포즈와 카메라 프레임, 기체 자세 및 위치 갱신을 확인합니다. 비행 전 조종사가
-RC로 기존 비행 모드에 즉시 복귀할 수 있는지와 DDS 연결 상실 시 동작을 확인합니다.
-SITL 전용 `test_flight.py`는 실기체 시험에 사용하지 않습니다.
 
 ### 6.3 HITL PC / Jetson 분리 실행 — Wi-Fi, JPEG 전송
 
@@ -520,9 +459,9 @@ ros2 launch pl_bringup hitl_jetson.launch.py
 ②의 환경을 적용한 뒤 실행합니다. 이 스크립트는 PC의 로컬 PX4 SITL을 확인하므로 Jetson에서 실행하지 않습니다.
 
 ```bash
-python3 scripts/test_flight.py --image-transport compressed
+python3 scripts/tests/test_flight.py --image-transport compressed
 # 정지 타겟 시험: 새 시뮬에서 실행
-# python3 scripts/test_flight.py --image-transport compressed --speed 0
+# python3 scripts/tests/test_flight.py --image-transport compressed --speed 0
 ```
 
 `--image-transport compressed`는 시험 코드가 디버그 원본 영상을 Wi-Fi로 끌어오지 않도록 합니다. 수동 시험은 PC에서 [QGC 수동 착륙 절차](#qgc에서-수동-착륙-시험)를 따릅니다.
@@ -537,7 +476,7 @@ ros2 launch pl_bringup hitl_pc.launch.py camera_fps:=20.0 jpeg_quality:=90 gui:=
 ros2 run rqt_image_view rqt_image_view /pl/hitl/pc/monitor/image
 ```
 
-`world:=aruco`를 쓰면 0.5 m 마커의 정적 월드를 사용합니다. 이때 **양쪽 launch 모두** `world:=aruco`를 지정해야 합니다. 기본 `aruco_moving`은 1 m 마커이며 `--speed 0`으로 정지 시험도 가능합니다. 양쪽은 기본적으로 같은 `sim.yaml`의 제어 설정을 사용합니다.
+`world:=aruco`를 쓰면 0.30 m 마커의 정적 월드를 사용합니다. 이때 **양쪽 launch 모두** `world:=aruco`를 지정해야 합니다. 기본 `aruco_moving`도 0.30 m 마커이며 `--speed 0`으로 정지 시험도 가능합니다. 양쪽은 같은 `sim.yaml`을 사용하며, Jetson 검출기는 `detection.marker_size`를 그대로 적용합니다.
 
 **연결·대역폭 확인 — Jetson에서 실행**
 
@@ -554,23 +493,87 @@ PC에서 `ros2 multicast receive`, Jetson에서 `ros2 multicast send`로 검색�
 
 **검증 범위:** JPEG 변환·원본 header 보존·검출·뷰어 구독 해제 통합 테스트와 같은 PC에서 양쪽 launch를 함께 실행한 정지·이동 타겟 착륙 및 자동 disarm 시험을 통과했습니다. 실제 Jetson의 ARM 환경과 Wi-Fi 처리율·지연은 별도 장치 시험이 필요합니다.
 
-### 6.4 비행 로그 녹화 및 재생
+### 6.4 실기체 실행
 
-실기체(`./scripts/run_real.sh`)와 SITL(`./scripts/run.sh`)에서 녹화기는 기본으로 실행된다. 녹화를 끄려면 `record:=false`를 전달한다. 비행별 ARM부터 DISARM까지 기록하며 로그는 루트의 `flight_logs/`에 저장된다. [웹뷰어 실행과 기록 항목](scripts/flight_analyzer/README.md)을 참고한다.
+실기체는 `./scripts/setup.sh real`로 빌드한 뒤 `./scripts/run_real.sh`로 CSI 카메라와 착륙 스택을 실행합니다. `real.yaml`의 `control.camera_extrinsic`에 실측 위치·회전을 입력하고, `px4.uart`를 기체 설정에 맞춥니다. 기본 CSI 모드 4(1280×720)에서 측정한 보정값은 `real.yaml`의 `camera.calibration`에 넣습니다. 기체별 설정 파일은 `./scripts/run_real.sh config:=/absolute/path/to/real.yaml`로 선택합니다. 저장소의 기본 설정 디렉터리를 사용한다면 빌드해서 설치 경로에 반영합니다.
 
-#### IMX219 시뮬레이션 카메라
+세부 안내는 [실행 환경](docs/run_local.md), [Jetson 환경 설정](docs/SETUP.md), [CSI 카메라(IMX219)](docs/csi_camera_imx219.md), [CSI 카메라(OV5647)](docs/csi_camera_ov5647.md), [XRCE Agent 서비스](scripts/xrce_agent/README.md)를 참고합니다.
 
-시뮬레이션 기본 카메라는 Raspberry Pi Camera Module 2의 기본 렌즈와
-1280×720 센서 중앙 크롭 모드를 근사합니다. 공식 전체 센서 가로 화각
-62.2°에서 2560×1440 영역을 2×2 비닝한다고 가정해 가로 50.424°,
-세로 29.667°를 사용합니다. 실제 드라이버의 센서 크롭이 다르면 조정해야 합니다.
+#### 실기체 이동 차량 착륙 전 설정
 
-Gazebo는 같은 화각으로 640×360, 시뮬레이션 시간 기준 60 Hz 영상을
-직접 렌더링합니다. 해상도와 초점거리의 픽셀 단위 값이 함께 줄어들며
-카메라 브리지가 영상과 CameraInfo를 검출기에 전달합니다.
-검출 입력은 /pl/camera/image_raw입니다. 두 시뮬레이션 타겟의 마커는
-한 변 0.30 m입니다. 렌즈 왜곡은 이상적인 핀홀 모델로 근사합니다.
+QGC의 Parameters 화면에서 실제 비행 컨트롤러에 연결된 상태로 PX4 값을 확인합니다.
+PX4 파라미터는 SITL 인스턴스와 실기체에 각각 저장되므로, SITL에서 변경한 값은
+실기체에도 직접 적용해야 합니다. 아래 SITL 검증은 PID, 뒤 15 m에서 접근하는 차량,
+목표 이륙 고도 5 m, 30 cm 마커 조건에서 진행했습니다.
 
-공식 사양과 센서 모드 근거는
-[Raspberry Pi 카메라 사양](https://www.raspberrypi.com/documentation/accessories/camera.html)과
-[공식 Camera Guide](https://magazines-static.raspberrypi.org/books/full_pdfs/000/000/036/original/Camera-Guide.pdf?1590756684=)를 참고하세요.
+| PX4 파라미터       | 설정·확인 사항                                                                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LNDMC_XY_VEL_MAX` | 착륙 감지에서 허용할 지면 기준 수평 속도. 차량 최대 속도와 추정 오차를 고려해 설정합니다. SITL은 **6.0 m/s**에서 차량 **2·3·5 m/s** 착륙 감지와 자동 디스암을 확인했습니다. |
+| `COM_DISARM_LAND`  | 착륙 확정 후 자동 디스암 대기 시간. SITL 검증값은 **2.0초**입니다. 0은 자동 디스암을 비활성화합니다.                                                                        |
+| `LNDMC_Z_VEL_MAX`  | 착륙 감지 수직 속도 임계값. SITL 검증값은 **0.25 m/s**입니다. 높이 속도 제어에서는 하강 명령이 이 값의 1.1배 이상인지 함께 확인합니다.                                      |
+| `LNDMC_TRIG_TIME`  | 착륙 감지 조건 유지 시간. SITL 검증값은 **1.0초**입니다.                                                                                                                    |
+
+현재 PX4 기본 `LNDMC_XY_VEL_MAX=1.5 m/s`에서는 2 m/s 차량에 접촉해도
+수평 이동으로 판정되어 `ground_contact`와 `landed`가 성립하지 않았습니다.
+임계값을 높이면 낮은 추력·수직 속도·회전·지면 근접 조건과 함께 착륙을 판정합니다.
+실기체 적용 시 이 조건들과 실제 접촉 시점, 착륙 감지 및 디스암 순서를 함께 검증합니다.
+[PX4 착륙 감지 설명](https://docs.px4.io/main/en/advanced_config/land_detector)
+
+QGC MAVLink Console에서도 값을 확인하고 설정할 수 있습니다. 아래 6.0은
+최대 5 m/s 차량을 가정한 SITL 검증값이므로 실기체 시험 계획에 맞춰 선택합니다.
+
+```sh
+param show LNDMC_XY_VEL_MAX
+param set LNDMC_XY_VEL_MAX 6.0
+param show LNDMC_XY_VEL_MAX
+param show COM_DISARM_LAND
+param show LNDMC_Z_VEL_MAX
+param show LNDMC_TRIG_TIME
+```
+
+ROS 실기체 설정 파일도 확인합니다.
+
+| 설정                                  | 적용할 값                                                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `detection.marker_size`               | 30 cm 마커는 **0.30**. 현재 저장소 `real.yaml`은 **0.15**이므로 기체별 설정 파일에서 수정합니다. 검은 외곽 테두리를 포함한 마커 변 길이를 측정합니다. |
+| `camera`                              | IMX219 모드 4, 촬영 **1280×720**, 출력 **640×360**. 보정값은 해당 센서 모드에서 측정하고 `camera.calibration`에 입력합니다.                           |
+| `control.camera_extrinsic`            | 실제 카메라 광학 좌표계에서 기체 FRD로의 위치·회전 실측값.                                                                                            |
+| `control.target_estimation.timeout_s` | 실기체 기본 **3초**, 최근 SITL **5초**. 의도한 마커 상실 허용 시간을 기체별 파일에 지정합니다.                                                        |
+| `use_sim_time`                        | 실기체는 **false**, 실제 시간 기준. SITL 런치는 **true**로 Gazebo의 /clock을 사용합니다.                                                              |
+
+설정 후 실행 중인 제어기에서 적용값을 확인합니다.
+
+```sh
+ros2 param get /precision_land target_timeout
+ros2 param get /precision_land use_sim_time
+ros2 param get /aruco_tracker marker_size
+```
+
+#### 실기체 PAMPC · 정지 타겟
+
+Jetson에서 `./scripts/setup.sh real_mpc`로 빌드합니다. `real.yaml`을 기체별 파일로
+복사하고 카메라 보정, 장착 위치·회전, ArUco ID·사전·실측 마커 변 길이,
+PX4 DDS 도메인 및 UART를 실제 구성에 맞춥니다.
+
+`mpc`에는 아래 실기체 값을 입력합니다.
+
+| 설정                                 | 입력할 값                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `hover_thrust`                       | 같은 탑재중량으로 안정 호버할 때 ULog에서 확인한 정규화 집합 추력 크기                                 |
+| `px4_thrust_model_factor`            | 실제 PX4의 `THR_MDL_FAC`                                                                               |
+| `measured_motor_thrust_model_factor` | 모터·ESC·프롭 조합의 추력 데이터로 맞춘 모델 계수. 검증된 `THR_MDL_FAC`가 실측 곡선과 일치하면 같은 값 |
+| `land_detector_z_velocity_max`       | 실제 PX4의 `LNDMC_Z_VEL_MAX`. 궤적 종점 이후 접촉 판정용 하강 명령은 이 값의 1.2배                     |
+| `approach_descent_speed`             | 접근 하강 참조 속도(m/s). 0.5 m/s는 SITL 시험값이며 실제 속도 제한은 별도                              |
+
+기존 시리얼 XRCE Agent 서비스가 실행 중이면 그대로 사용합니다. 서비스 설정과
+기체별 프로필의 UART·baud·도메인을 맞춥니다. 수동으로 실행할 때는 같은 포트에서
+Agent를 하나만 실행합니다.
+
+```bash
+BRINGUP_LAUNCH=real_mpc.launch.py ./scripts/run_real.sh config:=/absolute/path/to/real-mpc.yaml
+```
+
+프로펠러를 제거한 벤치 시험에서 PX4 메시지 호환 검사, `PrecisionLandCustom` 등록,
+마커 포즈와 카메라 프레임, 기체 자세 및 위치 갱신을 확인합니다. 비행 전 조종사가
+RC로 기존 비행 모드에 즉시 복귀할 수 있는지와 DDS 연결 상실 시 동작을 확인합니다.
+SITL 전용 `test_flight.py`는 실기체 시험에 사용하지 않습니다.

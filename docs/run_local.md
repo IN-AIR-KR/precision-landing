@@ -1,6 +1,6 @@
-현재 기본 PX4는 `~/PX4-Autopilot-6ea3539`입니다. 기존 터미널에서는 `export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"`으로 갱신하세요. [3번 호환 검증과 실행 구성](px4_compatibility_stage3.md).
+현재 기본 PX4는 `~/PX4-Autopilot-6ea3539`입니다. 기존 터미널에서는 `export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"`으로 갱신하세요. [실행 요구사항](../README.md#2-요구사항).
 
-Python 인식기 설치·검증: [2번 진행 결과](python_detection_stage2.md). 현재 `setup.sh`는 OpenCV 소스를 빌드하지 않고 고정된 wheel을 설치합니다.
+Python 인식기 설치·검증: [Jetson 환경 설정](SETUP.md). 현재 `setup.sh`는 OpenCV 소스를 빌드하지 않고 고정된 wheel을 설치합니다.
 
 # 로컬 실행 (Ubuntu 22.04 / ROS 2 Humble / Gazebo Harmonic)
 
@@ -19,7 +19,7 @@ export PX4_DIR="$HOME/PX4-Autopilot-6ea3539"
 `aruco_moving` 월드, Gazebo GUI, `/pl/monitor/image` 공통 모니터 창, DDS Agent(pl_bringup launch 소유), ROS 노드를 함께
 실행합니다. 기체는 원점에서 이륙하고 `aruco_moving_target` 패드는 월드 +X 방향으로 1.5 m 떨어져 있습니다.
 `SIM_WORLD=aruco`로 실행하면 기체는 정지 마커에서 월드 -X 방향으로 1 m 떨어진 곳에 스폰됩니다.
-마커 크기는 모델과 같은 1.0m입니다. 처음에 패드는 정지해 있습니다.
+검출기 마커 크기는 `sim.yaml`의 `detection.marker_size`를 사용하며 기본값은 0.30 m입니다. 사용 중인 Gazebo 모델의 실제 마커 크기도 이 값과 맞춥니다. 처음에 패드는 정지해 있습니다.
 
 QGroundControl은 별도 터미널에서 실행합니다:
 
@@ -41,8 +41,7 @@ cd ~/precision-landing
 ./scripts/move_target.sh 0 0
 ```
 
-두 인자는 월드 좌표계 X/Y 방향 속도(m/s)입니다. 타겟이 탐색 범위 밖으로 나가지 않도록
-인식 후 이동시키세요. 전체 종료는 실행 터미널에서 Ctrl+C입니다.
+두 인자는 월드 좌표계 X/Y 방향 속도(m/s)입니다. 마커가 카메라 시야에 들어온 것을 확인한 뒤 이동시키세요. 전체 종료는 실행 터미널에서 Ctrl+C입니다.
 새 시험은 종료 후 `./scripts/run.sh`를 다시 실행하여 시작합니다.
 
 ## 월드와 모델
@@ -75,7 +74,7 @@ GUI 없이 실행하려면 `HEADLESS=1 ./scripts/run.sh`를 사용합니다.
 ```bash
 cd ~/precision-landing
 source scripts/env.sh
-python3 scripts/test_flight.py
+python3 scripts/tests/test_flight.py
 ```
 
 시험 로그는 `.run/moving-flight.jsonl`, ROS 로그는 `.run/ros.log`,
@@ -93,6 +92,6 @@ PX4 로그는 `.run/px4.log`에 기록됩니다.
 
 ## 1번 공통 카메라 입력
 
-입력 토픽과 카메라 장착 설정, CSI 보류 범위는 [1번 안내](camera_inputs_stage1.md)를 참고하세요.
+카메라 입력 토픽과 노드 구성은 [README 노드 구조](../README.md#3-노드-구조), 실기체 카메라 보정과 장착 설정은 [실기체 실행](../README.md#64-실기체-실행)을 참고하세요.
 
-공통 카메라·제어 HUD 설정과 구독 동작은 [4번 모니터 안내](monitoring_stage4.md)를 참고하세요.
+공통 카메라·제어 HUD 실행은 [pl_viz 안내](../src/pl_viz/README.md)를 참고하세요.

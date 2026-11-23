@@ -362,25 +362,22 @@ sudo reboot
 스톡 DTB(`/boot/dtb/kernel_tegra234-...-nv-super.dtb`)는 처음부터 수정하지
 않았으므로 복원할 것이 없습니다.
 
-## 7. 남은 작업 — ROS 2 연동
+## 7. ROS 2 연동
 
-아직 `/camera/image_raw`를 발행하지 않습니다.
+현재 `real.launch.py`는 `pl_camera`의 `csi_camera` 노드를 실행해
+`/pl/camera/image_raw`와 `/pl/camera/camera_info`를 발행합니다.
+이 노드는 IMX219의 Argus 촬영 경로를 사용합니다.
 
-- `src/pl_bringup/launch/real.launch.py`는 **CSI 캡처 노드를 실행하지 않습니다**
-  (파일 첫 줄: "External camera hardware profile. CSI capture and commissioning are deferred").
-  외부에서 토픽을 발행해 준다고 가정합니다.
-- `BG10`(10비트 Bayer, 16비트 컨테이너)은 `ros-humble-v4l2-camera`나 `usb_cam` 같은
-  기성 노드가 다루지 못합니다.
-- 따라서 **V4L2를 직접 읽어 디베이어 후 발행하는 노드**가 필요합니다.
-  `pl_camera`에 이미 `image_relay`가 있으므로 그 옆에 추가하는 것이 자연스럽습니다.
-- `src/pl_bringup/config/real.yaml`의 `camera.calibration_verified`와
-  `camera.extrinsics_verified`가 둘 다 `true`가 아니면 `real.launch.py`는
-  의도적으로 실행을 거부합니다. 카메라 보정과 장착 변환을 먼저 끝내야 합니다.
+- 이 문서의 OV5647 `BG10` 촬영 경로를 연결하려면 V4L2 캡처와 디베이어 처리를
+  ROS 노드에 연결하고 위 공통 영상·보정 토픽을 발행하도록 구성해야 합니다.
+- `real.yaml`의 `camera.calibration`에 사용 모드에서 측정한 보정값을 넣고,
+  `control.camera_extrinsic`에 실제 장착 위치·회전을 입력합니다.
+- 실기체 런치는 `camera.calibration`이 비어 있으면 실행을 거부합니다.
 
-관련 문서: [hardware_setting.md](hardware_setting.md), [camera_inputs_stage1.md](camera_inputs_stage1.md)
+관련 문서: [Jetson 환경 설정](SETUP.md), [실기체 실행](../README.md#64-실기체-실행)
 
 ## 8. 참고
 
 - [akandr/ov5647-jetson](https://github.com/akandr/ov5647-jetson) — 사용한 드라이버 포팅
 - [About sensor device registration in Jetpack-6](https://forums.developer.nvidia.com/t/about-sensor-device-registration-in-jetpack-6/327933) — JetPack 6 오버레이 관련 NVIDIA 포럼
-- 저장소 루트의 `SETUP.md` — 젯슨 전체 개발 환경 세팅
+- [SETUP.md](SETUP.md) — 젯슨 전체 개발 환경 세팅

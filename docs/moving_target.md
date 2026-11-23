@@ -16,7 +16,7 @@
 ### 모델: [`simulation/gz/models/aruco_moving_target`](../simulation/gz/models/aruco_moving_target)
 
 - `marker_link` 하나짜리 단순 모델. 1.5 x 1.5 x 0.1m 평평한 패드, 질량 50kg, 중력/바닥 접촉 정상 작동 (물리적으로 바닥에 그냥 놓여 있는 상자입니다. 뜨는 게 아닙니다).
-- 패드 위에 **1.0 x 1.0m** ArUco 마커 평면이 붙어 있습니다 (기존 0.5m에서 2배로 키움). **크기를 바꾸려면 `src/pl_bringup/config/sim.yaml`의 `detection.marker_size`도 반드시 같이 바꿔야 합니다** — PnP 포즈 추정의 스케일 기준이기 때문입니다.
+- 패드 위에 **0.30 × 0.30 m** ArUco 마커 평면이 붙어 있습니다. **크기를 바꾸려면 `src/pl_bringup/config/sim.yaml`의 `detection.marker_size`도 반드시 같이 바꿔야 합니다** — PnP 포즈 추정의 스케일 기준이기 때문입니다.
 - `gz-sim-velocity-control-system` (`gz::sim::systems::VelocityControl`) 플러그인이 붙어 있습니다. 이건 Gazebo에 기본 내장된 플러그인이라 별도 빌드가 필요 없습니다.
   - **커맨드를 아무것도 안 보내면 속도 0, 즉 가만히 있습니다.** (처음 준비 상태 = 정지)
   - 실행 중 아무 때나 아래 명령으로 속도를 바꿀 수 있습니다:
@@ -54,32 +54,23 @@ make px4_sitl gz_x500_mono_cam_down
 
 시뮬레이션이 뜨면 패드는 가만히 있습니다. 이륙하고 Precision Land 모드를 활성화한 뒤, 다른 터미널에서 `gz topic` 명령으로 패드를 움직이세요.
 
-나머지(MicroXRCEAgent, `ros2 launch pl_control precision_landing_system.launch.py`)는 정적 마커일 때와 동일합니다.
+Gazebo와 PX4를 별도로 실행할 때는 [README의 스택 분리 실행](../README.md#62-gazebopx4ros-스택-분리-실행)을 따릅니다. ROS 스택은 `ros2 launch pl_bringup sim.launch.py world:=aruco_moving`으로 실행합니다.
 
-## PrecisionLand.cpp 변경 사항
+## 타겟 추정과 추종
 
-기존 코드는 **정적 타겟을 가정**하고 있어서 그대로는 움직이는 마커에 착륙할 수 없었습니다. 수정한 부분:
-
-1. **타겟 속도 추정** ([`PrecisionLand.hpp`](../src/pl_control/PrecisionLand.hpp)의 `ArucoTag::velocity`, [`targetPoseCallback`](../src/pl_control/PrecisionLand.cpp))
-   - 매 `/target_pose` 콜백마다 이전/현재 월드 좌표 차분으로 타겟의 월드 속도를 추정하고, 노이즈를 줄이기 위해 저역통과 필터(alpha=0.3)를 적용합니다.
-
-2. **`positionReached()`의 전환 조건 수정**
-   - 기존: `드론 위치 - 타겟 위치 < 0.25m` **그리고** `드론 자체 속도 < 0.25m/s`.
-   - 문제: 타겟이 계속 움직이면 드론도 계속 따라 움직여야 하므로, 드론의 "절대 속도"는 결코 0 근처로 떨어지지 않습니다 → `Approach` 상태에서 `Descend`로 영원히 전환되지 않습니다.
-   - 수정: 드론 속도에서 **타겟 속도를 뺀 상대 속도**를 기준으로 판정합니다. 타겟이 감지되기 전(Search 단계)에는 `_tag.velocity`가 0이므로 기존 동작과 동일하게 작동합니다.
-
-3. **Descend 단계의 속도 feedforward** ([`calculateVelocitySetpointXY`](../src/pl_control/PrecisionLand.cpp))
-   - 기존 PI 제어기는 `vx = -(Kp*e + Ki*I)`만 계산했습니다. 움직이는 타겟을 순수 P 제어로 쫓으면 정상상태 오차가 `타겟 속도 / Kp`만큼 항상 남습니다.
-   - 추정한 타겟 속도를 feedforward로 더해 `vx = -(Kp*e + Ki*I) + v_tag_x` 로 바꿔서 추적 지연을 크게 줄였습니다.
+- `/pl/target_observation`의 마커 관측을 카메라 장착 변환과 기체 pose로 NED 월드 좌표로 변환합니다.
+- Kalman 필터로 타겟 위치·속도를 추정하고, 제어 주기마다 예측합니다.
+- PID 제어기는 `ALIGN`에서 고도를 유지하며 타겟을 추종하고, 위치 오차와 상대 속도가 허용 범위에 들면 `APPROACH`에서 하강합니다.
+- 수평 속도 명령에 추정 타겟 속도를 feedforward로 더합니다. 상태 전이와 제어식은 [README](../README.md#4-착륙-fsm)를 참고하세요.
 
 ## 파라미터 튜닝
 
-- 타겟 속도가 빨라지면 `src/pl_bringup/config/sim.yaml`의 `control.horizontal_tracking.velocity_p_gain`을 높이거나(응답성 ↑, 오버슈트 위험 ↑), `control.target_estimation.timeout_s`를 넉넉히(5초 이상) 주는 것이 안전합니다.
-- 속도 추정 저역통과 필터 계수(`alpha = 0.3`, `PrecisionLand.cpp`의 `targetPoseCallback`)는 하드코딩되어 있습니다. 탐지 노이즈가 심하면 더 작게(예: 0.15), 반응이 느리게 느껴지면 더 크게 조정하세요.
-- 마커/패드 크기를 더 키우고 싶다면 `model.sdf`의 두 치수(패드 box, 마커 plane)와 `src/pl_bringup/config/sim.yaml`의 `detection.marker_size`를 같이 맞추세요.
+- 수평 추종 게인은 `src/pl_bringup/config/sim.yaml`의 `control.horizontal_tracking`에서 설정합니다.
+- 위치·속도 추정의 노이즈 값과 마커 유실 허용 시간은 `control.target_estimation`에서 설정합니다.
+- 마커 크기를 바꾸면 모델의 `aruco_tag_visual` 평면 크기와 `detection.marker_size`를 함께 맞춥니다. 패드 크기는 마커가 들어갈 수 있도록 정합니다.
 
 ## 알려진 한계
 
 - `VelocityControl`은 **명령으로 넣은 선속도/각속도**만큼만 움직입니다. 경로 추종이나 자동 가속/감속 같은 건 없고, 사람이 `gz topic`으로 직접 넣어줘야 합니다 (원하면 셸 스크립트나 ROS2 노드로 주기적으로 publish해서 자동화할 수 있습니다).
-- `Search` 단계의 나선형 탐색 패턴은 여전히 정적 waypoint 기준입니다. 타겟이 탐색 범위(반경 2m) 밖으로 많이 벗어나면 탐색 중에 못 찾을 수 있습니다.
+- PID 제어기의 `IDLE`은 현재 위치를 유지하며 마커 검출을 기다립니다. 마커를 카메라 시야 안에 배치해야 합니다.
 - 실제 자동차 모델을 쓰고 싶다면 `marker_link`를 원하는 차량 메시로 바꾸고, 그 위에 `aruco_tag_visual`만 유지하면 됩니다. `VelocityControl` 플러그인은 모델 전체에 적용되므로 링크 구조를 바꿔도 그대로 동작합니다.
