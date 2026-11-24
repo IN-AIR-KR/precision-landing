@@ -3,6 +3,7 @@
 
 import argparse
 import os
+import sys
 from pathlib import Path
 from queue import SimpleQueue
 from tempfile import NamedTemporaryFile
@@ -11,6 +12,10 @@ from threading import Event, Thread
 import cv2
 import numpy as np
 import yaml
+
+# Also run directly with system OpenCV before building the ROS workspace.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/pl_camera'))
+from pl_camera.imx708_capture import capture_imx708
 
 
 WINDOW = 'Camera calibration'
@@ -229,6 +234,10 @@ def main():
     parser.add_argument('--rows', type=int, required=True, help='Inner corners per column')
     parser.add_argument('--square-mm', type=float, required=True, help='Measured square edge in mm')
     parser.add_argument('--sensor-id', type=int, default=0)
+    parser.add_argument('--imx708', action='store_true', help='Capture IMX708 RG10 via V4L2 at 4608x2592')
+    parser.add_argument('--imx708-mode', type=int, choices=(0, 1), default=0,
+                        help='IMX708 mode 0: 4608x2592; mode 1: 1536x864 at 60 FPS')
+    parser.add_argument('--device', default='/dev/video0')
     parser.add_argument('--mode', type=int, choices=IMX219_MODES,
                         help='IMX219 sensor mode (4 = 1280x720 @ 60 FPS)')
     parser.add_argument('--width', type=int)
@@ -237,6 +246,11 @@ def main():
     parser.add_argument('--flip-method', type=int, choices=range(8), default=0)
     parser.add_argument('--from-saved', action='store_true', help='Calibrate from saved PNGs without opening the camera')
     args = parser.parse_args()
+    if args.imx708:
+        if args.mode is not None or any(v is not None for v in (args.width, args.height, args.fps)):
+            parser.error('--imx708-mode selects the capture resolution and FPS.')
+        args.width, args.height, args.fps = ((4608, 2592, 14) if args.imx708_mode == 0
+                                            else (1536, 864, 60))
     capture_overrides = (args.width, args.height, args.fps)
     if args.mode is not None and any(value is not None for value in capture_overrides):
         parser.error('Use --mode or manual --width/--height/--fps settings.')
@@ -247,8 +261,9 @@ def main():
     if min(args.cols, args.rows) < 3 or not np.isfinite(args.square_mm) or args.square_mm <= 0:
         parser.error('Use at least 3x3 inner corners and a positive square size.')
     script_dir = Path(__file__).resolve().parent
-    args.output = script_dir / 'calibration.yaml'
-    sample_dir = script_dir / 'samples'
+    suffix = ('imx708_1536x864' if args.imx708_mode == 1 else 'imx708') if args.imx708 else ''
+    args.output = script_dir / (f'{suffix}_calibration.yaml' if suffix else 'calibration.yaml')
+    sample_dir = script_dir / (f'{suffix}_samples' if suffix else 'samples')
     if args.from_saved:
         try:
             calibrate_saved(args, sample_dir)
@@ -275,8 +290,9 @@ def main():
     frames = SimpleQueue()
     errors = SimpleQueue()
     stop = Event()
-    worker = Thread(target=capture, args=(pipeline, frames, errors, stop),
-                    daemon=True)
+    worker = (Thread(target=capture_imx708, args=(args.device, frames, errors, stop, args.imx708_mode), daemon=True)
+              if args.imx708 else
+              Thread(target=capture, args=(pipeline, frames, errors, stop), daemon=True))
     try:
         cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(WINDOW, 960, 540)

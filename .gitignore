@@ -11,3 +11,5 @@ __pycache__/
 /flight_logs/
 
 .DS_Store
+
+/scripts/camera_calibration/imx708*_samples/
