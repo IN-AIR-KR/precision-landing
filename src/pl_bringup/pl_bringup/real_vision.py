@@ -24,9 +24,6 @@ def vision_nodes(config, controller):
     for name in ('sensor_mode', 'width', 'height', 'fps', 'output_width', 'output_height'):
         if name in camera_config:
             camera_parameters[name] = camera_config[name]
-    executable = camera_config.get('driver', 'csi_camera')
-    if executable not in ('csi_camera', 'imx708_camera'):
-        raise ValueError('camera.driver must be csi_camera or imx708_camera')
-    camera = Node(package='pl_camera', executable=executable, name='csi_camera',
+    camera = Node(package='pl_camera', executable='csi_camera', name='csi_camera',
                   output='screen', parameters=[camera_parameters])
     return camera, detection, monitor

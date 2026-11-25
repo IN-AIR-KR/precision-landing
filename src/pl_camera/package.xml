@@ -16,7 +16,6 @@
        wheel in .deps/python is built without GStreamer support. -->
   <exec_depend>python3-gi</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
-  <exec_depend>v4l-utils</exec_depend>
   <exec_depend>pl_detection</exec_depend>
   <test_depend>python3-pytest</test_depend>
   <export><build_type>ament_python</build_type></export>

@@ -81,7 +81,7 @@ env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
   --cols 9 --rows 6 --square-mm 25 --mode 4
 ```
 
-`real.yaml`은 센서 모드 4와 1280×720 @ 60 fps를 기본으로 사용합니다.
+IMX219를 사용할 때는 센서 모드 4와 1280×720 @ 60 fps를 지정합니다.
 생성한 `camera.calibration`을 붙여 넣은 뒤 실기체 런치를 실행합니다.
 `output_width: 640`과 `output_height: 360`은 그대로 사용해 검출기 입력 크기를 유지합니다.
 
@@ -94,3 +94,17 @@ ros2 launch pl_bringup camera_test.launch.py
 
 HUD 창 없이 ROS 노드만 실행하려면 `view:=false`를 지정합니다.
 기본 ROS 도메인은 0입니다. 다른 터미널에서 `ros2 topic list`로 테스트 토픽을 확인할 수 있습니다.
+
+## IMX708 Argus 보정
+
+현재 실기체 기본 설정은 IMX708 모드 1, 1536×864 @ 60 fps 캡처와
+640×360 ROS 출력입니다. 보정 도구와 실기체 카메라 모두 Argus의 자동 노출,
+자동 게인, 화이트밸런스를 사용합니다.
+
+```bash
+env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py \
+  --imx708 --imx708-mode 1 --cols 9 --rows 6 --square-mm 25
+```
+
+결과는 `imx708_1536x864_calibration.yaml`에 저장됩니다.
+이 파일의 `camera.calibration`을 `real.yaml`에 적용합니다.

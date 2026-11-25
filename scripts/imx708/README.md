@@ -14,17 +14,18 @@ Mode 0 is 4608×2592 at up to 14 fps. Mode 1 is 1536×864, tested at 60.06 fps.
 The 120 fps mode-table limit has not been validated on this board.
 Mode 1 uses the Tegra timing representation of 283200000 Hz and 2608 pixels per line,
 keeping the inferred CSI rate below the deskew threshold.
-RAW output needs software exposure control, black-level correction, white balance and gamma.
-The ROS imx708_camera node and calibration tool share that processing.
+Argus handles automatic exposure, gain, white balance and ISP conversion.
+The ROS csi_camera node and calibration tool both use nvarguscamerasrc.
 Autofocus is not implemented.
 
 For calibration, run the following from the repository root.
 
     env -u PYTHONPATH /usr/bin/python3 scripts/camera_calibration/calibrate.py --imx708 --imx708-mode 1 --cols 9 --rows 6 --square-mm 25
 
-Set camera.driver to imx708_camera in real.yaml. Calibrate at 1536×864.
+Use sensor_mode 1, width 1536, height 864 and fps 60 in real.yaml. Calibrate at 1536×864.
 ROS output remains 640×360 with scaled intrinsics. The measured ROS frame rate was
-approximately 29 Hz with detection and HUD running, despite 60 fps sensor capture.
+approximately 29 Hz with the previous software RAW conversion. Argus capture
+was measured at 55.44 fps including startup and exposure compensation changes.
 
 The pinned driver source is [nvidia-jetson-toolkit](https://github.com/rm0nroe/nvidia-jetson-toolkit/tree/ed0b66fddcce9a941175892d70ffa3c8e784db3a).
 Its sensor driver and the mode patch are GPL-2.0 derived from RidgeRun and Raspberry Pi Linux.

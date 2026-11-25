@@ -22,7 +22,6 @@ setup(
     entry_points={
         'console_scripts': [
             'csi_camera = pl_camera.csi_camera:main',
-            'imx708_camera = pl_camera.imx708_camera:main',
             'image_relay = pl_camera.image_relay:main',
             'sim_ground_truth = pl_camera.sim_ground_truth:main',
         ],

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""IMX219 CSI camera publisher for Jetson (Argus ISP via GStreamer).
+"""CSI camera publisher for Jetson (Argus ISP via GStreamer).
 
 Publishes `sensor_msgs/Image` (bgr8 or mono8) and `sensor_msgs/CameraInfo`
 so `pl_detection/aruco_tracker` can consume the hardware camera the same way
@@ -7,8 +7,8 @@ it consumes the Gazebo bridge.
 
 Capture path: `nvarguscamerasrc -> nvvidconv -> videoconvert -> appsink`.
 Argus runs the Tegra ISP, so exposure and white balance are automatic and the
-frames arrive as ready-to-use BGR. See docs/csi_camera_ov5647.md for the
-sensor bring-up that this node sits on top of.
+frames arrive as ready-to-use BGR. IMX708 driver setup is documented in
+scripts/imx708/README.md.
 
 GStreamer is driven through PyGObject (`gi`) rather than `cv2.VideoCapture`,
 because the project's pinned OpenCV wheel in `.deps/python` is built without
@@ -37,10 +37,11 @@ gi.require_version('GstApp', '1.0')
 gi.require_version('GstVideo', '1.0')
 from gi.repository import Gst, GstVideo  # noqa: E402  (gi needs require_version first)
 
-# IMX219 sensor modes exposed by the nv_imx219 driver, as (width, height, fps).
+# Validated IMX219 and IMX708 capture requests, as (width, height, fps).
 # Picking a listed pair keeps Argus from renegotiating to a different mode.
 SENSOR_MODES = ((3280, 2464, 21), (3280, 1848, 28), (1920, 1080, 30),
-                (1640, 1232, 30), (1280, 720, 60))
+                (1640, 1232, 30), (1280, 720, 60),
+                (4608, 2592, 14), (1536, 864, 60))
 
 
 def video_info(caps):
@@ -159,7 +160,7 @@ class CsiCamera(Node):
             raise ValueError('sensor_mode must be -1 (auto) or a nonnegative Argus mode index')
         if (self.width, self.height, round(self.fps)) not in SENSOR_MODES:
             self.get_logger().warn(
-                f'{self.width}x{self.height}@{self.fps:g} is outside the built-in IMX219 mode list '
+                f'{self.width}x{self.height}@{self.fps:g} is outside the validated capture modes '
                 f'{SENSOR_MODES}. Argus will scale or renegotiate, which costs '
                 'frame rate and may change the field of view.')
 
@@ -192,6 +193,7 @@ class CsiCamera(Node):
 
     def build_pipeline(self, cfg):
         src = f'nvarguscamerasrc sensor-id={int(cfg["sensor_id"])} wbmode={int(cfg["wbmode"])}'
+        src += ' aelock=false awblock=false'
         if cfg['sensor_mode'] >= 0:
             src += f' sensor-mode={cfg["sensor_mode"]}'
         if cfg['exposure_time_range']:
@@ -214,14 +216,17 @@ class CsiCamera(Node):
         while self.running:
             sample = self.sink.emit('pull-sample')
             if sample is None:                     # pipeline stopped or EOS
-                if self.running:
+                if self.running and self.context.ok():
                     self.get_logger().error('Camera stream ended unexpectedly.')
+                break
+            if not self.running or not self.context.ok():
                 break
             try:
                 self.publish(sample, channels)
             except Exception as exc:               # noqa: BLE001 - keep streaming
-                self.get_logger().error(f'Dropping frame: {exc}',
-                                        throttle_duration_sec=5.0)
+                if self.running and self.context.ok():
+                    self.get_logger().error(f'Dropping frame: {exc}',
+                                            throttle_duration_sec=5.0)
 
     def publish(self, sample, channels):
         info = video_info(sample.get_caps())
