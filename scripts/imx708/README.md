@@ -16,7 +16,27 @@ Mode 1 uses the Tegra timing representation of 283200000 Hz and 2608 pixels per 
 keeping the inferred CSI rate below the deskew threshold.
 Argus handles automatic exposure, gain, white balance and ISP conversion.
 The ROS csi_camera node and calibration tool both use nvarguscamerasrc.
-Autofocus is not implemented.
+The DW9817 lens is controlled directly through `/dev/i2c-9` at address `0x0c`.
+The current Jetson Argus plugin does not expose focus controls; `pl_camera.autofocus`
+performs a coarse/fine contrast search while Argus continues automatic exposure.
+No additional kernel module or reboot is needed. The user must belong to `i2c`
+(the current `inair` user already does). A bound kernel lens driver is never overridden.
+
+`camera.autofocus_mode` in real.yaml defaults to `once`: focus automatically after
+startup, then hold the position during flight. Put a textured target at the intended
+working distance in view and wait for `Autofocus locked` before use. `continuous`
+repeats a full search after a 10-second hold; it temporarily defocuses the image
+and is intended for bench checks. `off` leaves the motor untouched. Each scan takes
+roughly 8–12 seconds. Dark/featureless scenes cannot establish reliable focus.
+Failures are logged explicitly; camera capture continues without autofocus.
+`camera.focus_i2c_bus` defaults to 9 for this CAM1 wiring.
+
+The IMX708 calibration tool also focuses once; wait for `Autofocus locked` before
+capturing samples. Changing focus can change camera intrinsics, so calibration
+accuracy must be rechecked at the working focus/distance.
+
+Motor protocol references: [Raspberry Pi DW9817 driver](https://github.com/raspberrypi/linux/blob/rpi-6.6.y/drivers/media/i2c/dw9807-vcm.c)
+and [IMX708 lens wiring](https://github.com/raspberrypi/linux/blob/rpi-6.6.y/arch/arm/boot/dts/overlays/imx708.dtsi).
 
 For calibration, run the following from the repository root.
 

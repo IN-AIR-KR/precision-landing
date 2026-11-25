@@ -3,6 +3,7 @@
 
 import argparse
 import os
+import sys
 from pathlib import Path
 from queue import SimpleQueue
 from tempfile import NamedTemporaryFile
@@ -52,7 +53,7 @@ def save_calibration(path, size, board, samples):
     print(f'Saved {path.resolve()} | {size[0]}x{size[1]} | RMS {rms:.3f} px')
 
 
-def capture(pipeline, frames, errors, stop):
+def capture(pipeline, frames, errors, stop, autofocus=None):
     camera = cv2.VideoCapture()
     try:
         if not camera.open(pipeline, cv2.CAP_GSTREAMER):
@@ -61,12 +62,16 @@ def capture(pipeline, frames, errors, stop):
             ok, frame = camera.read()
             if not ok:
                 raise RuntimeError('CSI camera stopped delivering frames.')
+            if autofocus:
+                autofocus.update(frame)
             if not frames.empty():
                 continue
             frames.put(frame)
     except (RuntimeError, cv2.error) as error:
         errors.put(error)
     finally:
+        if autofocus:
+            autofocus.close()
         camera.release()
 
 
@@ -124,7 +129,7 @@ def load_preview_maps(path, size):
     return cv2.initUndistortRectifyMap(intrinsic, distortion, None, intrinsic, size, cv2.CV_16SC2)
 
 
-def preview(frames, errors, args, sample_dir):
+def preview(frames, errors, args, sample_dir, autofocus=None):
     samples = {}
     excluded = set()
     next_image = max((int(path.stem) for path in sample_dir.glob("*.png")
@@ -176,6 +181,10 @@ def preview(frames, errors, args, sample_dir):
         if key in (ord('q'), 27):
             return
         if key == ord(' '):
+            if autofocus and not autofocus.locked:
+                message = 'Autofocus not locked. Put the board in view and restart if focus failed.'
+                print(message, flush=True)
+                continue
             corners = detect_corners(display, pattern) if size == (args.width, args.height) else None
             if corners is None:
                 message = 'Checkerboard not found. Sample skipped.'
@@ -230,6 +239,7 @@ def main():
     parser.add_argument('--rows', type=int, required=True, help='Inner corners per column')
     parser.add_argument('--square-mm', type=float, required=True, help='Measured square edge in mm')
     parser.add_argument('--sensor-id', type=int, default=0)
+    parser.add_argument('--focus-i2c-bus', type=int, default=9, help='IMX708 CAM1 lens I2C bus')
     parser.add_argument('--imx708', action='store_true', help='Select IMX708 Argus sensor modes')
     parser.add_argument('--imx708-mode', type=int, choices=(0, 1), default=0,
                         help='IMX708 mode 0: 4608x2592; mode 1: 1536x864 at 60 FPS')
@@ -287,7 +297,18 @@ def main():
     frames = SimpleQueue()
     errors = SimpleQueue()
     stop = Event()
-    worker = Thread(target=capture, args=(pipeline, frames, errors, stop), daemon=True)
+    autofocus = None
+    if args.imx708:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/pl_camera'))
+        from pl_camera.autofocus import Autofocus
+        class FocusLog:
+            def info(self, message):
+                print(message, flush=True)
+            warning = info
+            error = info
+        autofocus = Autofocus(args.focus_i2c_bus, mode='once', logger=FocusLog())
+        print('Wait for Autofocus locked before capturing calibration samples.', flush=True)
+    worker = Thread(target=capture, args=(pipeline, frames, errors, stop, autofocus), daemon=True)
     try:
         cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(WINDOW, 960, 540)
@@ -296,7 +317,7 @@ def main():
         sample_dir.mkdir(exist_ok=True)
         print(f'Sample images: {sample_dir}', flush=True)
         worker.start()
-        preview(frames, errors, args, sample_dir)
+        preview(frames, errors, args, sample_dir, autofocus)
     except KeyboardInterrupt:
         pass
     except (OSError, RuntimeError, cv2.error) as error:

@@ -1,4 +1,6 @@
 camera:
+  autofocus_mode: once # Automatically focus at startup, then hold during flight.
+  focus_i2c_bus: 9 # CAM1 IMX708 DW9817 lens motor.
   sensor_mode: 1
   width: 1536
   height: 864
@@ -26,7 +28,7 @@ control:
   approach:
     descent_speed_mps: 0.6
   horizontal_tracking:
-    velocity_p_gain: 0.1
+    velocity_p_gain: 1.7
     velocity_i_gain: 0.0
     velocity_d_gain: 0.0
     max_speed_mps: 10.0

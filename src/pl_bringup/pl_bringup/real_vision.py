@@ -21,7 +21,8 @@ def vision_nodes(config, controller):
     monitor = Node(package='pl_viz', executable='monitor', output='screen',
                    parameters=[monitor_parameters])
     camera_parameters = {'calibration_json': json.dumps(calibration)}
-    for name in ('sensor_mode', 'width', 'height', 'fps', 'output_width', 'output_height'):
+    for name in ('sensor_mode', 'width', 'height', 'fps', 'output_width', 'output_height',
+                 'autofocus_mode', 'focus_i2c_bus'):
         if name in camera_config:
             camera_parameters[name] = camera_config[name]
     camera = Node(package='pl_camera', executable='csi_camera', name='csi_camera',

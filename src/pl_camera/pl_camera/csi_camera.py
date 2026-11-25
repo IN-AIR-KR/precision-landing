@@ -25,6 +25,8 @@ Only one Argus capture session may exist at a time, so stop any preview
 from array import array
 import threading
 
+from .autofocus import Autofocus
+
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -138,6 +140,8 @@ class CsiCamera(Node):
             'frame_id': 'camera_optical_frame',
             'camera_info_url': '',
             'calibration_json': '',
+            'autofocus_mode': 'off',  # off, once, continuous (IMX708 only)
+            'focus_i2c_bus': 9,
             'wbmode': 1,                 # Argus auto white balance
             'exposure_time_range': '',   # e.g. '5000000 20000000' (ns), '' = Argus auto
             'gain_range': '',            # e.g. '1 10'
@@ -172,6 +176,12 @@ class CsiCamera(Node):
             str(cfg['camera_info_url']), self.output_width, self.output_height,
             self.frame_id, self.get_logger(), calibration_json=cfg['calibration_json'],
             capture_size=(self.width, self.height))
+
+        focus_mode = str(cfg['autofocus_mode'])
+        if focus_mode not in ('off', 'once', 'continuous'):
+            raise ValueError('autofocus_mode must be off, once or continuous')
+        self.autofocus = (Autofocus(int(cfg['focus_i2c_bus']), focus_mode, self.get_logger())
+                          if focus_mode != 'off' else None)
 
         Gst.init(None)
         self.pipeline = Gst.parse_launch(self.build_pipeline(cfg))
@@ -250,6 +260,11 @@ class CsiCamera(Node):
         payload = (raw[:row * height] if stride == row else
                    b''.join(raw[y * stride:y * stride + row] for y in range(height)))
 
+        if self.autofocus:
+            import numpy as np
+            shape = (height, width) if channels == 1 else (height, width, channels)
+            self.autofocus.update(np.frombuffer(payload, dtype=np.uint8).reshape(shape))
+
         stamp = self.get_clock().now().to_msg()
         message = Image(height=height, width=width, encoding=self.encoding,
                         is_bigendian=0, step=row, data=array('B', payload))
@@ -271,6 +286,8 @@ class CsiCamera(Node):
             self.pipeline.set_state(Gst.State.NULL)
         if self.thread.is_alive():
             self.thread.join(timeout=2.0)
+        if self.autofocus:
+            self.autofocus.close()
 
 
 def main():
