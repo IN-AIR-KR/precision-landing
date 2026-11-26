@@ -11,7 +11,17 @@ The installer backs up extlinux.conf and the previous module/DTB under /boot/imx
 To roll back, restore those files and run sudo depmod -a before rebooting.
 
 Mode 0 is 4608×2592 at up to 14 fps. Mode 1 is 1536×864, tested at 60.06 fps.
-The 120 fps mode-table limit has not been validated on this board.
+Measured on 2026-11-26 at a requested 120 fps:
+raw V4L2 capture sustained 120.12 fps, but Argus NV12 output sustained
+62.65 fps. Hardware scaling to 640×360 BGRx measured 61.25 fps,
+and BGR conversion measured 61.85 fps. ROS BGR reception measured
+58.64 fps in a separate run. These are sequential short measurements,
+so small differences include run-to-run variation.
+A 1 ms exposure limit, disabling AE/AWB, disabling temporal noise
+reduction and edge enhancement, and disabling AE antibanding did not
+remove the approximately 62 fps Argus limit. The 120 fps sensor mode
+works through raw V4L2, but 120 fps through Argus/ROS is not validated.
+Keep the real profile at 60 fps pending an Argus/driver timing fix.
 Mode 1 uses the Tegra timing representation of 283200000 Hz and 2608 pixels per line,
 keeping the inferred CSI rate below the deskew threshold.
 Argus handles automatic exposure, gain, white balance and ISP conversion.
