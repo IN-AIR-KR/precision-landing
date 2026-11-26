@@ -136,6 +136,7 @@ def main():
     ap.add_argument('--auto-exposure', action='store_true',
                     help='평균 밝기를 목표값에 맞추는 간단한 소프트웨어 AE')
     ap.add_argument('--target', type=int, default=110, help='AE 목표 평균 밝기 (0-255)')
+    ap.add_argument('--no-white-balance', action='store_true', help='소프트웨어 화이트밸런스 끄기')
     ap.add_argument('--gray', action='store_true', help='흑백으로 시작')
     ap.add_argument('--no-aruco', action='store_true', help='ArUco 검출 끄기')
     ap.add_argument('--dict', type=int, default=cv2.aruco.DICT_4X4_250,
@@ -202,6 +203,14 @@ def main():
             gray = cv2.cvtColor(bayer8, cv2.COLOR_BayerBG2GRAY)
             view = (cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR) if show_gray
                     else cv2.cvtColor(bayer8, cv2.COLOR_BayerBG2BGR))
+
+            if not show_gray and not args.no_white_balance:
+                # Raw capture bypasses the ISP's automatic white balance.
+                means = view[::16, ::16].mean(axis=(0, 1))
+                factors = np.clip(means.mean() / np.maximum(means, 1), 0.25, 4)
+                levels = np.arange(256, dtype=np.float32)[:, None] * factors
+                lut = np.clip(levels, 0, 255).astype(np.uint8).reshape(256, 1, 3)
+                view = cv2.LUT(view, lut)
 
             ids = None
             if detect is not None:
