@@ -28,12 +28,12 @@ control:
   approach:
     descent_speed_mps: 0.6
   horizontal_tracking:
-    velocity_p_gain: 1.7
+    velocity_p_gain: 1.4
     velocity_i_gain: 0.0
-    velocity_d_gain: 0.0
+    velocity_d_gain: 0.9
     max_speed_mps: 10.0
   target_estimation:
-    timeout_s: 3.0
+    timeout_s: 7.0
     acceleration_noise_mps2: 1.0
     position_noise_m: 0.1
   camera_extrinsic:
